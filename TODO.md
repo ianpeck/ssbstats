@@ -3,10 +3,12 @@
 - [ ] **Power Rankings additions** -- GUI that inserts data to DB as ETL
   - Total Championships months (major and minor in that year)
   - Should be changeable to just season power rankings too
-- [ ] **Loading Gltiches** -- navigating between pages esepcially to home does not work right away
+- [ ] **Loading Glitches** -- navigating between pages esepcially to home does not work right away
 - [ ] **Deploy and buy domain**
+  - ssbstats.app most likely
 - [ ] **Possibly a better theme everywhere**
-- [ ] **HOF stats tab with holsitic view feeding it**
+  - current is fine just could look even sleeker with more black and less dark blue
+- [ ] **HOF stats tab with holistic view feeding it**
 - [ ] **YAML file with blurb about each fighter**
   - include video game ther are from too which would be cool
   - nickname too?
