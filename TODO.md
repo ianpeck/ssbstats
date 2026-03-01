@@ -23,3 +23,4 @@
   - separate stat to show matches that are not Tag Team but also have 3 or 4 fighters and fight type is 3 stock (triple threat and fatal 4 way matches)
 - [ ] **Head to Head uses ML model to predictively guess who would win based on certain data points with a confidence %**
 - [ ] **Graphs in general needs work**
+- [ ] **Possible login page to prevent copyright issues**
