@@ -4,6 +4,7 @@
   - Total Championships months (major and minor in that year)
   - Should be changeable to just season power rankings too
 - [ ] **Loading Glitches** -- navigating between pages esepcially to home does not work right away
+  - all photos should load not just when scrolling
 - [ ] **Deploy and buy domain**
   - ssbstats.app most likely
 - [ ] **Possibly a better theme everywhere**
