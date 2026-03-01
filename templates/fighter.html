@@ -37,59 +37,103 @@
 
     <!-- Stats Breakdown -->
     <div class="fighter-stats-grid" id="statsGrid" style="display: none;">
+
         <!-- By Season -->
-        <div class="stats-table-wrapper glass-card">
-            <h3 class="table-title">Stats by Season</h3>
-            <table class="stats-table">
-                <thead><tr><th>Season</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                <tbody id="seasonTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-            </table>
+        <div class="stats-table-wrapper glass-card collapsible-card">
+            <button class="collapsible-header" aria-expanded="false">
+                <span class="table-title">Stats by Season</span>
+                <span class="chevron">&#8963;</span>
+            </button>
+            <div class="collapsible-body">
+            <div class="collapsible-body-inner">
+                <table class="stats-table">
+                    <thead><tr><th>Season</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                    <tbody id="seasonTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
+                </table>
+            </div>
+            </div>
         </div>
 
         <!-- By Location -->
-        <div class="stats-table-wrapper glass-card">
-            <h3 class="table-title">Stats by Location</h3>
-            <table class="stats-table">
-                <thead><tr><th>Location</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                <tbody id="locationTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-            </table>
+        <div class="stats-table-wrapper glass-card collapsible-card">
+            <button class="collapsible-header" aria-expanded="false">
+                <span class="table-title">Stats by Location</span>
+                <span class="chevron">&#8963;</span>
+            </button>
+            <div class="collapsible-body">
+            <div class="collapsible-body-inner">
+                <table class="stats-table">
+                    <thead><tr><th>Location</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                    <tbody id="locationTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
+                </table>
+            </div>
+            </div>
         </div>
 
         <!-- By Fight Type -->
-        <div class="stats-table-wrapper glass-card">
-            <h3 class="table-title">Stats by Match Type</h3>
-            <table class="stats-table">
-                <thead><tr><th>Type</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                <tbody id="fightTypeTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-            </table>
+        <div class="stats-table-wrapper glass-card collapsible-card">
+            <button class="collapsible-header" aria-expanded="false">
+                <span class="table-title">Stats by Match Type</span>
+                <span class="chevron">&#8963;</span>
+            </button>
+            <div class="collapsible-body">
+            <div class="collapsible-body-inner">
+                <table class="stats-table">
+                    <thead><tr><th>Type</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                    <tbody id="fightTypeTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
+                </table>
+            </div>
+            </div>
         </div>
 
         <!-- By Brand -->
-        <div class="stats-table-wrapper glass-card">
-            <h3 class="table-title">Stats by Brand</h3>
-            <table class="stats-table">
-                <thead><tr><th>Brand</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                <tbody id="brandTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-            </table>
+        <div class="stats-table-wrapper glass-card collapsible-card">
+            <button class="collapsible-header" aria-expanded="false">
+                <span class="table-title">Stats by Brand</span>
+                <span class="chevron">&#8963;</span>
+            </button>
+            <div class="collapsible-body">
+            <div class="collapsible-body-inner">
+                <table class="stats-table">
+                    <thead><tr><th>Brand</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                    <tbody id="brandTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
+                </table>
+            </div>
+            </div>
         </div>
 
         <!-- By PPV -->
-        <div class="stats-table-wrapper glass-card">
-            <h3 class="table-title">Stats by PPV</h3>
-            <table class="stats-table">
-                <thead><tr><th>PPV</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                <tbody id="ppvTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-            </table>
+        <div class="stats-table-wrapper glass-card collapsible-card">
+            <button class="collapsible-header" aria-expanded="false">
+                <span class="table-title">Stats by PPV</span>
+                <span class="chevron">&#8963;</span>
+            </button>
+            <div class="collapsible-body">
+            <div class="collapsible-body-inner">
+                <table class="stats-table">
+                    <thead><tr><th>PPV</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                    <tbody id="ppvTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
+                </table>
+            </div>
+            </div>
         </div>
 
         <!-- Championship -->
-        <div class="stats-table-wrapper glass-card">
-            <h3 class="table-title">Championship Stats</h3>
-            <table class="stats-table">
-                <thead><tr><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                <tbody id="champTbody"><tr><td colspan="3" class="empty-row">No data</td></tr></tbody>
-            </table>
+        <div class="stats-table-wrapper glass-card collapsible-card">
+            <button class="collapsible-header" aria-expanded="false">
+                <span class="table-title">Championship Stats</span>
+                <span class="chevron">&#8963;</span>
+            </button>
+            <div class="collapsible-body">
+            <div class="collapsible-body-inner">
+                <table class="stats-table">
+                    <thead><tr><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                    <tbody id="champTbody"><tr><td colspan="3" class="empty-row">No data</td></tr></tbody>
+                </table>
+            </div>
+            </div>
         </div>
+
     </div>
 </section>
 {% endblock %}
@@ -107,27 +151,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (data.error) return;
 
-            // Career summary with animated counters
             animateCounter('totalWins', 0, parseInt(data.career.wins) || 0, 800);
             animateCounter('totalLosses', 0, parseInt(data.career.losses) || 0, 800);
             document.getElementById('winPct').textContent = data.career.win_pct;
 
-            // By season
             fillTable('seasonTbody', data.by_season, ['season', 'wins', 'losses', 'win_pct']);
-            // By location
             fillTable('locationTbody', data.by_location, ['location', 'wins', 'losses', 'win_pct']);
-            // By fight type
             fillTable('fightTypeTbody', data.by_fight_type, ['type', 'wins', 'losses', 'win_pct']);
-            // By brand
             fillTable('brandTbody', data.by_brand, ['brand', 'wins', 'losses', 'win_pct']);
-            // By PPV
             fillTable('ppvTbody', data.by_ppv, ['ppv', 'wins', 'losses', 'win_pct']);
-            // Championship
             fillTable('champTbody', data.championship, ['wins', 'losses', 'win_pct']);
+
+            // Enable transitions now that data is rendered
+            document.querySelectorAll('.collapsible-body').forEach(body => {
+                body.classList.add('ready');
+            });
         })
-        .catch(err => {
+        .catch(() => {
             document.getElementById('loadingOverlay').innerHTML = '<p>Error loading stats</p>';
         });
+
+    // Collapsible toggle
+    document.querySelectorAll('.collapsible-header').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const body = this.nextElementSibling;
+            const expanded = this.getAttribute('aria-expanded') === 'true';
+
+            if (expanded) {
+                body.style.maxHeight = '0';
+                this.setAttribute('aria-expanded', 'false');
+            } else {
+                body.style.maxHeight = body.scrollHeight + 'px';
+                this.setAttribute('aria-expanded', 'true');
+            }
+        });
+    });
 });
 
 function fillTable(tbodyId, rows, keys) {

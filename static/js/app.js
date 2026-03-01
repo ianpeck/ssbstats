@@ -159,3 +159,99 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// ---------- Star Field Background ----------
+
+(function() {
+    const canvas = document.getElementById('particleCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Three layers: [count, speed, minRadius, maxRadius, minOpacity, maxOpacity]
+    const LAYERS = [
+        { count: 180, speed: 0.08, minR: 0.4, maxR: 0.9,  minA: 0.2, maxA: 0.5 }, // far
+        { count: 80,  speed: 0.20, minR: 0.9, maxR: 1.6,  minA: 0.4, maxA: 0.7 }, // mid
+        { count: 30,  speed: 0.45, minR: 1.5, maxR: 2.8,  minA: 0.6, maxA: 1.0 }, // near
+    ];
+
+    let stars = [];
+    let width, height;
+    let time = 0;
+
+    function rand(a, b) { return a + Math.random() * (b - a); }
+
+    function resize() {
+        width  = canvas.width  = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+
+    function createStar(layer, x) {
+        return {
+            x:       x !== undefined ? x : rand(0, width),
+            y:       rand(0, height),
+            radius:  rand(layer.minR, layer.maxR),
+            opacity: rand(layer.minA, layer.maxA),
+            speed:   layer.speed,
+            // twinkle offset so stars don't all pulse together
+            twinkleOffset: rand(0, Math.PI * 2),
+            twinkleSpeed:  rand(0.005, 0.02),
+            baseOpacity:   rand(layer.minA, layer.maxA),
+        };
+    }
+
+    function init() {
+        resize();
+        stars = [];
+        LAYERS.forEach(layer => {
+            for (let i = 0; i < layer.count; i++) {
+                stars.push({ ...createStar(layer), layer });
+            }
+        });
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+        time++;
+
+        stars.forEach(s => {
+            // Drift left (parallax — near layer faster)
+            s.x -= s.speed;
+            if (s.x < -2) {
+                // Respawn on right edge
+                const fresh = createStar(s.layer, width + 2);
+                Object.assign(s, fresh, { layer: s.layer });
+            }
+
+            // Twinkle: gentle opacity sine wave
+            const twinkle = Math.sin(time * s.twinkleSpeed + s.twinkleOffset) * 0.15;
+            const alpha = Math.max(0, Math.min(1, s.baseOpacity + twinkle));
+
+            // Occasional blue-tinted stars
+            const isBlue = s.radius > 1.8;
+            const color = isBlue ? `rgba(160, 180, 255, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
+
+            // Glow for larger stars
+            if (s.radius > 1.5) {
+                ctx.beginPath();
+                const gradient = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.radius * 3);
+                gradient.addColorStop(0, isBlue ? `rgba(96, 124, 255, ${alpha * 0.4})` : `rgba(255, 255, 255, ${alpha * 0.3})`);
+                gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = gradient;
+                ctx.arc(s.x, s.y, s.radius * 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Star dot
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+        });
+
+        requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', () => { resize(); init(); });
+    init();
+    draw();
+})();
