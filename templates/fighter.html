@@ -45,6 +45,11 @@
     </div>
 
     <!-- Stats Breakdown -->
+    <div class="stats-grid-header" id="statsGridHeader" style="display: none;">
+        <button class="collapse-all-btn" id="collapseAllBtn" title="Expand all sections">
+            <span class="collapse-all-icon">&#8627;</span> Expand All
+        </button>
+    </div>
     <div class="fighter-stats-grid" id="statsGrid" style="display: none;">
 
         <!-- By Season -->
@@ -157,6 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             document.getElementById('loadingOverlay').style.display = 'none';
             document.getElementById('statsGrid').style.display = 'grid';
+            document.getElementById('statsGridHeader').style.display = 'flex';
 
             if (data.error) return;
 
@@ -193,8 +199,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 body.style.maxHeight = body.scrollHeight + 'px';
                 this.setAttribute('aria-expanded', 'true');
             }
+            updateCollapseAllBtn();
         });
     });
+
+    // Collapse all button
+    document.getElementById('collapseAllBtn').addEventListener('click', function() {
+        const anyOpen = !!document.querySelector('.collapsible-header[aria-expanded="true"]');
+        document.querySelectorAll('.collapsible-header').forEach(btn => {
+            const body = btn.nextElementSibling;
+            if (anyOpen) {
+                body.style.maxHeight = '0';
+                btn.setAttribute('aria-expanded', 'false');
+            } else {
+                body.style.maxHeight = body.scrollHeight + 'px';
+                btn.setAttribute('aria-expanded', 'true');
+            }
+        });
+        updateCollapseAllBtn();
+    });
+
+    function updateCollapseAllBtn() {
+        const anyOpen = !!document.querySelector('.collapsible-header[aria-expanded="true"]');
+        const btn = document.getElementById('collapseAllBtn');
+        btn.innerHTML = anyOpen
+            ? '<span class="collapse-all-icon">&#8633;</span> Collapse All'
+            : '<span class="collapse-all-icon">&#8627;</span> Expand All';
+    }
 });
 
 function fillTable(tbodyId, rows, keys) {

@@ -7,21 +7,28 @@
   - all photos should load not just when scrolling
 - [ ] **3. Deploy and buy domain**
   - ssbstats.app most likely
-- [ ] **4. Possibly a better theme everywhere**
+- [X] **4. Possibly a better theme everywhere**
   - current is fine just could look even sleeker with more black and less dark blue
 - [ ] **5. HOF stats tab with holistic view feeding it**
+  - holistic view could def be used somewhere maybe here
 - [X] **6. YAML file with blurb about each fighter**
   - include video game ther are from too which would be cool
   - nickname too?
 - [ ] **7. Fighter Page Improvement**
   - When uncollpasing it should only uncollapse one of them not the other ones in same row, leave the air as empty background not box
   - maybe a graph alongside stats by season
-  - add i.e. 2 time brawl champion etc with total motnhs held
+  - add i.e. 2 time brawl champion etc with total months held (ChampionshipHistoryBySeason view)
   - add Award counts would be cool
+  - add streaks from longestwinstreaks and longestlosingstreaks into fighter
   - Championship stats also broken down by which championship on top of all
+  - holisticview to show fighters accoldaes by season
 - [ ] **8. Head to Head supporting more than 2 fighters, toggle to add more fighters (tag team or tripe threat)**
   - ensure h2h stats do not count losses against each other if they are in a triple threat and they both lose to the thrid guy
   - separate stat to show matches that are not Tag Team but also have 3 or 4 fighters and fight type is 3 stock (triple threat and fatal 4 way matches)
 - [ ] **9. Head to Head uses ML model to predictively guess who would win based on certain data points with a confidence %**
 - [ ] **10 Graphs in general needs work**
 - [ ] **11. Possible login page to prevent copyright issues**
+- [ ] **12. Incoroprate more of the views into the webpage**
+  - Championship tab for historical tracking (ChampionshipHistory and ChampionshipHistoryBySeason)
+  - Other stats that includes longest winning/losing streaks (if active or not) (alllosingstreaks view, allwinstreaks view)
+  - Season tab that shows each season and best fighters, fighters of the years, holisticview incorporated
