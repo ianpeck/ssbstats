@@ -17,6 +17,7 @@
   - When uncollpasing it should only uncollapse one of them not the other ones in same row, leave the air as empty background not box
   - maybe a graph alongside stats by season
   - add i.e. 2 time brawl champion etc with total motnhs held
+  - add Award counts would be cool
   - Championship stats also broken down by which championship on top of all
 - [ ] **Head to Head supporting more than 2 fighters, toggle to add more fighters (tag team or tripe threat)**
   - ensure h2h stats do not count losses against each other if they are in a triple threat and they both lose to the thrid guy
