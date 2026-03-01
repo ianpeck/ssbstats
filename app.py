@@ -2,11 +2,29 @@ from flask import Flask, render_template, request, jsonify
 import db
 import os
 import re
+import yaml
 
 app = Flask(__name__)
 
 # Cache autocomplete lists at startup (they don't change often)
 _autocomplete_cache = {}
+
+# Load fighter blurbs from YAML (keyed by lowercase name for case-insensitive lookup)
+# Loaded per request so edits to fighters.yaml are reflected without restarting
+_YAML_PATH = os.path.join(os.path.dirname(__file__), 'fighters.yaml')
+
+def get_fighter_blurb(name):
+    try:
+        with open(_YAML_PATH, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f) or {}
+        # Try exact match first, then case-insensitive
+        blurb = data.get(name)
+        if blurb is None:
+            lower = name.lower()
+            blurb = next((v for k, v in data.items() if k.lower() == lower), None)
+        return blurb or {}
+    except Exception:
+        return {}
 
 
 def get_autocomplete_data(category):
@@ -61,7 +79,8 @@ def head2head():
 
 @app.route('/fighter/<name>')
 def fighter_profile(name):
-    return render_template('fighter.html', fighter_name=name, filename=fighter_to_filename(name))
+    blurb = get_fighter_blurb(name)
+    return render_template('fighter.html', fighter_name=name, filename=fighter_to_filename(name), blurb=blurb)
 
 
 @app.route('/leaderboard')

@@ -1,27 +1,27 @@
 # TODO
 
-- [ ] **Power Rankings additions** -- GUI that inserts data to DB as ETL
+- [ ] **1. Power Rankings additions** -- GUI that inserts data to DB as ETL
   - Total Championships months (major and minor in that year)
   - Should be changeable to just season power rankings too
-- [ ] **Loading Glitches** -- navigating between pages esepcially to home does not work right away
+- [X] **2. Loading Glitches** -- navigating between pages esepcially to home does not work right away
   - all photos should load not just when scrolling
-- [ ] **Deploy and buy domain**
+- [ ] **3. Deploy and buy domain**
   - ssbstats.app most likely
-- [ ] **Possibly a better theme everywhere**
+- [ ] **4. Possibly a better theme everywhere**
   - current is fine just could look even sleeker with more black and less dark blue
-- [ ] **HOF stats tab with holistic view feeding it**
-- [ ] **YAML file with blurb about each fighter**
+- [ ] **5. HOF stats tab with holistic view feeding it**
+- [ ] **6. YAML file with blurb about each fighter**
   - include video game ther are from too which would be cool
   - nickname too?
-- [ ] **Fighter Page Improvement**
+- [ ] **7. Fighter Page Improvement**
   - When uncollpasing it should only uncollapse one of them not the other ones in same row, leave the air as empty background not box
   - maybe a graph alongside stats by season
   - add i.e. 2 time brawl champion etc with total motnhs held
   - add Award counts would be cool
   - Championship stats also broken down by which championship on top of all
-- [ ] **Head to Head supporting more than 2 fighters, toggle to add more fighters (tag team or tripe threat)**
+- [ ] **8. Head to Head supporting more than 2 fighters, toggle to add more fighters (tag team or tripe threat)**
   - ensure h2h stats do not count losses against each other if they are in a triple threat and they both lose to the thrid guy
   - separate stat to show matches that are not Tag Team but also have 3 or 4 fighters and fight type is 3 stock (triple threat and fatal 4 way matches)
-- [ ] **Head to Head uses ML model to predictively guess who would win based on certain data points with a confidence %**
-- [ ] **Graphs in general needs work**
-- [ ] **Possible login page to prevent copyright issues**
+- [ ] **9. Head to Head uses ML model to predictively guess who would win based on certain data points with a confidence %**
+- [ ] **10 Graphs in general needs work**
+- [ ] **11. Possible login page to prevent copyright issues**

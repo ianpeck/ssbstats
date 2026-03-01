@@ -12,6 +12,15 @@
         </div>
         <div class="fighter-hero-info">
             <h1 class="fighter-hero-name">{{ fighter_name }}</h1>
+            {% if blurb.get('nickname') %}
+            <p class="fighter-nickname">&ldquo;{{ blurb.nickname }}&rdquo;</p>
+            {% endif %}
+            {% if blurb.get('game') %}
+            <p class="fighter-game">{{ blurb.game }}</p>
+            {% endif %}
+            {% if blurb.get('bio') %}
+            <p class="fighter-bio">{{ blurb.bio }}</p>
+            {% endif %}
             <div class="fighter-stat-cards" id="statCards">
                 <div class="stat-card glass-card">
                     <div class="stat-card-value" id="totalWins">--</div>

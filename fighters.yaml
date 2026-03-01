@@ -1,0 +1,376 @@
+# Fighter blurbs
+# nickname: short nickname/alias — set to null to hide
+# game:     video game the character originates from
+# bio:      short biography paragraph — set to null to hide
+#
+# Keys are matched case-insensitively to the fighter name from the database.
+
+Banjo & Kazooie:
+  nickname: null
+  game: "Banjo-Kazooie (1998)"
+  bio: null
+
+Bayonetta:
+  nickname: "Umbra Witch"
+  game: "Bayonetta (2009)"
+  bio: null
+
+Bowser:
+  nickname: "King of the Koopas"
+  game: "Super Mario Bros. (1985)"
+  bio: "Arch-nemesis of Mario and the main antagonist of the Super Mario series."
+
+Bowser Jr.:
+  nickname: "The Koopa Kid"
+  game: "Super Mario Sunshine (2002)"
+  bio: null
+
+Captain Falcon:
+  nickname: "The Blue Falcon"
+  game: "F-Zero (1990)"
+  bio: null
+
+Chrom:
+  nickname: "Prince of Ylisse"
+  game: "Fire Emblem: Awakening (2012)"
+  bio: null
+
+Cloud:
+  nickname: "The Soldier"
+  game: "Final Fantasy VII (1997)"
+  bio: null
+
+Corrin:
+  nickname: "Hero of the Sky"
+  game: "Fire Emblem Fates (2015)"
+  bio: null
+
+Daisy:
+  nickname: "The Princess of Sarasaland"
+  game: "Super Mario Land (1989)"
+  bio: null
+
+Dark Pit:
+  nickname: "The Dark Icarus"
+  game: "Kid Icarus: Uprising (2012)"
+  bio: null
+
+Dark Samus:
+  nickname: null
+  game: "Metroid Prime (2002)"
+  bio: null
+
+Diddy Kong:
+  nickname: null
+  game: "Donkey Kong Country (1994)"
+  bio: null
+
+DK:
+  nickname: "King of Swing"
+  game: "Donkey Kong (1981)"
+  bio: null
+
+Dr. Mario:
+  nickname: "The Doctor"
+  game: "Dr. Mario (1990)"
+  bio: null
+
+Duck Hunt:
+  nickname: null
+  game: "Duck Hunt (1984)"
+  bio: null
+
+Erdrick:
+  nickname: "The Legendary Hero"
+  game: "Dragon Quest III (1988)"
+  bio: null
+
+Falco:
+  nickname: "The Ace Pilot"
+  game: "Star Fox (1993)"
+  bio: null
+
+Fox:
+  nickname: "The Star Fox"
+  game: "Star Fox (1993)"
+  bio: null
+
+Ganondorf:
+  nickname: "Demon King"
+  game: "The Legend of Zelda (1986)"
+  bio: null
+
+Greninja:
+  nickname: "The Ninja Pokémon"
+  game: "Pokémon X & Y (2013)"
+  bio: null
+
+Ice Climbers:
+  nickname: null
+  game: "Ice Climber (1984)"
+  bio: null
+
+Ike:
+  nickname: "The Radiant Hero"
+  game: "Fire Emblem: Path of Radiance (2005)"
+  bio: null
+
+Incineroar:
+  nickname: "The Heel Pokémon"
+  game: "Pokémon Sun & Moon (2016)"
+  bio: null
+
+Inkling:
+  nickname: null
+  game: "Splatoon (2015)"
+  bio: null
+
+Isabelle:
+  nickname: "The Secretary"
+  game: "Animal Crossing: New Leaf (2012)"
+  bio: null
+
+Jigglypuff:
+  nickname: "The Balloon Pokémon"
+  game: "Pokémon Red & Blue (1996)"
+  bio: null
+
+Joker:
+  nickname: "The Phantom Thief"
+  game: "Persona 5 (2016)"
+  bio: null
+
+Ken:
+  nickname: "The Shoto"
+  game: "Street Fighter II (1991)"
+  bio: null
+
+King Dedede:
+  nickname: "Ruler of Dream Land"
+  game: "Kirby's Dream Land (1992)"
+  bio: null
+
+King K. Rool:
+  nickname: "Ruler of the Kremlings"
+  game: "Donkey Kong Country (1994)"
+  bio: null
+
+Kirby:
+  nickname: "Star Warrior"
+  game: "Kirby's Dream Land (1992)"
+  bio: null
+
+Link:
+  nickname: "Hero of Hyrule"
+  game: "The Legend of Zelda: Breath of the Wild (2017)"
+  bio: null
+
+Little Mac:
+  nickname: null
+  game: "Punch-Out!! (1984)"
+  bio: null
+
+Lucario:
+  nickname: "The Aura Pokémon"
+  game: "Pokémon Diamond & Pearl (2006)"
+  bio: null
+
+Lucas:
+  nickname: null
+  game: "Mother 3 (2006)"
+  bio: null
+
+Lucina:
+  nickname: "The Lady of the Flame"
+  game: "Fire Emblem: Awakening (2012)"
+  bio: null
+
+Luigi:
+  nickname: "The Green Plumber"
+  game: "Mario Bros. (1983)"
+  bio: null
+
+Mario:
+  nickname: "The Italian Plumber"
+  game: "Donkey Kong (1981)"
+  bio: null
+
+Marth:
+  nickname: "The Prince of Altea"
+  game: "Fire Emblem: Shadow Dragon (1990)"
+  bio: null
+
+Mega Man:
+  nickname: "Blue Bomber"
+  game: "Mega Man (1987)"
+  bio: null
+
+Meta Knight:
+  nickname: "The Masked Swordsman"
+  game: "Kirby's Adventure (1993)"
+  bio: null
+
+Mewtwo:
+  nickname: "The Genetic Pokémon"
+  game: "Pokémon Red & Blue (1996)"
+  bio: null
+
+Mr. Game & Watch:
+  nickname: null
+  game: "Game & Watch (1980)"
+  bio: null
+
+Ness:
+  nickname: "The PSI Prodigy"
+  game: "EarthBound (1994)"
+  bio: null
+
+Olimar:
+  nickname: "Pikmin Captain"
+  game: "Pikmin (2001)"
+  bio: null
+
+Pac-Man:
+  nickname: "The Power Pellet"
+  game: "Pac-Man (1980)"
+  bio: null
+
+Palutena:
+  nickname: "Goddess of Light"
+  game: "Kid Icarus (1986)"
+  bio: null
+
+Peach:
+  nickname: "Princess of the Mushroom Kingdom"
+  game: "Super Mario Bros. (1985)"
+  bio: null
+
+Pichu:
+  nickname: null
+  game: "Pokémon Gold & Silver (1999)"
+  bio: null
+
+Pikachu:
+  nickname: "The Electric Mouse"
+  game: "Pokémon Red & Blue (1996)"
+  bio: null
+
+Piranha Plant:
+  nickname: "The Carnivorous Plant"
+  game: "Super Mario Bros. (1985)"
+  bio: null
+
+Pit:
+  nickname: "The Angelic Archer"
+  game: "Kid Icarus (1986)"
+  bio: null
+
+Pokemon Trainer:
+  nickname: null
+  game: "Pokémon Red & Blue (1996)"
+  bio: null
+
+Richter Belmont:
+  nickname: "The Vampire Killer"
+  game: "Castlevania: Rondo of Blood (1993)"
+  bio: null
+
+Ridley:
+  nickname: "The Cunning God of Death"
+  game: "Metroid (1986)"
+  bio: null
+
+R.O.B.:
+  nickname: "Robot Operating Buddy"
+  game: "Robot Operating Buddy (1985)"
+  bio: null
+
+Robin:
+  nickname: "The Avatar"
+  game: "Fire Emblem: Awakening (2012)"
+  bio: null
+
+Rosalina & Luma:
+  nickname: "The Cosmic Duo"
+  game: "Super Mario Galaxy (2007)"
+  bio: null
+
+Roy:
+  nickname: "The Sword Prince"
+  game: "Fire Emblem: The Binding Blade (2002)"
+  bio: null
+
+Ryu:
+  nickname: "The World Warrior"
+  game: "Street Fighter (1987)"
+  bio: null
+
+Samus:
+  nickname: "The Intergalactic Bounty Hunter"
+  game: "Metroid (1986)"
+  bio: null
+
+Sheik:
+  nickname: "The Sheikah Ninja"
+  game: "The Legend of Zelda: Ocarina of Time (1998)"
+  bio: null
+
+Shulk:
+  nickname: "The Monado Wielder"
+  game: "Xenoblade Chronicles (2010)"
+  bio: null
+
+Simon Belmont:
+  nickname: "The Vampire Hunter"
+  game: "Castlevania (1986)"
+  bio: null
+
+Snake:
+  nickname: "The Legendary Soldier"
+  game: "Metal Gear (1987)"
+  bio: null
+
+Sonic:
+  nickname: "The Blue Blur"
+  game: "Sonic the Hedgehog (1991)"
+  bio: null
+
+Toon Link:
+  nickname: "The Hero of the Great Sea"
+  game: "The Legend of Zelda: The Wind Waker (2002)"
+  bio: null
+
+Villager:
+  nickname: null
+  game: "Animal Crossing (2001)"
+  bio: null
+
+Wario:
+  nickname: "The Greedy Anti-Hero"
+  game: "Wario Land (1994)"
+  bio: null
+
+Wii Fit Trainer:
+  nickname: "The Fitness Guru"
+  game: "Wii Fit (2007)"
+  bio: null
+
+Wolf:
+  nickname: "The Space Pirate"
+  game: "Star Fox 64 (1997)"
+  bio: null
+
+Yoshi:
+  nickname: "The Dinosaur Companion"
+  game: "Super Mario Bros. (1985)"
+  bio: null
+
+Young Link:
+  nickname: "The Hero of Time"
+  game: "The Legend of Zelda: Ocarina of Time (1998)"
+  bio: null
+
+Zelda:
+  nickname: "Princess of Hyrule"
+  game: "The Legend of Zelda (1986)"
+  bio: null

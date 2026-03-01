@@ -134,6 +134,11 @@ img {
 .logo-icon {
     font-size: 1.5rem;
 }
+.logo-icon-img {
+    height: 30px;
+    width: auto;
+    display: block;
+}
 .logo-text {
     background: linear-gradient(135deg, var(--accent), var(--accent-light));
     -webkit-background-clip: text;
@@ -779,11 +784,31 @@ img {
     font-size: 2.5rem;
     font-weight: 800;
     letter-spacing: 2px;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.25rem;
     background: linear-gradient(135deg, #fff, var(--accent-light));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+.fighter-nickname {
+    font-size: 1.1rem;
+    color: var(--accent-light);
+    font-style: italic;
+    margin-bottom: 0.25rem;
+}
+.fighter-game {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.75rem;
+}
+.fighter-bio {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 480px;
+    margin-bottom: 1.25rem;
 }
 
 .fighter-stat-cards {
