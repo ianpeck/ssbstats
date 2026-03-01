@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Head to Head{% endblock %}
+
+{% block content %}
+<section class="h2h-section">
+    <h1 class="section-title">Head to Head</h1>
+
+    <!-- Fighter / Stage Images -->
+    <div class="h2h-portraits">
+        <div class="portrait-panel fighter1-panel">
+            <div class="portrait-frame" id="fighter1Frame">
+                <img id="fighter1Img" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 1</text></svg>" alt="Fighter 1">
+            </div>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="fighter1Input" class="fighter-input" placeholder="Enter Fighter" data-category="fighters" autocomplete="off">
+                <div class="autocomplete-dropdown" id="fighter1Dropdown"></div>
+            </div>
+        </div>
+
+        <div class="portrait-panel stage-panel">
+            <div class="portrait-frame stage-frame" id="stageFrame">
+                <img id="stageImg" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 586 300%22><rect fill=%22%2312122a%22 width=%22586%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Stage</text></svg>" alt="Stage">
+            </div>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="mapInput" class="fighter-input" placeholder="Enter Map" data-category="locations" autocomplete="off">
+                <div class="autocomplete-dropdown" id="mapDropdown"></div>
+            </div>
+        </div>
+
+        <div class="portrait-panel fighter2-panel">
+            <div class="portrait-frame" id="fighter2Frame">
+                <img id="fighter2Img" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 2</text></svg>" alt="Fighter 2">
+            </div>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="fighter2Input" class="fighter-input" placeholder="Enter Fighter" data-category="fighters" autocomplete="off">
+                <div class="autocomplete-dropdown" id="fighter2Dropdown"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Win Rate Comparison Bar (shows after results) -->
+    <div class="h2h-comparison-bar" id="comparisonBar" style="display: none;">
+        <div class="comparison-label" id="comp-f1-name">Fighter 1</div>
+        <div class="comparison-track">
+            <div class="comparison-fill comparison-fill-left" id="comp-f1-bar" style="width: 50%;">
+                <span class="comparison-pct" id="comp-f1-pct">0%</span>
+            </div>
+            <div class="comparison-fill comparison-fill-right" id="comp-f2-bar" style="width: 50%;">
+                <span class="comparison-pct" id="comp-f2-pct">0%</span>
+            </div>
+        </div>
+        <div class="comparison-label" id="comp-f2-name">Fighter 2</div>
+    </div>
+
+    <!-- Filters -->
+    <div class="h2h-filters">
+        <div class="filter-grid">
+            <div class="filter-group">
+                <label>Match Type</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="matchTypeInput" class="filter-input" placeholder="Enter Match Type" data-category="fight_types" autocomplete="off">
+                    <div class="autocomplete-dropdown" id="matchTypeDropdown"></div>
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Season</label>
+                <input type="text" id="seasonInput" class="filter-input" placeholder="Enter Season">
+            </div>
+            <div class="filter-group">
+                <label>Month</label>
+                <input type="text" id="monthInput" class="filter-input" placeholder="Enter Month Number">
+            </div>
+            <div class="filter-group">
+                <label>Week</label>
+                <input type="text" id="weekInput" class="filter-input" placeholder="Enter Week">
+            </div>
+            <div class="filter-group">
+                <label>PPV</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="ppvInput" class="filter-input" placeholder="Enter PPV Name" data-category="ppvs" autocomplete="off">
+                    <div class="autocomplete-dropdown" id="ppvDropdown"></div>
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Championship</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="champInput" class="filter-input" placeholder="Enter Championship" data-category="championships" autocomplete="off">
+                    <div class="autocomplete-dropdown" id="champDropdown"></div>
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>#1 Contender</label>
+                <input type="text" id="contenderInput" class="filter-input" placeholder="#1 Contender Match?">
+            </div>
+            <div class="filter-group">
+                <label>Brand</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="brandInput" class="filter-input" placeholder="Enter Brand" data-category="brands" autocomplete="off">
+                    <div class="autocomplete-dropdown" id="brandDropdown"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="h2h-actions">
+            <button class="btn btn-primary btn-lg" id="checkStatsBtn">Check Stats</button>
+            <button class="btn btn-outline btn-lg" id="clearBtn">Clear</button>
+        </div>
+        <div id="errorMsg" class="error-msg"></div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading stats...</p>
+    </div>
+
+    <!-- Results Tables -->
+    <div class="h2h-results" id="resultsSection" style="display: none;">
+        <div class="results-grid">
+            <!-- Fighter 1 Table -->
+            <div class="stats-table-wrapper glass-card">
+                <h3 class="table-title" id="f1TableTitle">Fighter 1</h3>
+                <table class="stats-table" id="fighter1Table">
+                    <thead>
+                        <tr>
+                            <th class="row-label-header">Stat</th>
+                            <th>Wins</th>
+                            <th>Losses</th>
+                            <th>W/L %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fighter1Tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- Fighter 2 Table -->
+            <div class="stats-table-wrapper glass-card">
+                <h3 class="table-title" id="f2TableTitle">Fighter 2</h3>
+                <table class="stats-table" id="fighter2Table">
+                    <thead>
+                        <tr>
+                            <th class="row-label-header">Stat</th>
+                            <th>Wins</th>
+                            <th>Losses</th>
+                            <th>W/L %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fighter2Tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup autocomplete for all inputs with data-category
+    document.querySelectorAll('[data-category]').forEach(input => {
+        setupAutocomplete(input, input.dataset.category);
+    });
+
+    // Check Stats button
+    document.getElementById('checkStatsBtn').addEventListener('click', checkStats);
+    document.getElementById('clearBtn').addEventListener('click', clearAll);
+});
+
+function checkStats() {
+    const fighter1 = document.getElementById('fighter1Input').value.trim();
+    const fighter2 = document.getElementById('fighter2Input').value.trim();
+    const errorMsg = document.getElementById('errorMsg');
+
+    if (!fighter1 || !fighter2) {
+        errorMsg.textContent = 'Please enter both fighters!';
+        return;
+    }
+    errorMsg.textContent = '';
+
+    // Update fighter images
+    const f1file = fighterToFilename(fighter1);
+    const f2file = fighterToFilename(fighter2);
+    const mapVal = document.getElementById('mapInput').value.trim();
+
+    document.getElementById('fighter1Img').src = `/static/assets/fighters/${f1file}.png`;
+    document.getElementById('fighter2Img').src = `/static/assets/fighters/${f2file}.png`;
+    if (mapVal) {
+        const stageFile = stageToFilename(mapVal);
+        document.getElementById('stageImg').src = `/static/assets/stages/${stageFile}.png`;
+    }
+
+    // Show loading
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    document.getElementById('checkStatsBtn').disabled = true;
+    document.getElementById('checkStatsBtn').textContent = 'Loading...';
+
+    const payload = {
+        fighter1: fighter1,
+        fighter2: fighter2,
+        map: mapVal,
+        matchType: document.getElementById('matchTypeInput').value.trim(),
+        season: document.getElementById('seasonInput').value.trim(),
+        month: document.getElementById('monthInput').value.trim(),
+        ppv: document.getElementById('ppvInput').value.trim(),
+        championship: document.getElementById('champInput').value.trim(),
+        contender: document.getElementById('contenderInput').value.trim(),
+        brand: document.getElementById('brandInput').value.trim(),
+    };
+
+    fetch('/api/head2head', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        document.getElementById('checkStatsBtn').disabled = false;
+        document.getElementById('checkStatsBtn').textContent = 'Check Stats';
+
+        if (data.error) {
+            errorMsg.textContent = data.error;
+            return;
+        }
+
+        renderResults(data);
+    })
+    .catch(err => {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        document.getElementById('checkStatsBtn').disabled = false;
+        document.getElementById('checkStatsBtn').textContent = 'Check Stats';
+        errorMsg.textContent = 'Connection error: ' + err.message;
+    });
+}
+
+function renderResults(data) {
+    const section = document.getElementById('resultsSection');
+    section.style.display = 'block';
+
+    // Table titles
+    document.getElementById('f1TableTitle').textContent = data.fighter1.name;
+    document.getElementById('f2TableTitle').textContent = data.fighter2.name;
+
+    // Build table rows
+    buildTable('fighter1Tbody', data.fighter1);
+    buildTable('fighter2Tbody', data.fighter2);
+
+    // Winner glow
+    const f1Frame = document.getElementById('fighter1Frame');
+    const f2Frame = document.getElementById('fighter2Frame');
+    f1Frame.classList.remove('winner-glow', 'loser-dim');
+    f2Frame.classList.remove('winner-glow', 'loser-dim');
+
+    if (data.fighter1.h2h.length > 0 && data.fighter2.h2h.length > 0) {
+        const f1wins = parseInt(data.fighter1.h2h[0].wins) || 0;
+        const f2wins = parseInt(data.fighter2.h2h[0].wins) || 0;
+        if (f1wins > f2wins) {
+            f1Frame.classList.add('winner-glow');
+            f2Frame.classList.add('loser-dim');
+        } else if (f2wins > f1wins) {
+            f2Frame.classList.add('winner-glow');
+            f1Frame.classList.add('loser-dim');
+        }
+    }
+
+    // Comparison bar
+    updateComparisonBar(data);
+
+    // Animate into view
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function buildTable(tbodyId, fighterData) {
+    const tbody = document.getElementById(tbodyId);
+    tbody.innerHTML = '';
+
+    // H2H rows first (rows 0-6)
+    fighterData.h2h.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="row-label">${row.label}</td>
+            <td class="stat-cell">${row.wins}</td>
+            <td class="stat-cell">${row.losses}</td>
+            <td class="stat-cell pct-cell">${row.wl_pct}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Separator
+    const sepTr = document.createElement('tr');
+    sepTr.className = 'table-separator';
+    sepTr.innerHTML = '<td colspan="4" class="separator-cell">Individual Stats</td>';
+    tbody.appendChild(sepTr);
+
+    // Individual rows (rows 7-14)
+    fighterData.individual.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="row-label">${row.label}</td>
+            <td class="stat-cell">${row.wins}</td>
+            <td class="stat-cell">${row.losses}</td>
+            <td class="stat-cell pct-cell">${row.wl_pct}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Animate rows
+    tbody.querySelectorAll('tr').forEach((tr, i) => {
+        tr.style.opacity = '0';
+        tr.style.transform = 'translateX(-20px)';
+        setTimeout(() => {
+            tr.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            tr.style.opacity = '1';
+            tr.style.transform = 'translateX(0)';
+        }, i * 50);
+    });
+}
+
+function updateComparisonBar(data) {
+    const bar = document.getElementById('comparisonBar');
+    bar.style.display = 'flex';
+
+    document.getElementById('comp-f1-name').textContent = data.fighter1.name;
+    document.getElementById('comp-f2-name').textContent = data.fighter2.name;
+
+    // Get total H2H wins
+    const f1wins = parseInt(data.fighter1.h2h[0]?.wins) || 0;
+    const f2wins = parseInt(data.fighter2.h2h[0]?.wins) || 0;
+    const total = f1wins + f2wins || 1;
+
+    const f1pct = Math.round((f1wins / total) * 100);
+    const f2pct = 100 - f1pct;
+
+    setTimeout(() => {
+        document.getElementById('comp-f1-bar').style.width = f1pct + '%';
+        document.getElementById('comp-f2-bar').style.width = f2pct + '%';
+        document.getElementById('comp-f1-pct').textContent = f1wins + 'W';
+        document.getElementById('comp-f2-pct').textContent = f2wins + 'W';
+    }, 100);
+}
+
+function clearAll() {
+    document.querySelectorAll('.fighter-input, .filter-input').forEach(input => {
+        input.value = '';
+    });
+    document.getElementById('fighter1Img').src = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 1</text></svg>";
+    document.getElementById('fighter2Img').src = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 2</text></svg>";
+    document.getElementById('stageImg').src = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 586 300%22><rect fill=%22%2312122a%22 width=%22586%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Stage</text></svg>";
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('comparisonBar').style.display = 'none';
+    document.getElementById('errorMsg').textContent = '';
+
+    const f1Frame = document.getElementById('fighter1Frame');
+    const f2Frame = document.getElementById('fighter2Frame');
+    f1Frame.classList.remove('winner-glow', 'loser-dim');
+    f2Frame.classList.remove('winner-glow', 'loser-dim');
+}
+</script>
+{% endblock %}

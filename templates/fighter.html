@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - {{ fighter_name }}{% endblock %}
+
+{% block content %}
+<section class="fighter-profile-section">
+    <!-- Hero -->
+    <div class="fighter-hero">
+        <div class="fighter-hero-image">
+            <img src="{{ url_for('static', filename='assets/fighters/' + filename + '.png') }}"
+                 alt="{{ fighter_name }}"
+                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22><rect fill=%22%2312122a%22 width=%22300%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>?</text></svg>'">
+        </div>
+        <div class="fighter-hero-info">
+            <h1 class="fighter-hero-name">{{ fighter_name }}</h1>
+            <div class="fighter-stat-cards" id="statCards">
+                <div class="stat-card glass-card">
+                    <div class="stat-card-value" id="totalWins">--</div>
+                    <div class="stat-card-label">Wins</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-card-value" id="totalLosses">--</div>
+                    <div class="stat-card-label">Losses</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-card-value" id="winPct">--</div>
+                    <div class="stat-card-label">Win Rate</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Loading fighter stats...</p>
+    </div>
+
+    <!-- Stats Breakdown -->
+    <div class="fighter-stats-grid" id="statsGrid" style="display: none;">
+        <!-- By Season -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="table-title">Stats by Season</h3>
+            <table class="stats-table">
+                <thead><tr><th>Season</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                <tbody id="seasonTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
+            </table>
+        </div>
+
+        <!-- By Location -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="table-title">Stats by Location</h3>
+            <table class="stats-table">
+                <thead><tr><th>Location</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                <tbody id="locationTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
+            </table>
+        </div>
+
+        <!-- By Fight Type -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="table-title">Stats by Match Type</h3>
+            <table class="stats-table">
+                <thead><tr><th>Type</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                <tbody id="fightTypeTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
+            </table>
+        </div>
+
+        <!-- By Brand -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="table-title">Stats by Brand</h3>
+            <table class="stats-table">
+                <thead><tr><th>Brand</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                <tbody id="brandTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
+            </table>
+        </div>
+
+        <!-- By PPV -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="table-title">Stats by PPV</h3>
+            <table class="stats-table">
+                <thead><tr><th>PPV</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                <tbody id="ppvTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
+            </table>
+        </div>
+
+        <!-- Championship -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="table-title">Championship Stats</h3>
+            <table class="stats-table">
+                <thead><tr><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
+                <tbody id="champTbody"><tr><td colspan="3" class="empty-row">No data</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const name = "{{ fighter_name }}";
+
+    fetch(`/api/fighter/${encodeURIComponent(name)}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('statsGrid').style.display = 'grid';
+
+            if (data.error) return;
+
+            // Career summary with animated counters
+            animateCounter('totalWins', 0, parseInt(data.career.wins) || 0, 800);
+            animateCounter('totalLosses', 0, parseInt(data.career.losses) || 0, 800);
+            document.getElementById('winPct').textContent = data.career.win_pct;
+
+            // By season
+            fillTable('seasonTbody', data.by_season, ['season', 'wins', 'losses', 'win_pct']);
+            // By location
+            fillTable('locationTbody', data.by_location, ['location', 'wins', 'losses', 'win_pct']);
+            // By fight type
+            fillTable('fightTypeTbody', data.by_fight_type, ['type', 'wins', 'losses', 'win_pct']);
+            // By brand
+            fillTable('brandTbody', data.by_brand, ['brand', 'wins', 'losses', 'win_pct']);
+            // By PPV
+            fillTable('ppvTbody', data.by_ppv, ['ppv', 'wins', 'losses', 'win_pct']);
+            // Championship
+            fillTable('champTbody', data.championship, ['wins', 'losses', 'win_pct']);
+        })
+        .catch(err => {
+            document.getElementById('loadingOverlay').innerHTML = '<p>Error loading stats</p>';
+        });
+});
+
+function fillTable(tbodyId, rows, keys) {
+    const tbody = document.getElementById(tbodyId);
+    if (!rows || rows.length === 0) return;
+    tbody.innerHTML = '';
+    rows.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        keys.forEach(key => {
+            const td = document.createElement('td');
+            td.textContent = row[key] !== undefined ? row[key] : '--';
+            td.className = key === 'wins' || key === 'losses' || key === 'win_pct' ? 'stat-cell' : '';
+            tr.appendChild(td);
+        });
+        tr.style.opacity = '0';
+        tbody.appendChild(tr);
+        setTimeout(() => {
+            tr.style.transition = 'opacity 0.3s ease';
+            tr.style.opacity = '1';
+        }, i * 40);
+    });
+}
+</script>
+{% endblock %}

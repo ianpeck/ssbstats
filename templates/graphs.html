@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Graphs{% endblock %}
+
+{% block content %}
+<section class="graphs-section">
+    <h1 class="section-title">Fighter Analytics</h1>
+    <p class="section-subtitle">Visual breakdown of fighter performance</p>
+
+    <div class="graph-controls glass-card">
+        <div class="autocomplete-wrapper">
+            <input type="text" id="graphFighterInput" class="fighter-input" placeholder="Select a fighter..." data-category="fighters" autocomplete="off">
+            <div class="autocomplete-dropdown" id="graphFighterDropdown"></div>
+        </div>
+        <button class="btn btn-primary" id="loadGraphsBtn">Load Charts</button>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay" id="graphLoading" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading charts...</p>
+    </div>
+
+    <div class="charts-grid" id="chartsGrid" style="display: none;">
+        <!-- Career Overview Pie -->
+        <div class="chart-card glass-card">
+            <h3 class="chart-title">Career Win/Loss</h3>
+            <div class="chart-container">
+                <canvas id="careerPieChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Season Line Chart -->
+        <div class="chart-card glass-card">
+            <h3 class="chart-title">Win Rate by Season</h3>
+            <div class="chart-container">
+                <canvas id="seasonLineChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Location Bar Chart -->
+        <div class="chart-card glass-card chart-wide">
+            <h3 class="chart-title">Wins & Losses by Location</h3>
+            <div class="chart-container chart-container-wide">
+                <canvas id="locationBarChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Fight Type Bar Chart -->
+        <div class="chart-card glass-card">
+            <h3 class="chart-title">Stats by Match Type</h3>
+            <div class="chart-container">
+                <canvas id="fightTypeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Brand Pie -->
+        <div class="chart-card glass-card">
+            <h3 class="chart-title">Wins by Brand</h3>
+            <div class="chart-container">
+                <canvas id="brandPieChart"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let charts = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('graphFighterInput');
+    setupAutocomplete(input, 'fighters');
+
+    document.getElementById('loadGraphsBtn').addEventListener('click', loadCharts);
+});
+
+function loadCharts() {
+    const name = document.getElementById('graphFighterInput').value.trim();
+    if (!name) return;
+
+    document.getElementById('graphLoading').style.display = 'flex';
+    document.getElementById('chartsGrid').style.display = 'none';
+
+    // Destroy old charts
+    Object.values(charts).forEach(c => c.destroy());
+    charts = {};
+
+    fetch(`/api/fighter/${encodeURIComponent(name)}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('graphLoading').style.display = 'none';
+            document.getElementById('chartsGrid').style.display = 'grid';
+
+            if (data.error) return;
+
+            Chart.defaults.color = '#b0b8d1';
+            Chart.defaults.borderColor = 'rgba(96, 124, 255, 0.15)';
+
+            renderCareerPie(data);
+            renderSeasonLine(data);
+            renderLocationBar(data);
+            renderFightTypeChart(data);
+            renderBrandPie(data);
+        })
+        .catch(err => {
+            document.getElementById('graphLoading').innerHTML = '<p>Error loading charts</p>';
+        });
+}
+
+function renderCareerPie(data) {
+    const ctx = document.getElementById('careerPieChart').getContext('2d');
+    charts.career = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Wins', 'Losses'],
+            datasets: [{
+                data: [parseInt(data.career.wins) || 0, parseInt(data.career.losses) || 0],
+                backgroundColor: ['#4ade80', '#f87171'],
+                borderColor: ['#22c55e', '#ef4444'],
+                borderWidth: 2,
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 20, font: { size: 14, family: 'Inter' } } },
+                tooltip: {
+                    backgroundColor: 'rgba(18, 18, 42, 0.95)',
+                    titleFont: { family: 'Inter' },
+                    bodyFont: { family: 'Inter' },
+                    borderColor: '#607cff',
+                    borderWidth: 1,
+                }
+            },
+            animation: { animateRotate: true, duration: 1000 }
+        }
+    });
+}
+
+function renderSeasonLine(data) {
+    if (!data.by_season || data.by_season.length === 0) return;
+    const ctx = document.getElementById('seasonLineChart').getContext('2d');
+    const sorted = [...data.by_season].sort((a, b) => parseInt(a.season) - parseInt(b.season));
+
+    charts.season = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: sorted.map(s => 'S' + s.season),
+            datasets: [
+                {
+                    label: 'Wins',
+                    data: sorted.map(s => parseInt(s.wins) || 0),
+                    borderColor: '#4ade80',
+                    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                },
+                {
+                    label: 'Losses',
+                    data: sorted.map(s => parseInt(s.losses) || 0),
+                    borderColor: '#f87171',
+                    backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 20, font: { size: 13, family: 'Inter' } } },
+                tooltip: {
+                    backgroundColor: 'rgba(18, 18, 42, 0.95)',
+                    borderColor: '#607cff',
+                    borderWidth: 1,
+                }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(96, 124, 255, 0.08)' } },
+                x: { grid: { color: 'rgba(96, 124, 255, 0.08)' } }
+            },
+            animation: { duration: 1200 }
+        }
+    });
+}
+
+function renderLocationBar(data) {
+    if (!data.by_location || data.by_location.length === 0) return;
+    const ctx = document.getElementById('locationBarChart').getContext('2d');
+    const sorted = [...data.by_location].sort((a, b) => (parseInt(b.wins) + parseInt(b.losses)) - (parseInt(a.wins) + parseInt(a.losses)));
+    const top = sorted.slice(0, 15);
+
+    charts.location = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: top.map(l => l.location),
+            datasets: [
+                {
+                    label: 'Wins',
+                    data: top.map(l => parseInt(l.wins) || 0),
+                    backgroundColor: 'rgba(74, 222, 128, 0.7)',
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                },
+                {
+                    label: 'Losses',
+                    data: top.map(l => parseInt(l.losses) || 0),
+                    backgroundColor: 'rgba(248, 113, 113, 0.7)',
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 20, font: { size: 13, family: 'Inter' } } },
+                tooltip: {
+                    backgroundColor: 'rgba(18, 18, 42, 0.95)',
+                    borderColor: '#607cff',
+                    borderWidth: 1,
+                }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(96, 124, 255, 0.08)' } },
+                x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 20 } }
+            },
+            animation: { duration: 1000 }
+        }
+    });
+}
+
+function renderFightTypeChart(data) {
+    if (!data.by_fight_type || data.by_fight_type.length === 0) return;
+    const ctx = document.getElementById('fightTypeChart').getContext('2d');
+
+    charts.fightType = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.by_fight_type.map(f => f.type),
+            datasets: [
+                {
+                    label: 'Wins',
+                    data: data.by_fight_type.map(f => parseInt(f.wins) || 0),
+                    backgroundColor: 'rgba(74, 222, 128, 0.7)',
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                },
+                {
+                    label: 'Losses',
+                    data: data.by_fight_type.map(f => parseInt(f.losses) || 0),
+                    backgroundColor: 'rgba(248, 113, 113, 0.7)',
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 20, font: { size: 13, family: 'Inter' } } },
+                tooltip: {
+                    backgroundColor: 'rgba(18, 18, 42, 0.95)',
+                    borderColor: '#607cff',
+                    borderWidth: 1,
+                }
+            },
+            scales: {
+                x: { beginAtZero: true, grid: { color: 'rgba(96, 124, 255, 0.08)' } },
+                y: { grid: { display: false } }
+            },
+            animation: { duration: 1000 }
+        }
+    });
+}
+
+function renderBrandPie(data) {
+    if (!data.by_brand || data.by_brand.length === 0) return;
+    const ctx = document.getElementById('brandPieChart').getContext('2d');
+    const colors = ['#607cff', '#4ade80', '#f87171', '#fbbf24', '#a78bfa', '#fb923c', '#22d3ee'];
+
+    charts.brand = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: data.by_brand.map(b => b.brand),
+            datasets: [{
+                data: data.by_brand.map(b => parseInt(b.wins) || 0),
+                backgroundColor: data.by_brand.map((_, i) => colors[i % colors.length]),
+                borderWidth: 2,
+                borderColor: '#0a0a1a',
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 15, font: { size: 13, family: 'Inter' } } },
+                tooltip: {
+                    backgroundColor: 'rgba(18, 18, 42, 0.95)',
+                    borderColor: '#607cff',
+                    borderWidth: 1,
+                }
+            },
+            animation: { animateRotate: true, duration: 1000 }
+        }
+    });
+}
+</script>
+{% endblock %}

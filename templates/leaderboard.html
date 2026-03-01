@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Leaderboard{% endblock %}
+
+{% block content %}
+<section class="leaderboard-section">
+    <h1 class="section-title">Power Rankings</h1>
+    <p class="section-subtitle">All fighters ranked by win rate</p>
+
+    <div class="leaderboard-search-wrapper">
+        <input type="text" id="leaderboardSearch" class="search-input" placeholder="Search fighters...">
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Loading rankings...</p>
+    </div>
+
+    <div class="leaderboard-wrapper glass-card" id="leaderboardWrapper" style="display: none;">
+        <table class="leaderboard-table" id="leaderboardTable">
+            <thead>
+                <tr>
+                    <th class="rank-col">#</th>
+                    <th class="fighter-col">Fighter</th>
+                    <th class="sortable" data-sort="wins">Wins</th>
+                    <th class="sortable" data-sort="losses">Losses</th>
+                    <th class="sortable active" data-sort="win_pct">Win %</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboardTbody"></tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let leaderboardData = [];
+let currentSort = { key: 'win_pct', dir: 'desc' };
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/leaderboard')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('leaderboardWrapper').style.display = 'block';
+            leaderboardData = data;
+            renderLeaderboard(data);
+        })
+        .catch(err => {
+            document.getElementById('loadingOverlay').innerHTML = '<p>Error loading leaderboard</p>';
+        });
+
+    // Search
+    document.getElementById('leaderboardSearch').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        const filtered = leaderboardData.filter(f => f.name.toLowerCase().includes(q));
+        renderLeaderboard(filtered);
+    });
+
+    // Sort headers
+    document.querySelectorAll('.sortable').forEach(th => {
+        th.addEventListener('click', function() {
+            const key = this.dataset.sort;
+            if (currentSort.key === key) {
+                currentSort.dir = currentSort.dir === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentSort.key = key;
+                currentSort.dir = 'desc';
+            }
+            document.querySelectorAll('.sortable').forEach(s => s.classList.remove('active', 'asc'));
+            this.classList.add('active');
+            if (currentSort.dir === 'asc') this.classList.add('asc');
+
+            const sorted = [...leaderboardData].sort((a, b) => {
+                let av = a[key], bv = b[key];
+                if (key === 'win_pct') {
+                    av = parseFloat(String(av).replace('%', '')) || 0;
+                    bv = parseFloat(String(bv).replace('%', '')) || 0;
+                } else {
+                    av = parseInt(av) || 0;
+                    bv = parseInt(bv) || 0;
+                }
+                return currentSort.dir === 'desc' ? bv - av : av - bv;
+            });
+            renderLeaderboard(sorted);
+        });
+    });
+});
+
+function renderLeaderboard(data) {
+    const tbody = document.getElementById('leaderboardTbody');
+    tbody.innerHTML = '';
+
+    data.forEach((fighter, i) => {
+        const pct = parseFloat(String(fighter.win_pct).replace('%', '')) || 0;
+        let pctClass = 'pct-mid';
+        if (pct >= 60) pctClass = 'pct-high';
+        else if (pct < 40) pctClass = 'pct-low';
+
+        const filename = fighterToFilename(fighter.name);
+        const rankClass = i < 3 ? `rank-${i + 1}` : '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="rank-cell ${rankClass}">${i + 1}</td>
+            <td class="fighter-cell">
+                <img src="/static/assets/fighters/${filename}.png" alt="${fighter.name}" class="leaderboard-portrait"
+                     onerror="this.style.display='none'">
+                <a href="/fighter/${encodeURIComponent(fighter.name)}" class="fighter-link">${fighter.name}</a>
+            </td>
+            <td class="stat-cell">${fighter.wins}</td>
+            <td class="stat-cell">${fighter.losses}</td>
+            <td class="stat-cell ${pctClass}">${fighter.win_pct}</td>
+        `;
+
+        tr.style.opacity = '0';
+        tr.style.transform = 'translateY(10px)';
+        tbody.appendChild(tr);
+
+        setTimeout(() => {
+            tr.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            tr.style.opacity = '1';
+            tr.style.transform = 'translateY(0)';
+        }, i * 25);
+    });
+}
+
+</script>
+{% endblock %}
