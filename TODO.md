@@ -10,7 +10,7 @@
 - [ ] **4. Possibly a better theme everywhere**
   - current is fine just could look even sleeker with more black and less dark blue
 - [ ] **5. HOF stats tab with holistic view feeding it**
-- [ ] **6. YAML file with blurb about each fighter**
+- [X] **6. YAML file with blurb about each fighter**
   - include video game ther are from too which would be cool
   - nickname too?
 - [ ] **7. Fighter Page Improvement**
