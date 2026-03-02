@@ -180,7 +180,7 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const name = "{{ fighter_name }}";
+    const name = {{ fighter_name | tojson }};
 
     fetch(`/api/fighter/${encodeURIComponent(name)}`)
         .then(res => res.json())

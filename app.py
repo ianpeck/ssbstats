@@ -19,11 +19,15 @@ def get_fighter_blurb(name):
     try:
         with open(_YAML_PATH, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f) or {}
-        # Try exact match first, then case-insensitive
+        # Try exact match first, then case-insensitive, then period-normalized
+        # (DB names never have periods, but YAML keys use proper names like "Dr. Mario")
         blurb = data.get(name)
         if blurb is None:
             lower = name.lower()
             blurb = next((v for k, v in data.items() if k.lower() == lower), None)
+        if blurb is None:
+            normalized = name.lower().replace('.', '')
+            blurb = next((v for k, v in data.items() if k.lower().replace('.', '') == normalized), None)
         return blurb or {}
     except Exception:
         return {}
