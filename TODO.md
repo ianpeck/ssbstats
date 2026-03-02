@@ -32,3 +32,6 @@
   - just does not work the way i want
 - [ ] **13. Unified Tag Issues with merging**
   - we want to combine two fighters into one slice
+- [ ] **14. Deployed Version different than local?**
+  - scroller gone
+  - fight logs looks even worse than localhost version
