@@ -1838,9 +1838,46 @@ img {
     border-color: rgba(96, 124, 255, 0.4);
 }
 
+/* Fighter-page perspective indicator: big W or L on far left */
+.fight-row.perspective-win .fight-row-main,
+.fight-row.perspective-loss .fight-row-main {
+    position: relative;
+    padding-left: 2.75rem;
+}
+
+.fight-row.perspective-win .fight-row-main::before,
+.fight-row.perspective-loss .fight-row-main::before {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-heading);
+    font-weight: 900;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+}
+
+.fight-row.perspective-win .fight-row-main::before {
+    content: 'W';
+    background: rgba(74, 222, 128, 0.12);
+    color: var(--success);
+    border-right: 2px solid rgba(74, 222, 128, 0.25);
+}
+
+.fight-row.perspective-loss .fight-row-main::before {
+    content: 'L';
+    background: rgba(248, 113, 113, 0.09);
+    color: var(--danger);
+    border-right: 2px solid rgba(248, 113, 113, 0.2);
+}
+
 .fight-row-main {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: 1rem;
     padding: 0.75rem 1rem;
@@ -1854,6 +1891,8 @@ img {
     align-items: center;
     gap: 0.35rem;
     min-width: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding-right: 1rem;
 }
 
 .fight-badge {
@@ -1865,10 +1904,11 @@ img {
     letter-spacing: 0.04em;
 }
 
-.fight-badge-season  { background: rgba(96,124,255,0.2);  color: #8399ff; }
-.fight-badge-type    { background: rgba(96,124,255,0.1);  color: var(--text-secondary); border: 1px solid rgba(96,124,255,0.25); }
-.fight-badge-champ   { background: rgba(251,191,36,0.15); color: #fbbf24; }
-.fight-badge-ppv     { background: rgba(167,139,250,0.15);color: #a78bfa; }
+.fight-badge-season     { background: rgba(96,124,255,0.2);  color: #8399ff; }
+.fight-badge-type       { background: rgba(96,124,255,0.1);  color: var(--text-secondary); border: 1px solid rgba(96,124,255,0.25); }
+.fight-badge-contender  { background: rgba(74,222,128,0.12); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+.fight-badge-champ      { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.fight-badge-ppv        { background: rgba(167,139,250,0.15);color: #a78bfa; }
 
 .fight-location-text {
     font-size: 0.78rem;
@@ -1920,6 +1960,51 @@ img {
     font-weight: 600;
 }
 
+/* Free-for-all: multi-person non-team match — all fighters with vs between them */
+.fight-side-ffa {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.fight-side-ffa .fight-vs-divider {
+    flex-shrink: 0;
+}
+
+/* Chip win/loss tinting */
+.chip-win {
+    background: rgba(74, 222, 128, 0.06);
+    border-radius: 6px;
+    padding: 0.1rem 0.3rem;
+}
+
+.chip-loss {
+    opacity: 0.75;
+}
+
+/* Inline W/L badge on each chip */
+.fight-chip-result {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+}
+
+.fight-chip-result.win  { background: rgba(74,222,128,0.2);   color: var(--success); }
+.fight-chip-result.loss { background: rgba(248,113,113,0.12); color: var(--danger);  }
+
+/* & connector between tag team partners */
+.fight-amp {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin: 0 0.1rem;
+    flex-shrink: 0;
+}
+
 .fight-vs-divider {
     font-size: 0.75rem;
     color: var(--text-muted);
@@ -1935,29 +2020,6 @@ img {
     border-radius: 999px;
     padding: 0.15rem 0.5rem;
     white-space: nowrap;
-}
-
-/* Result column */
-.fight-result-col {
-    text-align: right;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.2rem;
-    min-width: 80px;
-}
-
-.fight-winner-label {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--success);
-    white-space: nowrap;
-}
-
-.fight-stocks-label {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
 }
 
 /* Expand chevron */
@@ -1986,8 +2048,118 @@ img {
 
 .fight-detail-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    grid-template-columns: minmax(160px, auto) 1fr;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.fight-detail-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.fight-detail-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.fight-stage-img-wrap {
+    width: 100%;
+    max-width: 160px;
+}
+
+.fight-stage-img {
+    width: 100%;
+    max-width: 160px;
+    height: auto;
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    opacity: 0.85;
+    display: block;
+}
+
+.fight-stage-placeholder {
+    display: none;
+    width: 100%;
+    max-width: 160px;
+    height: 90px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-sm);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    line-height: 1.5;
+}
+
+.fight-stage-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* Fighter page — fight history collapsible */
+.fighter-fight-history {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Header row mirrors .collapsible-header in layout/padding */
+.fight-history-card .fight-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition);
+}
+
+.fight-history-card .fight-history-header:hover {
+    background: var(--bg-hover);
+}
+
+/* Title label: matches .table-title color */
+.fight-history-label {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--accent-light);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fight-history-icon {
+    opacity: 0.7;
+}
+
+/* Chevron: same size/transition as .chevron but dimmer */
+.fight-history-chevron {
+    font-size: 1.1rem;
+    color: rgba(96, 124, 255, 0.5);
+    transition: transform var(--transition);
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.fight-history-body {
+    border-top: 1px solid var(--border-color);
+    padding: 0.75rem;
+}
+
+.fight-history-body .fight-row {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.fight-history-body .fight-row:last-child {
+    border-bottom: none;
 }
 
 .fight-detail-info {
@@ -2074,10 +2246,6 @@ img {
     .fight-row-main {
         grid-template-columns: 1fr;
         gap: 0.5rem;
-    }
-    .fight-result-col {
-        align-items: flex-start;
-        min-width: 0;
     }
     .fight-detail-grid {
         grid-template-columns: 1fr;

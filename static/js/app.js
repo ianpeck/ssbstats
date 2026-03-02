@@ -147,6 +147,171 @@ function setupAutocomplete(input, category) {
     }
 }
 
+// ---------- Fight Log Rendering (shared: fight log page + fighter profile page) ----------
+
+function isWinner(f) {
+    const w = f.win;
+    if (w == null) return false;
+    const s = String(w).toUpperCase();
+    return s === 'W' || s === 'Y' || w === 1 || w === true;
+}
+
+function chipHTML(f) {
+    const fn  = fighterToFilename(f.name);
+    const win = isWinner(f);
+    const stocks = (f.match_result != null && f.match_result !== '') ? f.match_result : null;
+    const resultText = (win ? 'W' : 'L') + (stocks != null ? ` ${stocks}` : '');
+    return `<span class="fight-fighter-chip ${win ? 'chip-win' : 'chip-loss'}">
+        <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
+             class="fight-portrait" onerror="this.style.display='none'">
+        <a href="/fighter/${encodeURIComponent(f.name)}" class="fight-fighter-name"
+           onclick="event.stopPropagation()">${f.name}</a>
+        <span class="fight-chip-result ${win ? 'win' : 'loss'}">${resultText}</span>
+    </span>`;
+}
+
+function renderFight(fight) {
+    const { season, month, week, ppv, location, fight_type,
+            championship, brand, fighters } = fight;
+
+    const winners   = fighters.filter(isWinner);
+    const losers    = fighters.filter(f => !isWinner(f));
+    const isBig     = fighters.length > 6;
+    // Tag Team and Handicap use & within each side; everything else uses vs between all fighters
+    const ftLower   = fight_type ? fight_type.toLowerCase() : '';
+    const isTeamMatch = ftLower === 'tag team' || ftLower === 'handicap';
+    const is1v1       = !isTeamMatch && fighters.length === 2;
+    // #1 Contender is a match attribute — true if any fighter has it set
+    const isContender = fighters.some(f => f.contender &&
+        String(f.contender).toUpperCase() !== 'N' && f.contender !== 0);
+    const MAX = 4;
+
+    function sideHTML(group, cssClass, useAmp) {
+        const shown  = group.slice(0, MAX);
+        const hidden = group.length - shown.length;
+        const sep    = useAmp ? '<span class="fight-amp">&amp;</span>' : '';
+        let html = `<div class="fight-side ${cssClass}">`;
+        html += shown.map(f => chipHTML(f)).join(sep);
+        if (hidden > 0) html += `<span class="fight-overflow-chip">+${hidden} more</span>`;
+        html += '</div>';
+        return html;
+    }
+
+    let participantsHTML;
+    if (isBig) {
+        const winChip = winners.length ? chipHTML(winners[0]) : '';
+        participantsHTML = `
+            <div class="fight-side fight-side-win">${winChip}</div>
+            <div class="fight-vs-divider">&middot;</div>
+            <span class="fight-overflow-chip">${fighters.length}-person ${fight_type || 'match'}</span>`;
+    } else if (isTeamMatch) {
+        // Tag Team / Handicap: group each side with & between teammates
+        participantsHTML =
+            sideHTML(winners, 'fight-side-win', true) +
+            (winners.length && losers.length ? '<span class="fight-vs-divider">vs</span>' : '') +
+            sideHTML(losers, 'fight-side-loss', true);
+    } else if (is1v1) {
+        // Standard 1v1
+        participantsHTML =
+            sideHTML(winners, 'fight-side-win', false) +
+            (winners.length && losers.length ? '<span class="fight-vs-divider">vs</span>' : '') +
+            sideHTML(losers, 'fight-side-loss', false);
+    } else {
+        // Multi-person free-for-all: show every fighter with vs between each
+        // (winners first so W badges appear on the left)
+        const all    = [...winners, ...losers];
+        const shown  = all.slice(0, MAX);
+        const hidden = all.length - shown.length;
+        participantsHTML =
+            '<div class="fight-side fight-side-ffa">' +
+            shown.map(f => chipHTML(f)).join('<span class="fight-vs-divider">vs</span>') +
+            (hidden > 0 ? `<span class="fight-overflow-chip">+${hidden} more</span>` : '') +
+            '</div>';
+    }
+
+    const metaHTML = `
+        <div class="fight-meta-col">
+            ${season != null ? `<span class="fight-badge fight-badge-season">S${season}${month != null ? ` M${month}` : ''}${week != null ? ` W${week}` : ''}</span>` : ''}
+            ${fight_type   ? `<span class="fight-badge fight-badge-type">${fight_type}</span>` : ''}
+            ${isContender  ? `<span class="fight-badge fight-badge-contender">#1 Contender</span>` : ''}
+            ${championship ? `<span class="fight-badge fight-badge-champ">&#127942; ${championship}</span>` : ''}
+            ${ppv          ? `<span class="fight-badge fight-badge-ppv">${ppv}</span>` : ''}
+            ${location     ? `<span class="fight-location-text">${location}</span>` : ''}
+        </div>`;
+
+    function detailFighterHTML(f) {
+        const fn  = fighterToFilename(f.name);
+        const win = isWinner(f);
+        const extras = [
+            f.match_result != null && f.match_result !== '' ? String(f.match_result) : '',
+            f.defending ? 'Defending'  : '',
+            f.seed      ? `Seed #${f.seed}` : '',
+            // #1 Contender is match-level; shown in meta badges above, not per-fighter
+        ].filter(Boolean).join(' \u00b7 ');
+        return `<div class="fight-detail-fighter ${win ? 'is-winner' : 'is-loser'}">
+            <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
+                 class="fight-detail-portrait" onerror="this.style.display='none'">
+            <div class="fight-detail-fighter-info">
+                <a href="/fighter/${encodeURIComponent(f.name)}"
+                   class="fight-detail-fighter-name"
+                   onclick="event.stopPropagation()">${f.name}</a>
+            </div>
+            <span class="fight-detail-result-badge ${win ? 'win' : 'loss'}">${win ? 'WIN' : 'LOSS'}</span>
+            ${extras ? `<span class="fight-detail-stocks">${extras}</span>` : ''}
+        </div>`;
+    }
+
+    const stageImg = location ? `
+        <div class="fight-detail-stage">
+            <div class="fight-stage-img-wrap">
+                <img src="/static/assets/stages/${stageToFilename(location)}.png"
+                     alt="${location}" class="fight-stage-img"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="fight-stage-placeholder">
+                    <span>Stage Photo<br>Not Available</span>
+                </div>
+            </div>
+            <span class="fight-stage-label">${location}</span>
+        </div>` : '';
+
+    const infoRows = [
+        season  != null ? `<div>Season <span>${season}</span></div>` : '',
+        month   != null ? `<div>Month <span>${month}</span></div>` : '',
+        week    != null ? `<div>Week <span>${week}</span></div>` : '',
+        ppv     ? `<div>PPV <span>${ppv}</span></div>` : '',
+        location? `<div>Location <span>${location}</span></div>` : '',
+        fight_type   ? `<div>Fight Type <span>${fight_type}</span></div>` : '',
+        championship ? `<div>Championship <span>${championship}</span></div>` : '',
+        brand        ? `<div>Brand <span>${brand}</span></div>` : '',
+    ].filter(Boolean).join('');
+
+    const row = document.createElement('div');
+    row.className = 'fight-row';
+    row.innerHTML = `
+        <div class="fight-row-main">
+            ${metaHTML}
+            <div class="fight-participants-col">${participantsHTML}</div>
+            <span class="fight-chevron">&#9660;</span>
+        </div>
+        <div class="fight-detail">
+            <div class="fight-detail-grid">
+                <div class="fight-detail-left">
+                    <div class="fight-detail-info">${infoRows}</div>
+                    ${stageImg}
+                </div>
+                <div class="fight-detail-participants">
+                    ${fighters.map(detailFighterHTML).join('')}
+                </div>
+            </div>
+        </div>`;
+
+    row.querySelector('.fight-row-main').addEventListener('click', () => {
+        row.classList.toggle('is-open');
+    });
+
+    return row;
+}
+
 // ---------- Mobile Nav Toggle ----------
 
 document.addEventListener('DOMContentLoaded', function() {

@@ -356,6 +356,7 @@ def api_fights():
             'championship': request.args.get('championship', ''),
             'fighter':      request.args.get('fighter', ''),
             'brand':        request.args.get('brand', ''),
+            'decision':     request.args.get('decision', ''),
         }
         page = int(request.args.get('page', 1))
         fights_data = db.get_fight_log(filters, page=page)

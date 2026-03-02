@@ -270,21 +270,26 @@ def get_fight_log(filters, page=1, per_page=100):
     params = []
 
     mapping = [
-        ('season',       'Season'),
-        ('month',        'Month'),
-        ('fight_type',   'Description'),
-        ('location',     'Location_Name'),
-        ('ppv',          'PPV_Name'),
-        ('championship', 'Championship_Name'),
-        ('fighter',      'Fighter_Name'),
-        ('brand',        'Brand_Name'),
+        ('season',       'Season',          False),
+        ('month',        'Month',           False),
+        ('fight_type',   'Description',     False),
+        ('location',     'Location_Name',   False),
+        ('ppv',          'PPV_Name',        False),
+        ('championship', 'Championship_Name', False),
+        ('fighter',      'Fighter_Name',    True),   # LIKE partial match
+        ('brand',        'Brand_Name',      False),
+        ('decision',     'Decision',        False),
     ]
 
-    for key, col in mapping:
+    for key, col, use_like in mapping:
         val = filters.get(key, '')
         if val:
-            conditions.append(f"{col} = %s")
-            params.append(val)
+            if use_like:
+                conditions.append(f"{col} LIKE %s")
+                params.append(f'%{val}%')
+            else:
+                conditions.append(f"{col} = %s")
+                params.append(val)
 
     where  = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     offset = (page - 1) * per_page
@@ -295,10 +300,10 @@ def get_fight_log(filters, page=1, per_page=100):
         INNER JOIN (
             SELECT DISTINCT Fight_ID
             FROM FightLog {where}
-            ORDER BY Season DESC, Month DESC, Week DESC, Fight_ID DESC
+            ORDER BY Season DESC, Month DESC, COALESCE(Week, 99) DESC, Fight_ID DESC
             LIMIT %s OFFSET %s
         ) ids ON fl.Fight_ID = ids.Fight_ID
-        ORDER BY fl.Season DESC, fl.Month DESC, fl.Week DESC, fl.Fight_ID DESC,
+        ORDER BY fl.Season DESC, fl.Month DESC, COALESCE(fl.Week, 99) DESC, fl.Fight_ID DESC,
                  fl.Decision DESC, fl.Fighter_Name
     """
     rows = select_view_dicts(sql, params + [per_page, offset])

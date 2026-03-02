@@ -175,6 +175,28 @@
 
     </div>
 </section>
+
+<!-- Fight History (collapsible, lazy-loaded) -->
+<section class="fighter-fight-history">
+    <div class="stats-table-wrapper glass-card collapsible-card fight-history-card">
+        <div class="fight-history-header" id="fightHistoryToggle">
+            <span class="fight-history-label">
+                <span class="fight-history-icon">&#128203;</span> Fight History
+            </span>
+            <span class="fight-history-chevron" id="fightHistoryChevron">&#8963;</span>
+        </div>
+        <div class="fight-history-body" id="fightHistoryBody" style="display:none;">
+            <div class="loading-overlay" id="fightHistoryLoading"
+                 style="display:none; position:relative; min-height:90px; border-radius:0;">
+                <div class="spinner"></div>
+            </div>
+            <div id="fightHistoryList" class="fight-list"></div>
+            <div id="fightHistoryLoadMore" style="text-align:center;margin:1rem;display:none;">
+                <button class="btn-outline" id="fightHistoryLoadMoreBtn">Load More</button>
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %}
 
 {% block scripts %}
@@ -415,6 +437,64 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
         setTimeout(() => { tr.style.transition = 'opacity 0.3s ease'; tr.style.opacity = '1'; }, i * 40);
     });
 }
+
+// --- Fight History (uses renderFight from app.js) ---
+(function() {
+    const FIGHTER_NAME = {{ fighter_name | tojson }};
+    const PER_PAGE = 100;
+    let page = 1, hasMore = true, loading = false, opened = false;
+
+    document.getElementById('fightHistoryToggle').addEventListener('click', () => {
+        const body    = document.getElementById('fightHistoryBody');
+        const chevron = document.getElementById('fightHistoryChevron');
+        const isOpen  = body.style.display !== 'none';
+        body.style.display    = isOpen ? 'none' : 'block';
+        chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+        if (!isOpen && !opened) { opened = true; loadPage(true); }
+    });
+
+    document.getElementById('fightHistoryLoadMoreBtn').addEventListener('click', () => {
+        page++;
+        loadPage(false);
+    });
+
+    function loadPage(reset) {
+        if (loading) return;
+        loading = true;
+        const loadingEl = document.getElementById('fightHistoryLoading');
+        loadingEl.style.display = 'flex';
+
+        const params = new URLSearchParams({ fighter: FIGHTER_NAME, page });
+        fetch(`/api/fights?${params}`)
+            .then(r => r.json())
+            .then(fights => {
+                loadingEl.style.display = 'none';
+                loading = false;
+                const list = document.getElementById('fightHistoryList');
+                if (!Array.isArray(fights) || fights.length === 0) {
+                    if (reset) list.innerHTML = '<div class="fight-empty">No fight history found.</div>';
+                    hasMore = false;
+                    document.getElementById('fightHistoryLoadMore').style.display = 'none';
+                    return;
+                }
+                fights.forEach(f => {
+                    const row = renderFight(f);
+                    // Add W/L perspective indicator based on this fighter's result
+                    const me = f.fighters.find(x => x.name === FIGHTER_NAME);
+                    if (me) row.classList.add(isWinner(me) ? 'perspective-win' : 'perspective-loss');
+                    list.appendChild(row);
+                });
+                hasMore = fights.length >= PER_PAGE;
+                document.getElementById('fightHistoryLoadMore').style.display = hasMore ? 'block' : 'none';
+            })
+            .catch(() => {
+                document.getElementById('fightHistoryLoading').style.display = 'none';
+                loading = false;
+                document.getElementById('fightHistoryList').innerHTML =
+                    '<div class="fight-empty">Error loading fight history.</div>';
+            });
+    }
+})();
 
 function fillTable(tbodyId, rows, keys) {
     const tbody = document.getElementById(tbodyId);

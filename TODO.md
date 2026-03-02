@@ -28,10 +28,21 @@
 - [ ] **10 Graphs in general needs work**
 - [X] **11. Season Tab Creation**
   - Season tab that shows each season and best fighters, fighters of the years, holisticview incorporated
-- [ ] **12. Fight Log bugs**
+- [X] **12. Fight Log bugs**
   - just does not work the way i want
-- [ ] **13. Unified Tag Issues with merging**
+  - Fighter serach bar needs full name and id like to have it intelligently load Mario and Mar matches as i type M A R
+  - nothing in Week 4 ever exists in the logs which are all the PPV and Championship matches
+  There is some empty space in btween the fighters and the stats on far left when you uncollapse the fight itself, maybe we put the photo of the stage there?
+  - It shows Mario vs Bowser and both have LOSS listed despite one of them winning
+  - Tag Team matches (Tag team fight type with people having same decision) need sot be shwn as like Fox & Falco vs. Ness & Lucas. Cannot discern right now
+  - add another filter for all Decisions so I coulf filter by all a fighters matches they won too in a specific season
+  - want more data in the row itself without having to uncollpase like Mario W 2 - 0 against Bowser
+  - so like Photo Name result (2) - Photo Name result (0) you could maybe even add like a subtle eay to show wiing fighter with colors or something else
+- [X] **13. Unified Tag Issues with merging**
   - we want to combine two fighters into one slice
-- [ ] **14. Deployed Version different than local?**
+- [X] **14. Deployed Version different than local?**
   - scroller gone
   - fight logs looks even worse than localhost version
+- [X] **15. Entire Fight Log history in large separate collapsible bar on bottom of each Fighter Page**
+  - would only have their matches
+  - Big Green W if they won for easy viewing in Fighter PAge but red L on far left if lost or maybe something even nicer looking. That makes sense htough

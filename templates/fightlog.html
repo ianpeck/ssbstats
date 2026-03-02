@@ -11,11 +11,19 @@
         <div class="fight-filter-grid">
             <div class="fight-filter-group">
                 <label>Fighter</label>
-                <input type="text" id="filterFighter" class="fight-filter-input"
-                       placeholder="Type a name..." list="fighterDatalist" autocomplete="off">
-                <datalist id="fighterDatalist">
-                    {% for f in fighters %}<option value="{{ f }}">{% endfor %}
-                </datalist>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="filterFighter" class="fight-filter-input"
+                           placeholder="Type a name..." autocomplete="off">
+                    <div class="autocomplete-dropdown"></div>
+                </div>
+            </div>
+            <div class="fight-filter-group">
+                <label>Result</label>
+                <select id="filterDecision" class="fight-filter-input">
+                    <option value="">All Results</option>
+                    <option value="W">Wins Only</option>
+                    <option value="L">Losses Only</option>
+                </select>
             </div>
             <div class="fight-filter-group">
                 <label>Season</label>
@@ -87,39 +95,22 @@
 
 {% block scripts %}
 <script>
+// isWinner, chipHTML, renderFight are defined in app.js
 const PER_PAGE = 100;
 let currentPage    = 1;
 let currentFilters = {};
 let hasMore        = true;
 let loadInProgress = false;
 
-// ---------- utils ----------
-
 function debounce(fn, ms) {
     let t;
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
-function isWinner(f) {
-    const w = f.win;
-    return w === 1 || w === '1' || w === 'Y' || w === 'W' || w === true;
-}
-
-function resultLabel(fighters) {
-    // Match_Result is per-fighter stocks remaining; show "winner-loser" for 1v1
-    if (fighters.length === 2) {
-        const winner = fighters.find(isWinner);
-        const loser  = fighters.find(f => !isWinner(f));
-        const wr = winner?.match_result;
-        const lr = loser?.match_result;
-        if (wr != null && lr != null && wr !== '' && lr !== '') return `${wr}-${lr}`;
-    }
-    return '';
-}
-
 function getFilters() {
     return {
         fighter:      document.getElementById('filterFighter').value.trim(),
+        decision:     document.getElementById('filterDecision').value,
         season:       document.getElementById('filterSeason').value,
         month:        document.getElementById('filterMonth').value,
         fight_type:   document.getElementById('filterFightType').value,
@@ -129,129 +120,6 @@ function getFilters() {
         brand:        document.getElementById('filterBrand').value,
     };
 }
-
-// ---------- rendering ----------
-
-function chipHTML(f, sizeClass) {
-    const fn = fighterToFilename(f.name);
-    return `<span class="fight-fighter-chip">
-        <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
-             class="fight-portrait" onerror="this.style.display='none'">
-        <a href="/fighter/${encodeURIComponent(f.name)}" class="fight-fighter-name"
-           onclick="event.stopPropagation()">${f.name}</a>
-    </span>`;
-}
-
-function renderFight(fight) {
-    const { fight_id, season, month, week, ppv, location, fight_type,
-            championship, brand, fighters } = fight;
-
-    const winners = fighters.filter(isWinner);
-    const losers  = fighters.filter(f => !isWinner(f));
-    const stocks  = resultLabel(fighters);
-    const isBig   = fighters.length > 6;
-    const MAX     = 4;
-
-    function sideHTML(group, cssClass) {
-        const shown  = group.slice(0, MAX);
-        const hidden = group.length - shown.length;
-        let html = `<div class="fight-side ${cssClass}">`;
-        html += shown.map(f => chipHTML(f)).join('');
-        if (hidden > 0) html += `<span class="fight-overflow-chip">+${hidden} more</span>`;
-        html += '</div>';
-        return html;
-    }
-
-    let participantsHTML;
-    if (isBig) {
-        const winChip = winners.length ? chipHTML(winners[0]) : '';
-        participantsHTML = `
-            <div class="fight-side fight-side-win">${winChip}</div>
-            <div class="fight-vs-divider">·</div>
-            <span class="fight-overflow-chip">${fighters.length}-person ${fight_type || 'match'}</span>`;
-    } else {
-        participantsHTML =
-            sideHTML(winners, 'fight-side-win') +
-            (winners.length && losers.length ? '<span class="fight-vs-divider">vs</span>' : '') +
-            sideHTML(losers, 'fight-side-loss');
-    }
-
-    const metaHTML = `
-        <div class="fight-meta-col">
-            ${season != null ? `<span class="fight-badge fight-badge-season">S${season}${month != null ? ` M${month}` : ''}${week != null ? ` W${week}` : ''}</span>` : ''}
-            ${fight_type   ? `<span class="fight-badge fight-badge-type">${fight_type}</span>` : ''}
-            ${championship ? `<span class="fight-badge fight-badge-champ">🏆 ${championship}</span>` : ''}
-            ${ppv          ? `<span class="fight-badge fight-badge-ppv">${ppv}</span>` : ''}
-            ${location     ? `<span class="fight-location-text">${location}</span>` : ''}
-        </div>`;
-
-    const winnerName = winners.map(f => f.name).join(' & ');
-    const resultHTML = `
-        <div class="fight-result-col">
-            ${winnerName ? `<span class="fight-winner-label">${winnerName} ✓</span>` : ''}
-            ${stocks     ? `<span class="fight-stocks-label">${stocks}</span>` : ''}
-        </div>`;
-
-    // Expanded detail
-    function detailFighterHTML(f) {
-        const fn  = fighterToFilename(f.name);
-        const win = isWinner(f);
-        const extras = [
-            f.match_result != null && f.match_result !== '' ? `${f.match_result} stocks` : '',
-            f.defending   ? 'Defending'  : '',
-            f.contender   ? '#1 Contender' : '',
-            f.seed        ? `Seed #${f.seed}` : '',
-        ].filter(Boolean).join(' · ');
-        return `<div class="fight-detail-fighter ${win ? 'is-winner' : 'is-loser'}">
-            <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
-                 class="fight-detail-portrait" onerror="this.style.display='none'">
-            <div class="fight-detail-fighter-info">
-                <a href="/fighter/${encodeURIComponent(f.name)}"
-                   class="fight-detail-fighter-name"
-                   onclick="event.stopPropagation()">${f.name}</a>
-            </div>
-            <span class="fight-detail-result-badge ${win ? 'win' : 'loss'}">${win ? 'WIN' : 'LOSS'}</span>
-            ${extras ? `<span class="fight-detail-stocks">${extras}</span>` : ''}
-        </div>`;
-    }
-
-    const infoRows = [
-        season  != null ? `<div>Season <span>${season}</span></div>` : '',
-        month   != null ? `<div>Month <span>${month}</span></div>` : '',
-        week    != null ? `<div>Week <span>${week}</span></div>` : '',
-        ppv     ? `<div>PPV <span>${ppv}</span></div>` : '',
-        location? `<div>Location <span>${location}</span></div>` : '',
-        fight_type   ? `<div>Fight Type <span>${fight_type}</span></div>` : '',
-        championship ? `<div>Championship <span>${championship}</span></div>` : '',
-        brand        ? `<div>Brand <span>${brand}</span></div>` : '',
-    ].filter(Boolean).join('');
-
-    const row = document.createElement('div');
-    row.className = 'fight-row';
-    row.innerHTML = `
-        <div class="fight-row-main">
-            ${metaHTML}
-            <div class="fight-participants-col">${participantsHTML}</div>
-            ${resultHTML}
-            <span class="fight-chevron">▼</span>
-        </div>
-        <div class="fight-detail">
-            <div class="fight-detail-grid">
-                <div class="fight-detail-info">${infoRows}</div>
-                <div class="fight-detail-participants">
-                    ${fighters.map(detailFighterHTML).join('')}
-                </div>
-            </div>
-        </div>`;
-
-    row.querySelector('.fight-row-main').addEventListener('click', () => {
-        row.classList.toggle('is-open');
-    });
-
-    return row;
-}
-
-// ---------- data loading ----------
 
 function buildQuery(page) {
     const params = new URLSearchParams();
@@ -312,13 +180,10 @@ function loadFights(reset = false) {
         });
 }
 
-// ---------- filter wiring ----------
-
 document.addEventListener('DOMContentLoaded', () => {
-    const dropdownIds = ['filterSeason','filterMonth','filterFightType',
+    const dropdownIds = ['filterDecision','filterSeason','filterMonth','filterFightType',
                          'filterLocation','filterPPV','filterChampionship','filterBrand'];
 
-    // Dropdowns: reload instantly on change
     dropdownIds.forEach(id => {
         document.getElementById(id).addEventListener('change', () => {
             currentFilters = getFilters();
@@ -326,28 +191,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Fighter text: debounce 350ms so it doesn't fire on every keystroke
+    const fighterInput = document.getElementById('filterFighter');
+    setupAutocomplete(fighterInput, 'fighters');
+
     const debouncedLoad = debounce(() => {
         currentFilters = getFilters();
         loadFights(true);
     }, 350);
-    document.getElementById('filterFighter').addEventListener('input', debouncedLoad);
+    fighterInput.addEventListener('input', debouncedLoad);
+    fighterInput.addEventListener('change', () => {
+        currentFilters = getFilters();
+        loadFights(true);
+    });
 
-    // Clear button
     document.getElementById('clearFilters').addEventListener('click', () => {
         dropdownIds.forEach(id => { document.getElementById(id).selectedIndex = 0; });
-        document.getElementById('filterFighter').value = '';
+        fighterInput.value = '';
         currentFilters = {};
         loadFights(true);
     });
 
-    // Load More
     document.getElementById('loadMoreBtn').addEventListener('click', () => {
         currentPage++;
         loadFights(false);
     });
 
-    // Initial load
     loadFights(true);
 });
 </script>
