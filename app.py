@@ -65,12 +65,27 @@ def stage_to_filename(name):
     return name.lower().replace(' ', '').replace(',', '').replace("'", '').replace('(', '').replace(')', '').replace('-', '')
 
 
+def normalize_champ_name(s):
+    """Normalize championship display names."""
+    if s is None:
+        return s
+    return str(s).replace('Unified Tag 1', 'Unified Tag')
+
+
 # ---------- Page Routes ----------
 
 @app.route('/')
 def index():
     fighters = get_autocomplete_data('fighters')
-    fighter_cards = [{'name': f, 'filename': fighter_to_filename(f)} for f in fighters]
+    current_champs = db.get_current_champions()
+    fighter_cards = [
+        {
+            'name': f,
+            'filename': fighter_to_filename(f),
+            'titles': [normalize_champ_name(t) for t in current_champs.get(f, [])]
+        }
+        for f in fighters
+    ]
     return render_template('index.html', fighters=fighter_cards)
 
 
@@ -205,11 +220,26 @@ def api_fighter(name):
         for row in stats.get('defending_title', []):
             result['defending_title'].append({'wins': row[-3] if len(row) >= 3 else 0, 'losses': row[-2] if len(row) >= 2 else 0, 'win_pct': str(row[-1]) if len(row) >= 1 else '0.00%'})
 
+        # Current champion titles
+        result['current_titles'] = [
+            normalize_champ_name(row['Championship_Name'])
+            for row in accolades_raw.get('current_titles', [])
+        ]
+
         # Accolades — dicts with real column names so JS can display dynamically
         result['accolades'] = {
             key: [{k: _serialize(v) for k, v in row.items()} for row in rows]
             for key, rows in accolades_raw.items()
         }
+
+        # Normalize championship names throughout accolades
+        for row in result['accolades'].get('champ_reigns', []):
+            row['Championship_Name'] = normalize_champ_name(row.get('Championship_Name'))
+        for row in result['accolades'].get('champ_by_champ', []):
+            row['Championship_Name'] = normalize_champ_name(row.get('Championship_Name'))
+        for row in result['accolades'].get('holistic', []):
+            if row.get('Titles_Held'):
+                row['Titles_Held'] = normalize_champ_name(row['Titles_Held'])
 
         return jsonify(result)
     except Exception as e:
@@ -220,6 +250,9 @@ def api_fighter(name):
 def api_leaderboard():
     try:
         fighters = db.get_leaderboard()
+        current_champs = db.get_current_champions()
+        for f in fighters:
+            f['titles'] = [normalize_champ_name(t) for t in current_champs.get(f['name'], [])]
         return jsonify(fighters)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

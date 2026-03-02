@@ -11,7 +11,10 @@
                  onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22><rect fill=%22%2312122a%22 width=%22300%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>?</text></svg>'">
         </div>
         <div class="fighter-hero-info">
-            <h1 class="fighter-hero-name">{{ fighter_name }}</h1>
+            <div class="fighter-name-row">
+                <h1 class="fighter-hero-name">{{ fighter_name }}</h1>
+                <div id="currentTitlesBadge" class="current-titles-badge"></div>
+            </div>
             {% if blurb.get('nickname') %}
             <p class="fighter-nickname">&ldquo;{{ blurb.nickname }}&rdquo;</p>
             {% endif %}
@@ -199,6 +202,17 @@ document.addEventListener('DOMContentLoaded', function() {
             fillTable('ppvTbody', data.by_ppv, ['ppv', 'wins', 'losses', 'win_pct']);
 
             const acc = data.accolades || {};
+
+            // --- Current champion titles ---
+            if (data.current_titles && data.current_titles.length) {
+                const badgeEl = document.getElementById('currentTitlesBadge');
+                data.current_titles.forEach(title => {
+                    const span = document.createElement('span');
+                    span.className = 'current-champ-pill';
+                    span.innerHTML = `👑 ${title} Champion`;
+                    badgeEl.appendChild(span);
+                });
+            }
 
             // --- Accolades section ---
             buildChampBadges(acc.champ_reigns || []);

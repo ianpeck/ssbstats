@@ -402,6 +402,80 @@ img {
     line-height: 1.3;
 }
 
+/* Champion styling on roster cards */
+.fighter-card.is-champion {
+    border-color: rgba(251, 191, 36, 0.5);
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.15);
+}
+.card-champ-crown {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+.fighter-card { position: relative; }
+.card-champ-titles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 6px;
+}
+.card-champ-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    color: #fbbf24;
+    padding: 2px 7px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* Champion pill on fighter profile hero */
+.fighter-name-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+.current-titles-badge { display: flex; flex-wrap: wrap; gap: 8px; }
+.current-champ-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    color: #fbbf24;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Champion tag on leaderboard */
+.fighter-cell-inner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.lb-champ-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    color: #fbbf24;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
 /* ============================================
    HEAD TO HEAD
    ============================================ */

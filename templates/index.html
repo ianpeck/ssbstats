@@ -25,7 +25,10 @@
 
     <div class="roster-grid" id="rosterGrid">
         {% for fighter in fighters %}
-        <a href="/fighter/{{ fighter.name }}" class="fighter-card" data-name="{{ fighter.name|lower }}">
+        <a href="/fighter/{{ fighter.name }}" class="fighter-card{% if fighter.titles %} is-champion{% endif %}" data-name="{{ fighter.name|lower }}">
+            {% if fighter.titles %}
+            <div class="card-champ-crown">👑</div>
+            {% endif %}
             <div class="fighter-card-image">
                 <img src="{{ url_for('static', filename='assets/fighters/' + fighter.filename + '.png') }}"
                      alt="{{ fighter.name }}"
@@ -33,6 +36,13 @@
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%2312122a%22 width=%22200%22 height=%22200%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>?</text></svg>'">
             </div>
             <div class="fighter-card-name">{{ fighter.name }}</div>
+            {% if fighter.titles %}
+            <div class="card-champ-titles">
+                {% for title in fighter.titles %}
+                <span class="card-champ-tag">{{ title }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
         </a>
         {% endfor %}
     </div>

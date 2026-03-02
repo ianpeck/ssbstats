@@ -14,7 +14,7 @@
 - [X] **6. YAML file with blurb about each fighter**
   - include video game ther are from too which would be cool
   - nickname too?
-- [ ] **7. Fighter Page Improvement**
+- [X] **7. Fighter Page Improvement**
   - add i.e. 2 time brawl champion etc with total months held (ChampionshipHistoryBySeason view)
   - add Award counts would be cool (Award table and AwardHistory table JOINed on Award_ID should show winners of the award). This would be added to the fighter page in like an accolades section
   - add streaks from longestwinstreaks view and longestlosingstreaks view into fighter page
@@ -26,7 +26,5 @@
 - [ ] **9. Head to Head uses ML model to predictively guess who would win based on certain data points with a confidence %**
 - [ ] **10 Graphs in general needs work**
 - [ ] **11. Possible login page to prevent copyright issues**
-- [ ] **12. Incoroprate more of the views into the webpage**
-  - Championship tab for historical tracking (ChampionshipHistory and ChampionshipHistoryBySeason)
-  - Other stats that includes longest winning/losing streaks (if active or not) (alllosingstreaks view, allwinstreaks view)
+- [ ] **12. Season Tab Creation**
   - Season tab that shows each season and best fighters, fighters of the years, holisticview incorporated

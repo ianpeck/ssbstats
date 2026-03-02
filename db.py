@@ -154,6 +154,7 @@ def get_fighter_accolades(name):
         'loss_streaks':   ("SELECT * FROM longestlosingstreaks WHERE Fighter_Name = %s", (name,)),
         'active_win':     ("SELECT Win_Streak FROM allwinstreaks WHERE Fighter_Name = %s AND Active_Win_Streak = 'Active'", (name,)),
         'active_loss':    ("SELECT Losing_Streak FROM alllosingsteaks WHERE Fighter_Name = %s AND Active_Losing_Streak = 'Active'", (name,)),
+        'current_titles': ("SELECT Championship_Name FROM CurrentChampions WHERE Fighter_Name = %s", (name,)),
         'champ_by_champ': ("SELECT * FROM champfightstatsbychampionship WHERE Fighter_Name = %s", (name,)),
         'holistic':       ("SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season", (name,)),
     }
@@ -165,10 +166,19 @@ def get_fighter_accolades(name):
         except Exception:
             return key, []
 
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with ThreadPoolExecutor(max_workers=9) as pool:
         results = list(pool.map(run_query, queries.items()))
 
     return {key: data for key, data in results}
+
+
+def get_current_champions():
+    """Return {Fighter_Name: [Championship_Name, ...]} for all current champions."""
+    rows = select_view_dicts("SELECT * FROM CurrentChampions")
+    result = {}
+    for row in rows:
+        result.setdefault(row['Fighter_Name'], []).append(row['Championship_Name'])
+    return result
 
 
 # ---------- Leaderboard ----------
