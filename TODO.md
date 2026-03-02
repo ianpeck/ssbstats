@@ -1,6 +1,6 @@
 # TODO
 
-- [ ] **1. Power Rankings additions**
+- [X] **1. Power Rankings additions**
   - Change Leaderboard to say Pwoer Rankings
   - Total Championships months (major and minor in that year)
   - Should be changeable to just season power rankings too like some tab
@@ -26,5 +26,9 @@
   - separate stat to show matches that are not Tag Team but also have 3 or 4 fighters and fight type is 3 stock (triple threat and fatal 4 way matches)
 - [ ] **9. Head to Head uses ML model to predictively guess who would win based on certain data points with a confidence %**
 - [ ] **10 Graphs in general needs work**
-- [ ] **11. Season Tab Creation**
+- [X] **11. Season Tab Creation**
   - Season tab that shows each season and best fighters, fighters of the years, holisticview incorporated
+- [ ] **12. Fight Log bugs**
+  - just does not work the way i want
+- [ ] **13. Unified Tag Issues with merging**
+  - we want to combine two fighters into one slice

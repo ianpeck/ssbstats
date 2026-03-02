@@ -12,7 +12,7 @@
             <div class="fight-filter-group">
                 <label>Fighter</label>
                 <input type="text" id="filterFighter" class="fight-filter-input"
-                       placeholder="Any fighter..." list="fighterDatalist">
+                       placeholder="Type a name..." list="fighterDatalist" autocomplete="off">
                 <datalist id="fighterDatalist">
                     {% for f in fighters %}<option value="{{ f }}">{% endfor %}
                 </datalist>
@@ -68,8 +68,7 @@
             </div>
         </div>
         <div class="fight-filter-actions">
-            <button class="btn-primary" id="applyFilters">Search</button>
-            <button class="btn-outline" id="clearFilters">Clear</button>
+            <button class="btn-outline" id="clearFilters">Clear Filters</button>
         </div>
     </div>
 
@@ -80,7 +79,7 @@
 
     <div id="fightList" class="fight-list" style="display:none;"></div>
 
-    <div id="loadMoreContainer" style="text-align:center;margin-top:1rem;display:none;">
+    <div id="loadMoreContainer" style="text-align:center;margin-top:1.25rem;display:none;">
         <button class="btn-outline" id="loadMoreBtn">Load More</button>
     </div>
 </section>
@@ -88,27 +87,60 @@
 
 {% block scripts %}
 <script>
-let currentPage  = 1;
+const PER_PAGE = 100;
+let currentPage    = 1;
 let currentFilters = {};
-let hasMore = true;
+let hasMore        = true;
+let loadInProgress = false;
 
-// ---------- helpers ----------
+// ---------- utils ----------
+
+function debounce(fn, ms) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
 
 function isWinner(f) {
     const w = f.win;
     return w === 1 || w === '1' || w === 'Y' || w === 'W' || w === true;
 }
 
-function stocksLabel(fighters) {
-    const winners = fighters.filter(isWinner);
-    const losers  = fighters.filter(f => !isWinner(f));
-    const wr = winners[0]?.stocks_remaining;
-    const lr = losers[0]?.stocks_remaining;
-    if (wr != null && lr != null) return `${wr}-${lr}`;
+function resultLabel(fighters) {
+    // Match_Result is per-fighter stocks remaining; show "winner-loser" for 1v1
+    if (fighters.length === 2) {
+        const winner = fighters.find(isWinner);
+        const loser  = fighters.find(f => !isWinner(f));
+        const wr = winner?.match_result;
+        const lr = loser?.match_result;
+        if (wr != null && lr != null && wr !== '' && lr !== '') return `${wr}-${lr}`;
+    }
     return '';
 }
 
+function getFilters() {
+    return {
+        fighter:      document.getElementById('filterFighter').value.trim(),
+        season:       document.getElementById('filterSeason').value,
+        month:        document.getElementById('filterMonth').value,
+        fight_type:   document.getElementById('filterFightType').value,
+        location:     document.getElementById('filterLocation').value,
+        ppv:          document.getElementById('filterPPV').value,
+        championship: document.getElementById('filterChampionship').value,
+        brand:        document.getElementById('filterBrand').value,
+    };
+}
+
 // ---------- rendering ----------
+
+function chipHTML(f, sizeClass) {
+    const fn = fighterToFilename(f.name);
+    return `<span class="fight-fighter-chip">
+        <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
+             class="fight-portrait" onerror="this.style.display='none'">
+        <a href="/fighter/${encodeURIComponent(f.name)}" class="fight-fighter-name"
+           onclick="event.stopPropagation()">${f.name}</a>
+    </span>`;
+}
 
 function renderFight(fight) {
     const { fight_id, season, month, week, ppv, location, fight_type,
@@ -116,26 +148,15 @@ function renderFight(fight) {
 
     const winners = fighters.filter(isWinner);
     const losers  = fighters.filter(f => !isWinner(f));
-    const stocks  = stocksLabel(fighters);
-    const isBig   = fighters.length > 6; // rumbles etc.
-    const MAX_SHOWN = 4;
-
-    // --- collapsed participant section ---
-    function chipHTML(f) {
-        const fn = fighterToFilename(f.name);
-        return `<span class="fight-fighter-chip">
-            <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
-                 class="fight-portrait" onerror="this.style.display='none'">
-            <a href="/fighter/${encodeURIComponent(f.name)}" class="fight-fighter-name"
-               onclick="event.stopPropagation()">${f.name}</a>
-        </span>`;
-    }
+    const stocks  = resultLabel(fighters);
+    const isBig   = fighters.length > 6;
+    const MAX     = 4;
 
     function sideHTML(group, cssClass) {
-        const shown  = group.slice(0, MAX_SHOWN);
+        const shown  = group.slice(0, MAX);
         const hidden = group.length - shown.length;
         let html = `<div class="fight-side ${cssClass}">`;
-        html += shown.map(chipHTML).join('');
+        html += shown.map(f => chipHTML(f)).join('');
         if (hidden > 0) html += `<span class="fight-overflow-chip">+${hidden} more</span>`;
         html += '</div>';
         return html;
@@ -143,24 +164,21 @@ function renderFight(fight) {
 
     let participantsHTML;
     if (isBig) {
-        // For large fights just show winner + total count
-        const winnerChip = winners.length ? chipHTML(winners[0]) : '';
+        const winChip = winners.length ? chipHTML(winners[0]) : '';
         participantsHTML = `
-            <div class="fight-side fight-side-win">${winnerChip}</div>
+            <div class="fight-side fight-side-win">${winChip}</div>
             <div class="fight-vs-divider">·</div>
             <span class="fight-overflow-chip">${fighters.length}-person ${fight_type || 'match'}</span>`;
     } else {
         participantsHTML =
             sideHTML(winners, 'fight-side-win') +
-            (winners.length && losers.length
-                ? '<span class="fight-vs-divider">vs</span>' : '') +
+            (winners.length && losers.length ? '<span class="fight-vs-divider">vs</span>' : '') +
             sideHTML(losers, 'fight-side-loss');
     }
 
-    // --- collapsed row ---
     const metaHTML = `
         <div class="fight-meta-col">
-            ${season != null ? `<span class="fight-badge fight-badge-season">S${season}${week != null ? ` W${week}` : ''}</span>` : ''}
+            ${season != null ? `<span class="fight-badge fight-badge-season">S${season}${month != null ? ` M${month}` : ''}${week != null ? ` W${week}` : ''}</span>` : ''}
             ${fight_type   ? `<span class="fight-badge fight-badge-type">${fight_type}</span>` : ''}
             ${championship ? `<span class="fight-badge fight-badge-champ">🏆 ${championship}</span>` : ''}
             ${ppv          ? `<span class="fight-badge fight-badge-ppv">${ppv}</span>` : ''}
@@ -174,16 +192,17 @@ function renderFight(fight) {
             ${stocks     ? `<span class="fight-stocks-label">${stocks}</span>` : ''}
         </div>`;
 
-    // --- expanded detail ---
+    // Expanded detail
     function detailFighterHTML(f) {
         const fn  = fighterToFilename(f.name);
         const win = isWinner(f);
-        const badgeClass = win ? 'win' : 'loss';
-        const rowClass   = win ? 'is-winner' : 'is-loser';
-        let stocksInfo = '';
-        if (f.stocks_remaining != null) stocksInfo += `${f.stocks_remaining} stocks remaining`;
-        if (f.stocks_taken     != null) stocksInfo += (stocksInfo ? ' · ' : '') + `${f.stocks_taken} taken`;
-        return `<div class="fight-detail-fighter ${rowClass}">
+        const extras = [
+            f.match_result != null && f.match_result !== '' ? `${f.match_result} stocks` : '',
+            f.defending   ? 'Defending'  : '',
+            f.contender   ? '#1 Contender' : '',
+            f.seed        ? `Seed #${f.seed}` : '',
+        ].filter(Boolean).join(' · ');
+        return `<div class="fight-detail-fighter ${win ? 'is-winner' : 'is-loser'}">
             <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
                  class="fight-detail-portrait" onerror="this.style.display='none'">
             <div class="fight-detail-fighter-info">
@@ -191,8 +210,8 @@ function renderFight(fight) {
                    class="fight-detail-fighter-name"
                    onclick="event.stopPropagation()">${f.name}</a>
             </div>
-            <span class="fight-detail-result-badge ${badgeClass}">${win ? 'WIN' : 'LOSS'}</span>
-            ${stocksInfo ? `<span class="fight-detail-stocks">${stocksInfo}</span>` : ''}
+            <span class="fight-detail-result-badge ${win ? 'win' : 'loss'}">${win ? 'WIN' : 'LOSS'}</span>
+            ${extras ? `<span class="fight-detail-stocks">${extras}</span>` : ''}
         </div>`;
     }
 
@@ -202,12 +221,20 @@ function renderFight(fight) {
         week    != null ? `<div>Week <span>${week}</span></div>` : '',
         ppv     ? `<div>PPV <span>${ppv}</span></div>` : '',
         location? `<div>Location <span>${location}</span></div>` : '',
-        fight_type    ? `<div>Fight Type <span>${fight_type}</span></div>` : '',
-        championship  ? `<div>Championship <span>${championship}</span></div>` : '',
-        brand         ? `<div>Brand <span>${brand}</span></div>` : '',
+        fight_type   ? `<div>Fight Type <span>${fight_type}</span></div>` : '',
+        championship ? `<div>Championship <span>${championship}</span></div>` : '',
+        brand        ? `<div>Brand <span>${brand}</span></div>` : '',
     ].filter(Boolean).join('');
 
-    const detailHTML = `
+    const row = document.createElement('div');
+    row.className = 'fight-row';
+    row.innerHTML = `
+        <div class="fight-row-main">
+            ${metaHTML}
+            <div class="fight-participants-col">${participantsHTML}</div>
+            ${resultHTML}
+            <span class="fight-chevron">▼</span>
+        </div>
         <div class="fight-detail">
             <div class="fight-detail-grid">
                 <div class="fight-detail-info">${infoRows}</div>
@@ -216,18 +243,6 @@ function renderFight(fight) {
                 </div>
             </div>
         </div>`;
-
-    const row = document.createElement('div');
-    row.className = 'fight-row';
-    row.dataset.fightId = fight_id;
-    row.innerHTML = `
-        <div class="fight-row-main">
-            ${metaHTML}
-            <div class="fight-participants-col">${participantsHTML}</div>
-            ${resultHTML}
-            <span class="fight-chevron">▼</span>
-        </div>
-        ${detailHTML}`;
 
     row.querySelector('.fight-row-main').addEventListener('click', () => {
         row.classList.toggle('is-open');
@@ -245,83 +260,94 @@ function buildQuery(page) {
     return `/api/fights?${params}`;
 }
 
+function showLoading() {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    document.getElementById('fightList').style.display = 'none';
+    document.getElementById('loadMoreContainer').style.display = 'none';
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').style.display = 'none';
+    document.getElementById('fightList').style.display = 'flex';
+}
+
 function loadFights(reset = false) {
+    if (loadInProgress) return;
     if (reset) {
         currentPage = 1;
         hasMore     = true;
         document.getElementById('fightList').innerHTML = '';
     }
-
-    document.getElementById('loadingOverlay').style.display = 'flex';
-    document.getElementById('fightList').style.display = 'none';
-    document.getElementById('loadMoreContainer').style.display = 'none';
+    loadInProgress = true;
+    showLoading();
 
     fetch(buildQuery(currentPage))
         .then(r => r.json())
         .then(fights => {
-            document.getElementById('loadingOverlay').style.display = 'none';
+            hideLoading();
+            loadInProgress = false;
             const list = document.getElementById('fightList');
-            list.style.display = 'flex';
 
-            if (reset && fights.length === 0) {
-                list.innerHTML = '<div class="fight-empty">No fights found for these filters.</div>';
+            if (fights.error) {
+                list.innerHTML = `<div class="fight-empty">Error: ${fights.error}</div>`;
                 return;
             }
-            if (fights.length === 0 || fights.error) {
+
+            if (!Array.isArray(fights) || fights.length === 0) {
+                if (reset) list.innerHTML = '<div class="fight-empty">No fights found for these filters.</div>';
                 hasMore = false;
+                document.getElementById('loadMoreContainer').style.display = 'none';
                 return;
             }
 
             fights.forEach(f => list.appendChild(renderFight(f)));
-
-            hasMore = fights.length === 50; // matches per_page in db.py
+            hasMore = fights.length >= PER_PAGE;
             document.getElementById('loadMoreContainer').style.display = hasMore ? 'block' : 'none';
         })
         .catch(() => {
-            document.getElementById('loadingOverlay').innerHTML = '<p>Error loading fights.</p>';
+            hideLoading();
+            loadInProgress = false;
+            document.getElementById('fightList').innerHTML =
+                '<div class="fight-empty">Failed to load fights. Check your connection and try again.</div>';
         });
 }
 
 // ---------- filter wiring ----------
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('applyFilters').addEventListener('click', () => {
-        currentFilters = {
-            fighter:      document.getElementById('filterFighter').value.trim(),
-            season:       document.getElementById('filterSeason').value,
-            month:        document.getElementById('filterMonth').value,
-            fight_type:   document.getElementById('filterFightType').value,
-            location:     document.getElementById('filterLocation').value,
-            ppv:          document.getElementById('filterPPV').value,
-            championship: document.getElementById('filterChampionship').value,
-            brand:        document.getElementById('filterBrand').value,
-        };
-        loadFights(true);
+    const dropdownIds = ['filterSeason','filterMonth','filterFightType',
+                         'filterLocation','filterPPV','filterChampionship','filterBrand'];
+
+    // Dropdowns: reload instantly on change
+    dropdownIds.forEach(id => {
+        document.getElementById(id).addEventListener('change', () => {
+            currentFilters = getFilters();
+            loadFights(true);
+        });
     });
 
+    // Fighter text: debounce 350ms so it doesn't fire on every keystroke
+    const debouncedLoad = debounce(() => {
+        currentFilters = getFilters();
+        loadFights(true);
+    }, 350);
+    document.getElementById('filterFighter').addEventListener('input', debouncedLoad);
+
+    // Clear button
     document.getElementById('clearFilters').addEventListener('click', () => {
-        ['filterFighter','filterSeason','filterMonth','filterFightType',
-         'filterLocation','filterPPV','filterChampionship','filterBrand']
-            .forEach(id => {
-                const el = document.getElementById(id);
-                if (el.tagName === 'SELECT') el.selectedIndex = 0;
-                else el.value = '';
-            });
+        dropdownIds.forEach(id => { document.getElementById(id).selectedIndex = 0; });
+        document.getElementById('filterFighter').value = '';
         currentFilters = {};
         loadFights(true);
     });
 
+    // Load More
     document.getElementById('loadMoreBtn').addEventListener('click', () => {
         currentPage++;
         loadFights(false);
     });
 
-    // Allow pressing Enter in the fighter input
-    document.getElementById('filterFighter').addEventListener('keydown', e => {
-        if (e.key === 'Enter') document.getElementById('applyFilters').click();
-    });
-
-    // Initial load — most recent 50 fights
+    // Initial load
     loadFights(true);
 });
 </script>

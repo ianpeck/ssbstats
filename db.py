@@ -257,14 +257,14 @@ def get_season_summary(season):
     return {key: data for key, data in results}
 
 
-def get_fight_log(filters, page=1, per_page=50):
+def get_fight_log(filters, page=1, per_page=100):
     """Return paginated fight log rows grouped by Fight_ID.
 
-    filters dict keys (all optional, pass empty string to skip):
-        season, month, fight_type, location, ppv, championship, fighter, brand
-    Column names assumed in FightLog view:
-        Fight_ID, Fighter_Name, Season, Month, Week, PPV, Location_Name,
-        FightType, Championship_Name, Brand, Win, Stocks_Remaining, Stocks_Taken
+    Actual FightLog view columns:
+        Fight_ID, Result_ID, Fighter_Name, Decision, Match_Result, Seed,
+        DefendingIndicator, Location_Name, Brand_Name, PPV_Name,
+        Championship_Name, Description (fight type), Contender_Indicator,
+        Season, Month, Week
     """
     conditions = []
     params = []
@@ -272,12 +272,12 @@ def get_fight_log(filters, page=1, per_page=50):
     mapping = [
         ('season',       'Season'),
         ('month',        'Month'),
-        ('fight_type',   'FightType'),
+        ('fight_type',   'Description'),
         ('location',     'Location_Name'),
-        ('ppv',          'PPV'),
+        ('ppv',          'PPV_Name'),
         ('championship', 'Championship_Name'),
         ('fighter',      'Fighter_Name'),
-        ('brand',        'Brand'),
+        ('brand',        'Brand_Name'),
     ]
 
     for key, col in mapping:
@@ -289,7 +289,6 @@ def get_fight_log(filters, page=1, per_page=50):
     where  = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     offset = (page - 1) * per_page
 
-    # Paginate by distinct Fight_ID, then fetch all rows for those fights
     sql = f"""
         SELECT fl.*
         FROM FightLog fl
@@ -300,7 +299,7 @@ def get_fight_log(filters, page=1, per_page=50):
             LIMIT %s OFFSET %s
         ) ids ON fl.Fight_ID = ids.Fight_ID
         ORDER BY fl.Season DESC, fl.Month DESC, fl.Week DESC, fl.Fight_ID DESC,
-                 fl.Win DESC, fl.Fighter_Name
+                 fl.Decision DESC, fl.Fighter_Name
     """
     rows = select_view_dicts(sql, params + [per_page, offset])
 
@@ -315,19 +314,21 @@ def get_fight_log(filters, page=1, per_page=50):
                 'season':      row.get('Season'),
                 'month':       row.get('Month'),
                 'week':        row.get('Week'),
-                'ppv':         row.get('PPV'),
-                'location':    row.get('Location_Name') or row.get('Location'),
-                'fight_type':  row.get('FightType')     or row.get('Fight_Type'),
-                'championship':row.get('Championship_Name') or row.get('Championship'),
-                'brand':       row.get('Brand'),
+                'ppv':         row.get('PPV_Name'),
+                'location':    row.get('Location_Name'),
+                'fight_type':  row.get('Description'),
+                'championship':row.get('Championship_Name'),
+                'brand':       row.get('Brand_Name'),
                 'fighters':    [],
             }
             fight_order.append(fid)
         fights[fid]['fighters'].append({
-            'name':             row.get('Fighter_Name') or row.get('Fighter'),
-            'win':              row.get('Win'),
-            'stocks_remaining': row.get('Stocks_Remaining'),
-            'stocks_taken':     row.get('Stocks_Taken'),
+            'name':         row.get('Fighter_Name'),
+            'win':          row.get('Decision'),
+            'match_result': row.get('Match_Result'),
+            'seed':         row.get('Seed'),
+            'defending':    row.get('DefendingIndicator'),
+            'contender':    row.get('Contender_Indicator'),
         })
 
     return [fights[fid] for fid in fight_order]
