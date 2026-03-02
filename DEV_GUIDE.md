@@ -338,3 +338,39 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+---
+
+## Troubleshooting
+
+### How to diagnose a live site error
+
+If the live site returns a 500 Internal Server Error, the first thing to do is pull the logs:
+```bash
+cd C:\github\ssbstats
+eb logs
+```
+This downloads the application logs from the EC2 instance and prints them to the terminal. Look for a Python traceback — it will tell you exactly what crashed and why.
+
+### Known issues and fixes
+
+**`RuntimeError: 'cryptography' package is required`**
+
+Cause: PyMySQL's default behavior works with older MySQL authentication (`mysql_native_password`), but MySQL 8 creates new users with `caching_sha2_password` by default. PyMySQL needs the `cryptography` package installed to support this newer auth method.
+
+Fix: make sure `cryptography` is in `requirements.txt`, then redeploy:
+```bash
+eb deploy
+```
+
+**Roster page shows no fighter cards (locally)**
+
+Cause: The app caches the fighter list in memory on first startup. If the DB was unreachable when the server started (e.g., your IP wasn't allowed in the RDS security group), it cached an empty list `[]` — and it stays empty until you restart the server.
+
+Fix: make sure the DB is reachable first, then restart `python app.py`. The cache will populate correctly on the next startup.
+
+**Can't connect to DB locally (`timed out`)**
+
+Cause: Your home IP isn't in the RDS security group inbound rules. Home IPs can change.
+
+Fix: check your current IP (`whatismyip.com`), then update the MySQL/Aurora inbound rule in the RDS security group (`sg-481ca93a`) in the AWS Console.

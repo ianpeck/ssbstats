@@ -1,5 +1,7 @@
 # SSB Stats
 
+**Live site: [ssbstats.app](https://ssbstats.app)**
+
 A Flask web app for viewing Super Smash Bros head-to-head statistics from an AWS RDS MySQL database. Built as a web-based successor to the [smashbrosgui](https://github.com/ianpeck22/smashbrosgui) PyQt5 desktop app.
 
 ## Features
@@ -17,9 +19,12 @@ A Flask web app for viewing Super Smash Bros head-to-head statistics from an AWS
 ssbstats/
 ├── app.py                  # Flask app and routes
 ├── db.py                   # Database layer (parallel queries via ThreadPoolExecutor)
+├── fighters.yaml           # Fighter bios and metadata
 ├── requirements.txt        # Python dependencies
+├── Procfile                # Gunicorn start command for Elastic Beanstalk
 ├── secrets.env             # DB credentials (not committed)
 ├── secrets.env.example     # Credential template
+├── DEV_GUIDE.md            # Developer documentation
 ├── static/
 │   ├── css/style.css       # Dark glassmorphism theme
 │   ├── js/app.js           # Autocomplete, AJAX, animations
@@ -108,6 +113,10 @@ Visit **http://localhost:5000** in your browser.
 | `/graphs` | Interactive Charts |
 | `/fighter/<name>` | Fighter Profile (e.g. `/fighter/Mario`) |
 
+## Deployment
+
+The app is deployed on AWS Elastic Beanstalk (Python 3.11, t2.micro) with Cloudflare handling DNS and HTTPS. See [DEV_GUIDE.md](DEV_GUIDE.md) for a full architecture breakdown and deployment instructions.
+
 ## Database Access
 
-This app connects to a private AWS RDS instance. The code is publicly available but requires database credentials to function. Reach out to ianpeck22@gmail.com with your IP address to request access.
+This app connects to an AWS RDS MySQL instance. The code is publicly available but requires database credentials to run locally. Reach out to ianpeck22@gmail.com to request access.

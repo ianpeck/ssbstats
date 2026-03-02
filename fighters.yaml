@@ -8,12 +8,12 @@
 Banjo & Kazooie:
   nickname: null
   game: "Banjo-Kazooie (1998)"
-  bio: null
+  bio: "The bear-and-bird duo from Rare's beloved N64 platformer, inseparable in adventure and in battle."
 
 Bayonetta:
   nickname: "Umbra Witch"
   game: "Bayonetta (2009)"
-  bio: null
+  bio: "An amnesiac Umbra Witch who fights angels with guns strapped to her hands and heels."
 
 Bowser:
   nickname: "King of the Koopas"
@@ -23,354 +23,354 @@ Bowser:
 Bowser Jr.:
   nickname: "The Koopa Kid"
   game: "Super Mario Sunshine (2002)"
-  bio: null
+  bio: "Bowser's mischievous heir, fighting from inside his Koopa Clown Car to prove he belongs on the throne."
 
 Captain Falcon:
   nickname: "The Blue Falcon"
   game: "F-Zero (1990)"
-  bio: null
+  bio: "A mysterious F-Zero champion turned bounty hunter, whose Falcon Punch has become the stuff of legend."
 
 Chrom:
   nickname: "Prince of Ylisse"
   game: "Fire Emblem: Awakening (2012)"
-  bio: null
+  bio: "The steadfast prince of Ylisse and founder of the Shepherds, fighting for a peaceful future."
 
 Cloud:
   nickname: "The Soldier"
   game: "Final Fantasy VII (1997)"
-  bio: null
+  bio: "A brooding former SOLDIER turned mercenary, wielding an impossibly large Buster Sword against Shinra and beyond."
 
 Corrin:
   nickname: "Hero of the Sky"
   game: "Fire Emblem Fates (2015)"
-  bio: null
+  bio: "A royal torn between two kingdoms, wielding the power to transform into a fearsome dragon."
 
 Daisy:
   nickname: "The Princess of Sarasaland"
   game: "Super Mario Land (1989)"
-  bio: null
+  bio: "The spirited and athletic princess of Sarasaland, bringing fierce competitive energy to every fight."
 
 Dark Pit:
   nickname: "The Dark Icarus"
   game: "Kid Icarus: Uprising (2012)"
-  bio: null
+  bio: "Pit's dark mirror image, born from the Mirror of Truth and stubbornly walking his own path."
 
 Dark Samus:
   nickname: null
   game: "Metroid Prime (2002)"
-  bio: null
+  bio: "The phazon-corrupted doppelgänger of Samus, resurrected as a vessel for the essence of Metroid Prime."
 
 Diddy Kong:
   nickname: null
   game: "Donkey Kong Country (1994)"
-  bio: null
+  bio: "Donkey Kong's energetic nephew and loyal sidekick, equally dangerous with his peanut gun or in the air."
 
 DK:
   nickname: "King of Swing"
   game: "Donkey Kong (1981)"
-  bio: null
+  bio: "The mighty Kong patriarch rules his island with raw strength and an undying love of bananas."
 
 Dr. Mario:
   nickname: "The Doctor"
   game: "Dr. Mario (1990)"
-  bio: null
+  bio: "Mario's medical alter ego, swapping plumbing tools for Megavitamins and a lab coat."
 
 Duck Hunt:
   nickname: null
   game: "Duck Hunt (1984)"
-  bio: null
+  bio: "The iconic NES dog and duck duo, teaming up with retro weaponry and zany tricks to keep opponents guessing."
 
 Erdrick:
   nickname: "The Legendary Hero"
   game: "Dragon Quest III (1988)"
-  bio: null
+  bio: "The legendary Dragon Quest hero whose bloodline stretches across three generations of epic adventure."
 
 Falco:
   nickname: "The Ace Pilot"
   game: "Star Fox (1993)"
-  bio: null
+  bio: "Star Fox's hot-headed ace pilot who always flies his own way, and is always just a cut above the rest."
 
 Fox:
   nickname: "The Star Fox"
   game: "Star Fox (1993)"
-  bio: null
+  bio: "The fearless leader of the Star Fox team, defending the Lylat System one mission at a time."
 
 Ganondorf:
   nickname: "Demon King"
   game: "The Legend of Zelda (1986)"
-  bio: null
+  bio: "The Gerudo King of Evil, endlessly reincarnated in his obsessive pursuit of the Triforce of Power."
 
 Greninja:
   nickname: "The Ninja Pokémon"
   game: "Pokémon X & Y (2013)"
-  bio: null
+  bio: "A water-type ninja Pokémon whose lightning-fast strikes and tongue-whip are nearly impossible to track."
 
 Ice Climbers:
   nickname: null
   game: "Ice Climber (1984)"
-  bio: null
+  bio: "The parka-clad mountain climbing duo, hammering icy peaks — and opponents — in perfect sync."
 
 Ike:
   nickname: "The Radiant Hero"
   game: "Fire Emblem: Path of Radiance (2005)"
-  bio: null
+  bio: "A gruff mercenary from Tellius who fights not for glory or gold, but for his friends."
 
 Incineroar:
   nickname: "The Heel Pokémon"
   game: "Pokémon Sun & Moon (2016)"
-  bio: null
+  bio: "A professional wrestling heel Pokémon that plays to the crowd while brutalizing opponents with dark fire."
 
 Inkling:
   nickname: null
   game: "Splatoon (2015)"
-  bio: null
+  bio: "The squid-kid warrior from Inkopolis, bringing Turf War ink tactics to an entirely new kind of battlefield."
 
 Isabelle:
   nickname: "The Secretary"
   game: "Animal Crossing: New Leaf (2012)"
-  bio: null
+  bio: "Nook Inc.'s cheerful and devoted secretary, deceptively dangerous when defending her town and its residents."
 
 Jigglypuff:
   nickname: "The Balloon Pokémon"
   game: "Pokémon Red & Blue (1996)"
-  bio: null
+  bio: "The original balloon Pokémon, lulling foes to sleep before delivering the most devastating Rest in the league."
 
 Joker:
   nickname: "The Phantom Thief"
   game: "Persona 5 (2016)"
-  bio: null
+  bio: "The leader of the Phantom Thieves of Hearts, stealing corrupt desires — and stocks — with effortless style."
 
 Ken:
   nickname: "The Shoto"
   game: "Street Fighter II (1991)"
-  bio: null
+  bio: "Ryu's friendly rival and fellow Shotokan karateka, bringing his own fiery spin to the sacred art."
 
 King Dedede:
   nickname: "Ruler of Dream Land"
   game: "Kirby's Dream Land (1992)"
-  bio: null
+  bio: "The self-proclaimed king of Dream Land who, despite his rivalry with Kirby, usually means well."
 
 King K. Rool:
   nickname: "Ruler of the Kremlings"
   game: "Donkey Kong Country (1994)"
-  bio: null
+  bio: "The devious Kremling king who has tormented the Kong family with schemes and stolen banana hoards for decades."
 
 Kirby:
   nickname: "Star Warrior"
   game: "Kirby's Dream Land (1992)"
-  bio: null
+  bio: "The lovable pink puffball from Dream Land who inhales enemies whole and steals their abilities."
 
 Link:
   nickname: "Hero of Hyrule"
   game: "The Legend of Zelda: Breath of the Wild (2017)"
-  bio: null
+  bio: "The legendary hero of Hyrule, reincarnated across countless ages to wield the Master Sword against evil."
 
 Little Mac:
   nickname: null
   game: "Punch-Out!! (1984)"
-  bio: null
+  bio: "The scrappy Bronx boxer who punched his way from the streets all the way to the world championship."
 
 Lucario:
   nickname: "The Aura Pokémon"
   game: "Pokémon Diamond & Pearl (2006)"
-  bio: null
+  bio: "The Aura-wielding Pokémon who grows stronger the more punishment it absorbs in battle."
 
 Lucas:
   nickname: null
   game: "Mother 3 (2006)"
-  bio: null
+  bio: "A shy boy from Tazmily Village with powerful PSI abilities and a quiet courage that runs deep."
 
 Lucina:
   nickname: "The Lady of the Flame"
   game: "Fire Emblem: Awakening (2012)"
-  bio: null
+  bio: "A warrior from a doomed future who traveled back in time to prevent the catastrophe she lived through."
 
 Luigi:
   nickname: "The Green Plumber"
   game: "Mario Bros. (1983)"
-  bio: null
+  bio: "Mario's eternally overlooked younger brother, finally stepping out of the shadows with surprising power."
 
 Mario:
   nickname: "The Italian Plumber"
   game: "Donkey Kong (1981)"
-  bio: null
+  bio: "The world's most iconic plumber and a true jack-of-all-trades, having saved the Mushroom Kingdom more times than anyone can count."
 
 Marth:
   nickname: "The Prince of Altea"
   game: "Fire Emblem: Shadow Dragon (1990)"
-  bio: null
+  bio: "The noble prince of Altea whose elegant sword style laid the foundation for the entire Fire Emblem lineage."
 
 Mega Man:
   nickname: "Blue Bomber"
   game: "Mega Man (1987)"
-  bio: null
+  bio: "The heroic robot created by Dr. Light, fighting Dr. Wily one stolen Robot Master weapon at a time."
 
 Meta Knight:
   nickname: "The Masked Swordsman"
   game: "Kirby's Adventure (1993)"
-  bio: null
+  bio: "Kirby's enigmatic masked rival — a master swordsman with a strict code of honor and a shadowy past."
 
 Mewtwo:
   nickname: "The Genetic Pokémon"
   game: "Pokémon Red & Blue (1996)"
-  bio: null
+  bio: "The most powerful Pokémon ever created, a psychic clone born from years of cruel genetic experimentation."
 
 Mr. Game & Watch:
   nickname: null
   game: "Game & Watch (1980)"
-  bio: null
+  bio: "A two-dimensional silhouette from gaming's earliest era, abstract and unpredictable in every sense."
 
 Ness:
   nickname: "The PSI Prodigy"
   game: "EarthBound (1994)"
-  bio: null
+  bio: "A small-town kid armed with a baseball bat and psychic PSI powers, destined to save the universe."
 
 Olimar:
   nickname: "Pikmin Captain"
   game: "Pikmin (2001)"
-  bio: null
+  bio: "A stranded astronaut who discovered the Pikmin species and depends entirely on their loyalty to survive."
 
 Pac-Man:
   nickname: "The Power Pellet"
   game: "Pac-Man (1980)"
-  bio: null
+  bio: "The original arcade icon, chomping ghosts and power pellets since 1980 and still going strong."
 
 Palutena:
   nickname: "Goddess of Light"
   game: "Kid Icarus (1986)"
-  bio: null
+  bio: "The benevolent goddess of light and Pit's divine patron, whose serene appearance conceals immense power."
 
 Peach:
   nickname: "Princess of the Mushroom Kingdom"
   game: "Super Mario Bros. (1985)"
-  bio: null
+  bio: "The gracious princess of the Mushroom Kingdom, surprisingly dangerous when she swings her trusty frying pan."
 
 Pichu:
   nickname: null
   game: "Pokémon Gold & Silver (1999)"
-  bio: null
+  bio: "The tiny, unevolved form of Pikachu — shockingly fast, and occasionally shocking itself in the process."
 
 Pikachu:
   nickname: "The Electric Mouse"
   game: "Pokémon Red & Blue (1996)"
-  bio: null
+  bio: "The world's most beloved Pokémon and the face of a global phenomenon, crackling with electric determination."
 
 Piranha Plant:
   nickname: "The Carnivorous Plant"
   game: "Super Mario Bros. (1985)"
-  bio: null
+  bio: "The Mushroom Kingdom's most notorious pipe-dwelling hazard, somehow even more dangerous outside of it."
 
 Pit:
   nickname: "The Angelic Archer"
   game: "Kid Icarus (1986)"
-  bio: null
+  bio: "The cheerful captain of Palutena's army, soaring into battle with his sacred bow and boundless optimism."
 
 Pokemon Trainer:
   nickname: null
   game: "Pokémon Red & Blue (1996)"
-  bio: null
+  bio: "The iconic Pokémon protagonist commanding Squirtle, Ivysaur, and Charizard in seamless rotation."
 
 Richter Belmont:
   nickname: "The Vampire Killer"
   game: "Castlevania: Rondo of Blood (1993)"
-  bio: null
+  bio: "A successor to the legendary Belmont bloodline, wielding the sacred whip with righteous and relentless fury."
 
 Ridley:
   nickname: "The Cunning God of Death"
   game: "Metroid (1986)"
-  bio: null
+  bio: "Samus's most persistent and brutal nemesis, a space dragon who has hunted her since childhood."
 
 R.O.B.:
   nickname: "Robot Operating Buddy"
   game: "Robot Operating Buddy (1985)"
-  bio: null
+  bio: "The retro Nintendo peripheral brought to life as an unlikely fighter with surprising range and gyro-powered power."
 
 Robin:
   nickname: "The Avatar"
   game: "Fire Emblem: Awakening (2012)"
-  bio: null
+  bio: "The brilliant tactician of the Shepherds, combining magic tomes and a sword in equal and lethal measure."
 
 Rosalina & Luma:
   nickname: "The Cosmic Duo"
   game: "Super Mario Galaxy (2007)"
-  bio: null
+  bio: "The cosmic caretaker of the stars and her star-child companion, fighting in elegant and devastating harmony."
 
 Roy:
   nickname: "The Sword Prince"
   game: "Fire Emblem: The Binding Blade (2002)"
-  bio: null
+  bio: "The young and determined prince of Pherae, whose blazing blade burns brightest right at the tip."
 
 Ryu:
   nickname: "The World Warrior"
   game: "Street Fighter (1987)"
-  bio: null
+  bio: "A wandering martial artist endlessly seeking the perfect fight, master of the Hadouken and Shoryuken."
 
 Samus:
   nickname: "The Intergalactic Bounty Hunter"
   game: "Metroid (1986)"
-  bio: null
+  bio: "The galaxy's most feared bounty hunter, a lone warrior in power armor who hunts Space Pirates across the cosmos."
 
 Sheik:
   nickname: "The Sheikah Ninja"
   game: "The Legend of Zelda: Ocarina of Time (1998)"
-  bio: null
+  bio: "Zelda's mysterious Sheikah alter ego — a phantom ninja of blinding speed and deadly, silent precision."
 
 Shulk:
   nickname: "The Monado Wielder"
   game: "Xenoblade Chronicles (2010)"
-  bio: null
+  bio: "A young scientist from Colony 9 whose Monado blade grants him visions of the future in the heat of battle."
 
 Simon Belmont:
   nickname: "The Vampire Hunter"
   game: "Castlevania (1986)"
-  bio: null
+  bio: "The founding hero of the Belmont clan, driving back Dracula with a holy whip and unshakable faith."
 
 Snake:
   nickname: "The Legendary Soldier"
   game: "Metal Gear (1987)"
-  bio: null
+  bio: "A legendary black ops soldier who relies on cunning, stealth, and a seemingly endless supply of explosives."
 
 Sonic:
   nickname: "The Blue Blur"
   game: "Sonic the Hedgehog (1991)"
-  bio: null
+  bio: "The world's fastest hedgehog, streaking through battles at supersonic speed with his signature attitude intact."
 
 Toon Link:
   nickname: "The Hero of the Great Sea"
   game: "The Legend of Zelda: The Wind Waker (2002)"
-  bio: null
+  bio: "The cel-shaded young hero of the Great Sea, lighter and quicker than his Hylian counterpart."
 
 Villager:
   nickname: null
   game: "Animal Crossing (2001)"
-  bio: null
+  bio: "The peaceful Animal Crossing resident who brings axes, slingshots, and a disarming smile to the battlefield."
 
 Wario:
   nickname: "The Greedy Anti-Hero"
   game: "Wario Land (1994)"
-  bio: null
+  bio: "Mario's crude and greedy rival, fighting dirty with brute force, garlic breath, and zero shame."
 
 Wii Fit Trainer:
   nickname: "The Fitness Guru"
   game: "Wii Fit (2007)"
-  bio: null
+  bio: "The soothing fitness instructor whose yoga poses and balance board expertise turn out to be surprisingly lethal."
 
 Wolf:
   nickname: "The Space Pirate"
   game: "Star Fox 64 (1997)"
-  bio: null
+  bio: "Fox McCloud's ruthless rival, leading his own mercenary squad across the Lylat System with cold efficiency."
 
 Yoshi:
   nickname: "The Dinosaur Companion"
   game: "Super Mario Bros. (1985)"
-  bio: null
+  bio: "Mario's loyal dinosaur companion, swallowing enemies whole and launching eggs with surprisingly lethal accuracy."
 
 Young Link:
   nickname: "The Hero of Time"
   game: "The Legend of Zelda: Ocarina of Time (1998)"
-  bio: null
+  bio: "The child hero of Hyrule from the era of Ocarina of Time, scrappy and nimble where his older self is not."
 
 Zelda:
   nickname: "Princess of Hyrule"
   game: "The Legend of Zelda (1986)"
-  bio: null
+  bio: "The wise princess of Hyrule and keeper of the Triforce of Wisdom, wielding light magic to defend her kingdom."
