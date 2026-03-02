@@ -46,3 +46,4 @@
 - [X] **15. Entire Fight Log history in large separate collapsible bar on bottom of each Fighter Page**
   - would only have their matches
   - Big Green W if they won for easy viewing in Fighter PAge but red L on far left if lost or maybe something even nicer looking. That makes sense htough
+- **16. About page to explain what this data is and how the actual code works at a high level with tools used**
