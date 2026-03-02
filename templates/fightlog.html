@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Fight Log{% endblock %}
+
+{% block content %}
+<section class="seasons-section">
+    <h1 class="section-title">Fight Log</h1>
+    <p class="section-subtitle">Complete record of every fight</p>
+
+    <!-- Filter bar -->
+    <div class="fight-filters glass-card">
+        <div class="fight-filter-grid">
+            <div class="fight-filter-group">
+                <label>Fighter</label>
+                <input type="text" id="filterFighter" class="fight-filter-input"
+                       placeholder="Any fighter..." list="fighterDatalist">
+                <datalist id="fighterDatalist">
+                    {% for f in fighters %}<option value="{{ f }}">{% endfor %}
+                </datalist>
+            </div>
+            <div class="fight-filter-group">
+                <label>Season</label>
+                <select id="filterSeason" class="fight-filter-input">
+                    <option value="">All Seasons</option>
+                    {% for s in seasons %}<option value="{{ s }}">Season {{ s }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="fight-filter-group">
+                <label>Month</label>
+                <select id="filterMonth" class="fight-filter-input">
+                    <option value="">All Months</option>
+                    {% for m in range(1,13) %}<option value="{{ m }}">Month {{ m }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="fight-filter-group">
+                <label>Fight Type</label>
+                <select id="filterFightType" class="fight-filter-input">
+                    <option value="">All Types</option>
+                    {% for t in fight_types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="fight-filter-group">
+                <label>Location</label>
+                <select id="filterLocation" class="fight-filter-input">
+                    <option value="">All Locations</option>
+                    {% for l in locations %}<option value="{{ l }}">{{ l }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="fight-filter-group">
+                <label>PPV</label>
+                <select id="filterPPV" class="fight-filter-input">
+                    <option value="">All PPVs</option>
+                    {% for p in ppvs %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="fight-filter-group">
+                <label>Championship</label>
+                <select id="filterChampionship" class="fight-filter-input">
+                    <option value="">All Championships</option>
+                    {% for c in championships %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="fight-filter-group">
+                <label>Brand</label>
+                <select id="filterBrand" class="fight-filter-input">
+                    <option value="">All Brands</option>
+                    {% for b in brands %}<option value="{{ b }}">{{ b }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="fight-filter-actions">
+            <button class="btn-primary" id="applyFilters">Search</button>
+            <button class="btn-outline" id="clearFilters">Clear</button>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Loading fights...</p>
+    </div>
+
+    <div id="fightList" class="fight-list" style="display:none;"></div>
+
+    <div id="loadMoreContainer" style="text-align:center;margin-top:1rem;display:none;">
+        <button class="btn-outline" id="loadMoreBtn">Load More</button>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage  = 1;
+let currentFilters = {};
+let hasMore = true;
+
+// ---------- helpers ----------
+
+function isWinner(f) {
+    const w = f.win;
+    return w === 1 || w === '1' || w === 'Y' || w === 'W' || w === true;
+}
+
+function stocksLabel(fighters) {
+    const winners = fighters.filter(isWinner);
+    const losers  = fighters.filter(f => !isWinner(f));
+    const wr = winners[0]?.stocks_remaining;
+    const lr = losers[0]?.stocks_remaining;
+    if (wr != null && lr != null) return `${wr}-${lr}`;
+    return '';
+}
+
+// ---------- rendering ----------
+
+function renderFight(fight) {
+    const { fight_id, season, month, week, ppv, location, fight_type,
+            championship, brand, fighters } = fight;
+
+    const winners = fighters.filter(isWinner);
+    const losers  = fighters.filter(f => !isWinner(f));
+    const stocks  = stocksLabel(fighters);
+    const isBig   = fighters.length > 6; // rumbles etc.
+    const MAX_SHOWN = 4;
+
+    // --- collapsed participant section ---
+    function chipHTML(f) {
+        const fn = fighterToFilename(f.name);
+        return `<span class="fight-fighter-chip">
+            <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
+                 class="fight-portrait" onerror="this.style.display='none'">
+            <a href="/fighter/${encodeURIComponent(f.name)}" class="fight-fighter-name"
+               onclick="event.stopPropagation()">${f.name}</a>
+        </span>`;
+    }
+
+    function sideHTML(group, cssClass) {
+        const shown  = group.slice(0, MAX_SHOWN);
+        const hidden = group.length - shown.length;
+        let html = `<div class="fight-side ${cssClass}">`;
+        html += shown.map(chipHTML).join('');
+        if (hidden > 0) html += `<span class="fight-overflow-chip">+${hidden} more</span>`;
+        html += '</div>';
+        return html;
+    }
+
+    let participantsHTML;
+    if (isBig) {
+        // For large fights just show winner + total count
+        const winnerChip = winners.length ? chipHTML(winners[0]) : '';
+        participantsHTML = `
+            <div class="fight-side fight-side-win">${winnerChip}</div>
+            <div class="fight-vs-divider">·</div>
+            <span class="fight-overflow-chip">${fighters.length}-person ${fight_type || 'match'}</span>`;
+    } else {
+        participantsHTML =
+            sideHTML(winners, 'fight-side-win') +
+            (winners.length && losers.length
+                ? '<span class="fight-vs-divider">vs</span>' : '') +
+            sideHTML(losers, 'fight-side-loss');
+    }
+
+    // --- collapsed row ---
+    const metaHTML = `
+        <div class="fight-meta-col">
+            ${season != null ? `<span class="fight-badge fight-badge-season">S${season}${week != null ? ` W${week}` : ''}</span>` : ''}
+            ${fight_type   ? `<span class="fight-badge fight-badge-type">${fight_type}</span>` : ''}
+            ${championship ? `<span class="fight-badge fight-badge-champ">🏆 ${championship}</span>` : ''}
+            ${ppv          ? `<span class="fight-badge fight-badge-ppv">${ppv}</span>` : ''}
+            ${location     ? `<span class="fight-location-text">${location}</span>` : ''}
+        </div>`;
+
+    const winnerName = winners.map(f => f.name).join(' & ');
+    const resultHTML = `
+        <div class="fight-result-col">
+            ${winnerName ? `<span class="fight-winner-label">${winnerName} ✓</span>` : ''}
+            ${stocks     ? `<span class="fight-stocks-label">${stocks}</span>` : ''}
+        </div>`;
+
+    // --- expanded detail ---
+    function detailFighterHTML(f) {
+        const fn  = fighterToFilename(f.name);
+        const win = isWinner(f);
+        const badgeClass = win ? 'win' : 'loss';
+        const rowClass   = win ? 'is-winner' : 'is-loser';
+        let stocksInfo = '';
+        if (f.stocks_remaining != null) stocksInfo += `${f.stocks_remaining} stocks remaining`;
+        if (f.stocks_taken     != null) stocksInfo += (stocksInfo ? ' · ' : '') + `${f.stocks_taken} taken`;
+        return `<div class="fight-detail-fighter ${rowClass}">
+            <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
+                 class="fight-detail-portrait" onerror="this.style.display='none'">
+            <div class="fight-detail-fighter-info">
+                <a href="/fighter/${encodeURIComponent(f.name)}"
+                   class="fight-detail-fighter-name"
+                   onclick="event.stopPropagation()">${f.name}</a>
+            </div>
+            <span class="fight-detail-result-badge ${badgeClass}">${win ? 'WIN' : 'LOSS'}</span>
+            ${stocksInfo ? `<span class="fight-detail-stocks">${stocksInfo}</span>` : ''}
+        </div>`;
+    }
+
+    const infoRows = [
+        season  != null ? `<div>Season <span>${season}</span></div>` : '',
+        month   != null ? `<div>Month <span>${month}</span></div>` : '',
+        week    != null ? `<div>Week <span>${week}</span></div>` : '',
+        ppv     ? `<div>PPV <span>${ppv}</span></div>` : '',
+        location? `<div>Location <span>${location}</span></div>` : '',
+        fight_type    ? `<div>Fight Type <span>${fight_type}</span></div>` : '',
+        championship  ? `<div>Championship <span>${championship}</span></div>` : '',
+        brand         ? `<div>Brand <span>${brand}</span></div>` : '',
+    ].filter(Boolean).join('');
+
+    const detailHTML = `
+        <div class="fight-detail">
+            <div class="fight-detail-grid">
+                <div class="fight-detail-info">${infoRows}</div>
+                <div class="fight-detail-participants">
+                    ${fighters.map(detailFighterHTML).join('')}
+                </div>
+            </div>
+        </div>`;
+
+    const row = document.createElement('div');
+    row.className = 'fight-row';
+    row.dataset.fightId = fight_id;
+    row.innerHTML = `
+        <div class="fight-row-main">
+            ${metaHTML}
+            <div class="fight-participants-col">${participantsHTML}</div>
+            ${resultHTML}
+            <span class="fight-chevron">▼</span>
+        </div>
+        ${detailHTML}`;
+
+    row.querySelector('.fight-row-main').addEventListener('click', () => {
+        row.classList.toggle('is-open');
+    });
+
+    return row;
+}
+
+// ---------- data loading ----------
+
+function buildQuery(page) {
+    const params = new URLSearchParams();
+    Object.entries(currentFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
+    params.set('page', page);
+    return `/api/fights?${params}`;
+}
+
+function loadFights(reset = false) {
+    if (reset) {
+        currentPage = 1;
+        hasMore     = true;
+        document.getElementById('fightList').innerHTML = '';
+    }
+
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    document.getElementById('fightList').style.display = 'none';
+    document.getElementById('loadMoreContainer').style.display = 'none';
+
+    fetch(buildQuery(currentPage))
+        .then(r => r.json())
+        .then(fights => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            const list = document.getElementById('fightList');
+            list.style.display = 'flex';
+
+            if (reset && fights.length === 0) {
+                list.innerHTML = '<div class="fight-empty">No fights found for these filters.</div>';
+                return;
+            }
+            if (fights.length === 0 || fights.error) {
+                hasMore = false;
+                return;
+            }
+
+            fights.forEach(f => list.appendChild(renderFight(f)));
+
+            hasMore = fights.length === 50; // matches per_page in db.py
+            document.getElementById('loadMoreContainer').style.display = hasMore ? 'block' : 'none';
+        })
+        .catch(() => {
+            document.getElementById('loadingOverlay').innerHTML = '<p>Error loading fights.</p>';
+        });
+}
+
+// ---------- filter wiring ----------
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('applyFilters').addEventListener('click', () => {
+        currentFilters = {
+            fighter:      document.getElementById('filterFighter').value.trim(),
+            season:       document.getElementById('filterSeason').value,
+            month:        document.getElementById('filterMonth').value,
+            fight_type:   document.getElementById('filterFightType').value,
+            location:     document.getElementById('filterLocation').value,
+            ppv:          document.getElementById('filterPPV').value,
+            championship: document.getElementById('filterChampionship').value,
+            brand:        document.getElementById('filterBrand').value,
+        };
+        loadFights(true);
+    });
+
+    document.getElementById('clearFilters').addEventListener('click', () => {
+        ['filterFighter','filterSeason','filterMonth','filterFightType',
+         'filterLocation','filterPPV','filterChampionship','filterBrand']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                else el.value = '';
+            });
+        currentFilters = {};
+        loadFights(true);
+    });
+
+    document.getElementById('loadMoreBtn').addEventListener('click', () => {
+        currentPage++;
+        loadFights(false);
+    });
+
+    // Allow pressing Enter in the fighter input
+    document.getElementById('filterFighter').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('applyFilters').click();
+    });
+
+    // Initial load — most recent 50 fights
+    loadFights(true);
+});
+</script>
+{% endblock %}

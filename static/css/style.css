@@ -1412,3 +1412,674 @@ img {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--accent);
 }
+
+/* ============================================
+   SEASON ARCHIVE & POWER RANKINGS TOGGLE
+   ============================================ */
+
+.seasons-section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+/* Season pill selector (shared between Power Rankings and Season Archive) */
+.season-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.75rem;
+}
+
+.season-pill {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.season-pill:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+.season-pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+.season-heading {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    color: var(--accent-light);
+    margin-bottom: 1.25rem;
+    letter-spacing: 0.05em;
+}
+
+/* Two-column grid for events + awards */
+.season-top-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+@media (max-width: 700px) {
+    .season-top-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.season-card {
+    padding: 1.25rem 1.5rem;
+}
+
+.season-card-title {
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-light);
+    margin-bottom: 1rem;
+}
+
+.season-highlights {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.season-highlight-row {
+    display: grid;
+    grid-template-columns: 1.5rem 1fr 1fr;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.season-highlight-row:last-child {
+    border-bottom: none;
+}
+
+.highlight-icon {
+    font-size: 1rem;
+    text-align: center;
+}
+
+.highlight-label {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.highlight-value {
+    color: var(--text-primary);
+    font-weight: 500;
+    text-align: right;
+}
+
+.empty-note {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* Power Rankings subtitle */
+#rankingsSubtitle {
+    transition: opacity 0.2s ease;
+}
+
+/* ============================================
+   CHAMPIONSHIP TIMELINE
+   ============================================ */
+
+.champ-timeline-row {
+    margin-bottom: 1.5rem;
+}
+
+.champ-timeline-row:last-child {
+    margin-bottom: 0;
+}
+
+.champ-timeline-label {
+    font-size: 0.8rem;
+    font-family: var(--font-heading);
+    letter-spacing: 0.06em;
+    color: var(--accent-light);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.champ-timeline-bar {
+    display: flex;
+    align-items: stretch;
+    border-radius: var(--radius);
+    overflow: hidden;
+    min-height: 90px;
+    border: 1px solid var(--border);
+}
+
+.champ-segment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 0.4rem;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border);
+    text-align: center;
+    min-width: 70px;
+    gap: 0.2rem;
+    transition: background var(--transition);
+}
+
+.champ-segment:hover {
+    background: var(--bg-hover);
+}
+
+.champ-segment:last-child {
+    border-right: none;
+}
+
+.champ-segment-last {
+    background: rgba(96, 124, 255, 0.07);
+    border-left: 2px solid var(--accent);
+}
+
+.champ-segment-last:first-child {
+    border-left: none;
+}
+
+.champ-seg-portrait {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+    object-position: center top;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+    pointer-events: none;
+}
+
+.champ-seg-name {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90px;
+    text-decoration: none;
+}
+
+.champ-seg-name:hover {
+    color: var(--accent-light);
+    text-decoration: underline;
+}
+
+.champ-seg-months {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+/* Season divider inside all-time championship bar */
+.champ-season-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 0.65rem;
+    font-family: var(--font-heading);
+    color: var(--accent);
+    background: rgba(96, 124, 255, 0.12);
+    border-left: 1px solid var(--accent);
+    border-right: none;
+    padding: 0.4rem 0.2rem;
+    flex-shrink: 0;
+    width: 20px;
+    letter-spacing: 0.05em;
+}
+
+.champ-season-divider-first {
+    border-left: none;
+    border-right: 1px solid rgba(96, 124, 255, 0.3);
+    background: transparent;
+}
+
+/* Tag team segment: two fighters in one block */
+.champ-segment-tag {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.1rem 0.4rem;
+}
+
+.champ-tag-fighter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.champ-tag-amp {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    align-self: center;
+    flex-shrink: 0;
+}
+
+/* ============================================
+   SCROLLABLE CHAMPIONSHIP BARS (all-time tab)
+   ============================================ */
+
+.champ-scroll-wrapper {
+    position: relative;
+}
+
+/* Left-edge gradient fade — visible after scrolling away from start */
+.champ-scroll-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 6px;
+    width: 64px;
+    background: linear-gradient(to left, transparent, var(--bg-deep, #0a0a1a));
+    pointer-events: none;
+    border-radius: var(--radius) 0 0 var(--radius);
+    transition: opacity 0.25s;
+    opacity: 0;
+    z-index: 1;
+}
+
+.champ-scroll-wrapper.champ-scroll-has-left::before {
+    opacity: 1;
+}
+
+/* Right-edge gradient fade — hints there's more to scroll */
+.champ-scroll-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 6px; /* above scrollbar */
+    width: 64px;
+    background: linear-gradient(to right, transparent, var(--bg-deep, #0a0a1a));
+    pointer-events: none;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    transition: opacity 0.25s;
+    z-index: 1;
+}
+
+/* Hide the right fade once scrolled to the end */
+.champ-scroll-wrapper.champ-scroll-at-end::after {
+    opacity: 0;
+}
+
+.champ-scroll-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 6px;   /* room for the scrollbar */
+    /* Styled scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) rgba(255, 255, 255, 0.06);
+}
+
+.champ-scroll-container::-webkit-scrollbar       { height: 4px; }
+.champ-scroll-container::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.06); border-radius: 2px; }
+.champ-scroll-container::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+
+/* The bar itself must NOT shrink — let it be as wide as its content */
+.champ-scroll-container .champ-timeline-bar {
+    width: max-content;
+    min-width: 100%;
+}
+
+/* Bigger segments for the all-time championships page */
+.champ-all-time .champ-timeline-bar {
+    min-height: 120px;
+}
+
+.champ-all-time .champ-segment {
+    min-width: 100px;
+    padding: 0.8rem 0.5rem;
+}
+
+.champ-all-time .champ-seg-portrait {
+    width: 52px;
+    height: 52px;
+}
+
+.champ-all-time .champ-seg-name {
+    font-size: 0.72rem;
+}
+
+.champ-all-time .champ-season-divider {
+    width: 22px;
+    font-size: 0.7rem;
+}
+
+/* ============================================
+   FIGHT LOG PAGE
+   ============================================ */
+
+.fight-filters {
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.fight-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.fight-filter-group label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.fight-filter-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    padding: 0.45rem 0.7rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.fight-filter-input:focus {
+    border-color: var(--accent);
+}
+
+.fight-filter-input option {
+    background: #1a1a2e;
+    color: var(--text-primary);
+}
+
+.fight-filter-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Fight list container */
+.fight-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Single fight row */
+.fight-row {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.fight-row:hover {
+    border-color: rgba(96, 124, 255, 0.4);
+}
+
+.fight-row-main {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.fight-meta-col {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.fight-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+}
+
+.fight-badge-season  { background: rgba(96,124,255,0.2);  color: #8399ff; }
+.fight-badge-type    { background: rgba(96,124,255,0.1);  color: var(--text-secondary); border: 1px solid rgba(96,124,255,0.25); }
+.fight-badge-champ   { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.fight-badge-ppv     { background: rgba(167,139,250,0.15);color: #a78bfa; }
+
+.fight-location-text {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* Participants column */
+.fight-participants-col {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.fight-side {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.fight-fighter-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.fight-portrait {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.fight-fighter-name {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.fight-fighter-name:hover {
+    color: var(--accent);
+}
+
+.fight-side-win .fight-fighter-name {
+    font-weight: 600;
+}
+
+.fight-vs-divider {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    flex-shrink: 0;
+    padding: 0 0.2rem;
+}
+
+.fight-overflow-chip {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+    white-space: nowrap;
+}
+
+/* Result column */
+.fight-result-col {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+    min-width: 80px;
+}
+
+.fight-winner-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--success);
+    white-space: nowrap;
+}
+
+.fight-stocks-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Expand chevron */
+.fight-chevron {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.fight-row.is-open .fight-chevron {
+    transform: rotate(180deg);
+}
+
+/* Expanded detail panel */
+.fight-detail {
+    border-top: 1px solid var(--border-color);
+    padding: 1rem 1.25rem;
+    background: rgba(0, 0, 0, 0.2);
+    display: none;
+}
+
+.fight-row.is-open .fight-detail {
+    display: block;
+}
+
+.fight-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.fight-detail-info {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.fight-detail-info span { color: var(--text-primary); font-weight: 500; }
+
+.fight-detail-participants {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.fight-detail-fighter {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius-sm);
+}
+
+.fight-detail-fighter.is-winner {
+    background: rgba(74, 222, 128, 0.08);
+    border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.fight-detail-fighter.is-loser {
+    background: rgba(255, 255, 255, 0.03);
+    opacity: 0.75;
+}
+
+.fight-detail-portrait {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.fight-detail-fighter-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.fight-detail-fighter-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.fight-detail-fighter-name:hover { color: var(--accent); }
+
+.fight-detail-result-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+}
+
+.fight-detail-result-badge.win  { background: rgba(74,222,128,0.2); color: var(--success); }
+.fight-detail-result-badge.loss { background: rgba(248,113,113,0.15); color: var(--danger); }
+
+.fight-detail-stocks {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+/* Empty / error states */
+.fight-empty {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 900px) {
+    .fight-row-main {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    .fight-result-col {
+        align-items: flex-start;
+        min-width: 0;
+    }
+    .fight-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}

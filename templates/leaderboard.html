@@ -1,10 +1,15 @@
 {% extends "base.html" %}
-{% block title %}SSB Stats - Leaderboard{% endblock %}
+{% block title %}SSB Stats - Power Rankings{% endblock %}
 
 {% block content %}
 <section class="leaderboard-section">
     <h1 class="section-title">Power Rankings</h1>
-    <p class="section-subtitle">All fighters ranked by win rate</p>
+    <p class="section-subtitle" id="rankingsSubtitle">All-time rankings by win rate</p>
+
+    <!-- Season toggle pills -->
+    <div class="season-pills" id="seasonPills">
+        <button class="season-pill active" data-season="">All Time</button>
+    </div>
 
     <div class="leaderboard-search-wrapper">
         <input type="text" id="leaderboardSearch" class="search-input" placeholder="Search fighters...">
@@ -37,19 +42,57 @@
 <script>
 let leaderboardData = [];
 let currentSort = { key: 'win_pct', dir: 'desc' };
+let currentSeason = '';
 
-document.addEventListener('DOMContentLoaded', function() {
-    fetch('/api/leaderboard')
+function loadRankings(season) {
+    currentSeason = season;
+    const url = season ? `/api/leaderboard?season=${season}` : '/api/leaderboard';
+    const subtitle = season ? `Season ${season} rankings by win rate` : 'All-time rankings by win rate';
+    document.getElementById('rankingsSubtitle').textContent = subtitle;
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    document.getElementById('leaderboardWrapper').style.display = 'none';
+
+    fetch(url)
         .then(res => res.json())
         .then(data => {
             document.getElementById('loadingOverlay').style.display = 'none';
             document.getElementById('leaderboardWrapper').style.display = 'block';
             leaderboardData = data;
+            currentSort = { key: 'win_pct', dir: 'desc' };
+            document.querySelectorAll('.sortable').forEach(s => s.classList.remove('active', 'asc'));
+            document.querySelector('.sortable[data-sort="win_pct"]').classList.add('active');
             renderLeaderboard(data);
         })
-        .catch(err => {
-            document.getElementById('loadingOverlay').innerHTML = '<p>Error loading leaderboard</p>';
+        .catch(() => {
+            document.getElementById('loadingOverlay').innerHTML = '<p>Error loading rankings</p>';
         });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Load seasons and build pills
+    fetch('/api/seasons')
+        .then(r => r.json())
+        .then(seasons => {
+            const pillsEl = document.getElementById('seasonPills');
+            seasons.forEach(s => {
+                const btn = document.createElement('button');
+                btn.className = 'season-pill';
+                btn.dataset.season = s;
+                btn.textContent = `S${s}`;
+                pillsEl.appendChild(btn);
+            });
+            // Attach click to all pills
+            pillsEl.querySelectorAll('.season-pill').forEach(pill => {
+                pill.addEventListener('click', function() {
+                    pillsEl.querySelectorAll('.season-pill').forEach(p => p.classList.remove('active'));
+                    this.classList.add('active');
+                    loadRankings(this.dataset.season);
+                });
+            });
+        });
+
+    // Initial load
+    loadRankings('');
 
     // Search
     document.getElementById('leaderboardSearch').addEventListener('input', function() {

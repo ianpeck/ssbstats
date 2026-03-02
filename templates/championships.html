@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Championship History{% endblock %}
+
+{% block content %}
+<section class="seasons-section">
+    <h1 class="section-title">Championship History</h1>
+    <p class="section-subtitle">Full all-time reign history for every title</p>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Loading championship history...</p>
+    </div>
+
+    <div id="champContent" style="display:none;">
+        <div id="champHistoryContainer" class="champ-all-time"></div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/championships')
+        .then(r => r.json())
+        .then(rows => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('champContent').style.display = 'block';
+            renderHistory(rows);
+        })
+        .catch(() => {
+            document.getElementById('loadingOverlay').innerHTML = '<p>Error loading championship history.</p>';
+        });
+});
+
+// Each season is exactly 12 months. Split a reign that spans multiple seasons into
+// per-season sub-segments so dividers land at the correct proportional position.
+// Win month does NOT count (won at end of month → reign starts 1st of next month).
+// Loss month DOES count (lost at end of month → still owned it that month).
+// Same-month win+loss → 0 months held.
+// Season_Lost null → current champion, shown as "active".
+function splitReign(seasonWon, monthWon, seasonLost, monthLost) {
+    if (seasonLost == null) {
+        return [{ season: seasonWon, months: 0, isCurrent: true }];
+    }
+    const absStart = (seasonWon  - 1) * 12 + monthWon  + 1; // reign starts NEXT month
+    const absEnd   = (seasonLost - 1) * 12 + monthLost + 1; // loss month included (exclusive ptr)
+    if (absEnd <= absStart) return [{ season: seasonWon, months: 0 }];
+    const subs = [];
+    let pos = absStart;
+    while (pos < absEnd) {
+        const season    = Math.ceil(pos / 12);
+        const seasonEnd = season * 12;
+        const months    = Math.min(seasonEnd + 1, absEnd) - pos;
+        subs.push({ season, months });
+        pos = seasonEnd + 1;
+    }
+    return subs;
+}
+
+function renderHistory(rows) {
+    const container = document.getElementById('champHistoryContainer');
+
+    // Group by championship in arrival order
+    const byChamp = {};
+    const champOrder = [];
+    rows.forEach(row => {
+        const champ = row.Championship_Name || '?';
+        if (!byChamp[champ]) { byChamp[champ] = []; champOrder.push(champ); }
+        byChamp[champ].push(row);
+    });
+
+    champOrder.forEach(champName => {
+        const reigns = byChamp[champName];
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'champ-timeline-row';
+        wrapper.style.marginBottom = '2rem';
+
+        const label = document.createElement('div');
+        label.className = 'champ-timeline-label';
+        label.textContent = `🏆 ${champName}`;
+        wrapper.appendChild(label);
+
+        const bar = document.createElement('div');
+        bar.className = 'champ-timeline-bar';
+
+        // Step 1: group consecutive rows with same Season_Won+Month_Won+Season_Lost+Month_Lost as tag partners
+        // (data is from ChampionshipHistory — one row per individual reign per fighter)
+        const groups = [];
+        let i = 0;
+        while (i < reigns.length) {
+            const cur = reigns[i];
+            const partners = [cur];
+            let j = i + 1;
+            while (j < reigns.length &&
+                   reigns[j].Season_Won  === cur.Season_Won &&
+                   reigns[j].Month_Won   === cur.Month_Won  &&
+                   reigns[j].Season_Lost === cur.Season_Lost &&
+                   reigns[j].Month_Lost  === cur.Month_Lost) {
+                partners.push(reigns[j]);
+                j++;
+            }
+            groups.push({
+                seasonWon:  cur.Season_Won,
+                monthWon:   cur.Month_Won,
+                seasonLost: cur.Season_Lost,
+                monthLost:  cur.Month_Lost,
+                fighters:   partners.map(p => p.Fighter_Name || '?')
+            });
+            i = j;
+        }
+
+        // Step 2: split each group into per-season sub-segments, then flatten
+        const allSegs = [];
+        groups.forEach(g => {
+            splitReign(g.seasonWon, g.monthWon, g.seasonLost, g.monthLost).forEach(sub => {
+                allSegs.push({ season: sub.season, months: sub.months, isCurrent: sub.isCurrent, fighters: g.fighters });
+            });
+        });
+
+        // Step 3: render with season dividers inserted whenever the season changes
+        let lastSeason = null;
+        allSegs.forEach((seg, si) => {
+            const { season, months, isCurrent, fighters } = seg;
+            const isLast  = si === allSegs.length - 1;
+            const flexVal = isCurrent ? 3 : (months > 0 ? months : 0.4);
+            const monthLabel = isCurrent ? 'active' : (months > 0 ? `${months} mo.` : '<1 mo.');
+            const isTag = fighters.length > 1;
+
+            if (lastSeason !== null && season !== lastSeason) {
+                const divider = document.createElement('div');
+                divider.className = 'champ-season-divider';
+                divider.textContent = `S${season}`;
+                bar.appendChild(divider);
+            } else if (lastSeason === null) {
+                const divider = document.createElement('div');
+                divider.className = 'champ-season-divider champ-season-divider-first';
+                divider.textContent = `S${season}`;
+                bar.appendChild(divider);
+            }
+            lastSeason = season;
+
+            const segEl = document.createElement('div');
+            segEl.className = 'champ-segment' +
+                (isLast ? ' champ-segment-last' : '') +
+                (isTag  ? ' champ-segment-tag'  : '');
+            segEl.style.flex = flexVal;
+
+            const fighterHTML = fighters.map(name => {
+                const filename = fighterToFilename(name);
+                return `<span class="champ-tag-fighter">` +
+                    `<img src="/static/assets/fighters/${filename}.png" alt="${name}" class="champ-seg-portrait" onerror="this.style.display='none'">` +
+                    `<a href="/fighter/${encodeURIComponent(name)}" class="champ-seg-name fighter-link">${name}</a>` +
+                    `</span>`;
+            }).join('<span class="champ-tag-amp">&amp;</span>');
+
+            segEl.innerHTML = fighterHTML + `<span class="champ-seg-months">${monthLabel}</span>`;
+            bar.appendChild(segEl);
+        });
+
+        // Wrap bar in scroll container so long timelines don't get squished
+        const scrollWrap = document.createElement('div');
+        scrollWrap.className = 'champ-scroll-wrapper';
+        const scrollEl = document.createElement('div');
+        scrollEl.className = 'champ-scroll-container';
+        scrollEl.appendChild(bar);
+        scrollWrap.appendChild(scrollEl);
+        wrapper.appendChild(scrollWrap);
+        container.appendChild(wrapper);
+    });
+
+    initEdgeScroll();
+}
+
+function initEdgeScroll() {
+    document.querySelectorAll('.champ-scroll-container').forEach(el => {
+        const wrap = el.parentElement;
+        let animFrame = null;
+
+        function updateFades() {
+            const atEnd   = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+            const hasLeft = el.scrollLeft > 4;
+            wrap.classList.toggle('champ-scroll-at-end',   atEnd);
+            wrap.classList.toggle('champ-scroll-has-left', hasLeft);
+        }
+
+        el.addEventListener('scroll', updateFades);
+        updateFades();
+
+        function step(speed) {
+            el.scrollLeft += speed;
+            updateFades();
+            animFrame = requestAnimationFrame(() => step(speed));
+        }
+
+        el.addEventListener('mousemove', e => {
+            cancelAnimationFrame(animFrame);
+            animFrame = null;
+
+            const rect = el.getBoundingClientRect();
+            const x    = e.clientX - rect.left;
+            const w    = rect.width;
+            const zone = Math.min(w * 0.15, 80); // 15% up to 80px
+
+            if (x < zone && el.scrollLeft > 0) {
+                el.style.cursor = 'w-resize';
+                animFrame = requestAnimationFrame(() => step(-10 * (1 - x / zone)));
+            } else if (x > w - zone && el.scrollLeft + el.clientWidth < el.scrollWidth - 2) {
+                el.style.cursor = 'e-resize';
+                animFrame = requestAnimationFrame(() => step(10 * ((x - (w - zone)) / zone)));
+            } else {
+                el.style.cursor = '';
+            }
+        });
+
+        el.addEventListener('mouseleave', () => {
+            cancelAnimationFrame(animFrame);
+            animFrame = null;
+            el.style.cursor = '';
+        });
+    });
+}
+</script>
+{% endblock %}

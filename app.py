@@ -109,10 +109,42 @@ def leaderboard():
     return render_template('leaderboard.html')
 
 
+@app.route('/seasons')
+def seasons():
+    all_seasons = db.get_all_seasons()
+    return render_template('seasons.html', seasons=all_seasons)
+
+
+@app.route('/championships')
+def championships():
+    return render_template('championships.html')
+
+
 @app.route('/graphs')
 def graphs():
     fighters = get_autocomplete_data('fighters')
     return render_template('graphs.html', fighters=fighters)
+
+
+@app.route('/fights')
+def fights():
+    seasons = db.get_all_seasons()
+    fight_types  = get_autocomplete_data('fight_types')
+    locations    = get_autocomplete_data('locations')
+    ppvs         = get_autocomplete_data('ppvs')
+    championships = get_autocomplete_data('championships')
+    brands       = get_autocomplete_data('brands')
+    fighters     = get_autocomplete_data('fighters')
+    return render_template(
+        'fightlog.html',
+        seasons=seasons,
+        fight_types=fight_types,
+        locations=locations,
+        ppvs=ppvs,
+        championships=championships,
+        brands=brands,
+        fighters=fighters,
+    )
 
 
 # ---------- API Routes ----------
@@ -252,12 +284,91 @@ def api_fighter(name):
 
 @app.route('/api/leaderboard')
 def api_leaderboard():
+    season = request.args.get('season', '')
     try:
-        fighters = db.get_leaderboard()
+        if season:
+            fighters = db.get_leaderboard_by_season(int(season))
+        else:
+            fighters = db.get_leaderboard()
         current_champs = db.get_current_champions()
         for f in fighters:
             f['titles'] = [normalize_champ_name(t) for t in current_champs.get(f['name'], [])]
         return jsonify(fighters)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/seasons')
+def api_seasons():
+    try:
+        return jsonify(db.get_all_seasons())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/season/<int:season_id>')
+def api_season(season_id):
+    try:
+        data = db.get_season_summary(season_id)
+        # Sort rankings by win_pct descending
+        rankings = data.get('rankings', [])
+        def parse_pct(row):
+            val = next((row[k] for k in row if 'pct' in k.lower() or '%' in k.lower() or 'percentage' in k.lower()), 0)
+            try:
+                return float(str(val).replace('%', ''))
+            except (ValueError, TypeError):
+                return 0.0
+        rankings.sort(key=parse_pct, reverse=True)
+        data['rankings'] = rankings
+        # Normalize championship names in holistic and champ_history
+        for row in data.get('holistic', []):
+            if row.get('Titles_Held'):
+                row['Titles_Held'] = normalize_champ_name(row['Titles_Held'])
+        for row in data.get('champ_history', []):
+            if row.get('Championship_Name'):
+                row['Championship_Name'] = normalize_champ_name(row['Championship_Name'])
+        # Serialize all values
+        serialized = {}
+        for key, rows in data.items():
+            serialized[key] = [{k: _serialize(v) for k, v in row.items()} for row in rows]
+        return jsonify(serialized)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/fights')
+def api_fights():
+    try:
+        filters = {
+            'season':       request.args.get('season', ''),
+            'month':        request.args.get('month', ''),
+            'fight_type':   request.args.get('fight_type', ''),
+            'location':     request.args.get('location', ''),
+            'ppv':          request.args.get('ppv', ''),
+            'championship': request.args.get('championship', ''),
+            'fighter':      request.args.get('fighter', ''),
+            'brand':        request.args.get('brand', ''),
+        }
+        page = int(request.args.get('page', 1))
+        fights_data = db.get_fight_log(filters, page=page)
+        result = []
+        for f in fights_data:
+            rf = {k: _serialize(v) for k, v in f.items() if k != 'fighters'}
+            rf['fighters'] = [{k: _serialize(v) for k, v in fi.items()} for fi in f['fighters']]
+            result.append(rf)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/championships')
+def api_championships():
+    try:
+        rows = db.get_championship_history_alltime()
+        for row in rows:
+            if row.get('Championship_Name'):
+                row['Championship_Name'] = normalize_champ_name(row['Championship_Name'])
+        return jsonify([{k: _serialize(v) for k, v in row.items()} for row in rows])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

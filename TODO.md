@@ -1,11 +1,12 @@
 # TODO
 
-- [ ] **1. Power Rankings additions** -- GUI that inserts data to DB as ETL
+- [ ] **1. Power Rankings additions**
+  - Change Leaderboard to say Pwoer Rankings
   - Total Championships months (major and minor in that year)
-  - Should be changeable to just season power rankings too
+  - Should be changeable to just season power rankings too like some tab
 - [X] **2. Loading Glitches** -- navigating between pages esepcially to home does not work right away
   - all photos should load not just when scrolling
-- [ ] **3. Deploy and buy domain**
+- [X] **3. Deploy and buy domain**
   - ssbstats.app most likely
 - [X] **4. Possibly a better theme everywhere**
   - current is fine just could look even sleeker with more black and less dark blue
@@ -25,6 +26,5 @@
   - separate stat to show matches that are not Tag Team but also have 3 or 4 fighters and fight type is 3 stock (triple threat and fatal 4 way matches)
 - [ ] **9. Head to Head uses ML model to predictively guess who would win based on certain data points with a confidence %**
 - [ ] **10 Graphs in general needs work**
-- [ ] **11. Possible login page to prevent copyright issues**
-- [ ] **12. Season Tab Creation**
+- [ ] **11. Season Tab Creation**
   - Season tab that shows each season and best fighters, fighters of the years, holisticview incorporated

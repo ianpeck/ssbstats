@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Season Archive{% endblock %}
+
+{% block content %}
+<section class="seasons-section">
+    <h1 class="section-title">Season Archive</h1>
+    <p class="section-subtitle">Full breakdown of every season</p>
+
+    <div class="season-pills" id="seasonPills">
+        {% for s in seasons %}
+        <button class="season-pill {% if loop.first %}active{% endif %}" data-season="{{ s }}">S{{ s }}</button>
+        {% endfor %}
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Loading season data...</p>
+    </div>
+
+    <div id="seasonContent" style="display:none;">
+        <h2 class="season-heading" id="seasonHeading"></h2>
+
+        <div class="season-top-grid">
+            <!-- Notable Events -->
+            <div class="glass-card season-card">
+                <h3 class="season-card-title">Notable Events</h3>
+                <div id="eventsList" class="season-highlights"></div>
+            </div>
+
+            <!-- Awards -->
+            <div class="glass-card season-card">
+                <h3 class="season-card-title">Awards</h3>
+                <div id="awardsList" class="season-highlights"></div>
+            </div>
+        </div>
+
+        <!-- Championship Timeline -->
+        <div class="glass-card" style="margin-top: 1.25rem;" id="champTimelineCard">
+            <div class="season-card-title" style="padding: 1.25rem 1.5rem 0.75rem;">Championship Reigns</div>
+            <div id="champTimeline" style="padding: 0 1.5rem 1.25rem;"></div>
+        </div>
+
+        <!-- Season Rankings -->
+        <div class="glass-card" style="margin-top: 1.25rem;">
+            <div class="season-card-title" style="padding: 1.25rem 1.5rem 0.5rem;">Season Rankings</div>
+            <table class="leaderboard-table" id="seasonRankingsTable">
+                <thead>
+                    <tr>
+                        <th class="rank-col">#</th>
+                        <th class="fighter-col">Fighter</th>
+                        <th>Wins</th>
+                        <th>Losses</th>
+                        <th>Win %</th>
+                    </tr>
+                </thead>
+                <tbody id="seasonRankingsTbody"></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const eventMap = [
+    { col: 'Won_Tournament',        label: 'Tournament Winner',   icon: '🎯' },
+    { col: 'Won_Royal_Rumble',      label: 'Royal Rumble Winner', icon: '💥' },
+    { col: 'Won_Scramble',          label: 'Scramble Winner',     icon: '🎲' },
+    { col: 'Won_Smash_Series',      label: 'Smash Series Winner', icon: '⚡' },
+    { col: 'Won_Money_In_The_Bank', label: 'Money in the Bank',   icon: '💰' },
+    { col: 'Won_Smash_Bros',        label: 'Smash Bros Winner',   icon: '🎮' },
+    { col: 'Successful_Cash_In',    label: 'Cash-In',             icon: '💸' },
+    { col: 'Defended_Cash_In',      label: 'Defended Cash-In',    icon: '🛡️' },
+];
+
+let currentSeason = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const pills = document.querySelectorAll('.season-pill');
+    pills.forEach(pill => {
+        pill.addEventListener('click', function() {
+            pills.forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            loadSeason(parseInt(this.dataset.season));
+        });
+    });
+
+    if (pills.length) {
+        loadSeason(parseInt(pills[0].dataset.season));
+    }
+});
+
+function loadSeason(season) {
+    if (currentSeason === season) return;
+    currentSeason = season;
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    document.getElementById('seasonContent').style.display = 'none';
+
+    fetch(`/api/season/${season}`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('seasonContent').style.display = 'block';
+            document.getElementById('seasonHeading').textContent = `Season ${season}`;
+            renderEvents(data.holistic || []);
+            renderAwards(data.awards || []);
+            renderChampTimeline(data.champ_history || []);
+            renderRankings(data.rankings || []);
+        })
+        .catch(() => {
+            document.getElementById('loadingOverlay').innerHTML = '<p>Error loading season data.</p>';
+        });
+}
+
+function renderEvents(rows) {
+    const container = document.getElementById('eventsList');
+    container.innerHTML = '';
+
+    // Collect winners per event type
+    const events = {};
+    rows.forEach(row => {
+        eventMap.forEach(({ col, label, icon }) => {
+            const val = row[col];
+            if (val == null) return;
+            if (!events[col]) events[col] = { label, icon, entries: [] };
+            const isFlag = (String(val).toUpperCase() === 'Y');
+            const entry = isFlag ? row.Fighter_Name : `${row.Fighter_Name} (${val})`;
+            if (!events[col].entries.includes(entry)) {
+                events[col].entries.push(entry);
+            }
+        });
+    });
+
+    if (!Object.keys(events).length) {
+        container.innerHTML = '<p class="empty-note">No event data for this season.</p>';
+        return;
+    }
+
+    eventMap.forEach(({ col, label, icon }) => {
+        if (!events[col]) return;
+        const { entries } = events[col];
+        const div = document.createElement('div');
+        div.className = 'season-highlight-row';
+        div.innerHTML = `
+            <span class="highlight-icon">${icon}</span>
+            <span class="highlight-label">${label}</span>
+            <span class="highlight-value">${entries.join(', ')}</span>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function renderAwards(rows) {
+    const container = document.getElementById('awardsList');
+    container.innerHTML = '';
+
+    if (!rows.length) {
+        container.innerHTML = '<p class="empty-note">No awards data for this season.</p>';
+        return;
+    }
+
+    // Group by award name so tag team winners are joined with &
+    const grouped = {};
+    const order = [];
+    rows.forEach(row => {
+        const award = row.Award_Name;
+        if (!grouped[award]) { grouped[award] = []; order.push(award); }
+        grouped[award].push(row.Fighter_Name);
+    });
+
+    order.forEach(award => {
+        const fighters = grouped[award];
+        const fighterLinks = fighters
+            .map(f => `<a href="/fighter/${encodeURIComponent(f)}" class="fighter-link">${f}</a>`)
+            .join(' &amp; ');
+        const div = document.createElement('div');
+        div.className = 'season-highlight-row';
+        div.innerHTML = `
+            <span class="highlight-icon">🏅</span>
+            <span class="highlight-label">${award}</span>
+            <span class="highlight-value">${fighterLinks}</span>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function renderChampTimeline(rows) {
+    const container = document.getElementById('champTimeline');
+    const card = document.getElementById('champTimelineCard');
+    container.innerHTML = '';
+
+    if (!rows.length) {
+        card.style.display = 'none';
+        return;
+    }
+    card.style.display = 'block';
+
+    // Group by championship, preserving row order (already chronological from DB)
+    const byChamp = {};
+    const champOrder = [];
+    rows.forEach(row => {
+        const champ = row.Championship_Name || '?';
+        if (!byChamp[champ]) {
+            byChamp[champ] = [];
+            champOrder.push(champ);
+        }
+        byChamp[champ].push(row);
+    });
+
+    champOrder.forEach(champName => {
+        const reigns = byChamp[champName];
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'champ-timeline-row';
+
+        const label = document.createElement('div');
+        label.className = 'champ-timeline-label';
+        label.textContent = `🏆 ${champName}`;
+        wrapper.appendChild(label);
+
+        const bar = document.createElement('div');
+        bar.className = 'champ-timeline-bar';
+
+        // Group consecutive rows with same Season_Won+Month_Won+Season_Lost+Month_Lost as tag-team partners.
+        // Win month does NOT count (reign starts 1st of next month).
+        // Loss month DOES count. Same-month win+loss = 0 months.
+        // Season_Lost null = current champion → show as "active".
+        const groups = [];
+        let ri = 0;
+        while (ri < reigns.length) {
+            const cur = reigns[ri];
+            const partners = [cur];
+            let rj = ri + 1;
+            while (rj < reigns.length &&
+                   reigns[rj].Season_Won  === cur.Season_Won &&
+                   reigns[rj].Month_Won   === cur.Month_Won  &&
+                   reigns[rj].Season_Lost === cur.Season_Lost &&
+                   reigns[rj].Month_Lost  === cur.Month_Lost) {
+                partners.push(reigns[rj]);
+                rj++;
+            }
+            const isCurrent = cur.Season_Lost == null;
+            let displayMonths = 0;
+            if (!isCurrent) {
+                // absStart: reign starts NEXT month after win; absEnd: loss month inclusive (exclusive ptr)
+                const absStart = (cur.Season_Won  - 1) * 12 + (cur.Month_Won  || 1) + 1;
+                const absEnd   = (cur.Season_Lost - 1) * 12 + (cur.Month_Lost || 1) + 1;
+                // Clamp to this season's range
+                const seaStart = (currentSeason - 1) * 12 + 1;
+                const seaEnd   = currentSeason * 12 + 1; // exclusive
+                displayMonths  = Math.max(0, Math.min(absEnd, seaEnd) - Math.max(absStart, seaStart));
+            }
+            groups.push({
+                months:    displayMonths,
+                isCurrent: isCurrent,
+                fighters:  partners.map(p => p.Fighter_Name || '?')
+            });
+            ri = rj;
+        }
+
+        groups.forEach((group, gi) => {
+            const { months, isCurrent, fighters } = group;
+            const isLast = gi === groups.length - 1;
+            const flexVal = isCurrent ? 3 : (months > 0 ? months : 0.4);
+            const monthLabel = isCurrent ? 'active' : (months > 0 ? `${months} mo.` : '<1 mo.');
+            const isTag = fighters.length > 1;
+
+            const seg = document.createElement('div');
+            seg.className = 'champ-segment' +
+                (isLast ? ' champ-segment-last' : '') +
+                (isTag ? ' champ-segment-tag' : '');
+            seg.style.flex = flexVal;
+
+            const fighterHTML = fighters.map(name => {
+                const filename = fighterToFilename(name);
+                return `<span class="champ-tag-fighter">` +
+                    `<img src="/static/assets/fighters/${filename}.png" alt="${name}" class="champ-seg-portrait" onerror="this.style.display='none'">` +
+                    `<a href="/fighter/${encodeURIComponent(name)}" class="champ-seg-name fighter-link">${name}</a>` +
+                    `</span>`;
+            }).join('<span class="champ-tag-amp">&amp;</span>');
+
+            seg.innerHTML = fighterHTML + `<span class="champ-seg-months">${monthLabel}</span>`;
+            bar.appendChild(seg);
+        });
+
+        wrapper.appendChild(bar);
+        container.appendChild(wrapper);
+    });
+}
+
+function renderRankings(rows) {
+    const tbody = document.getElementById('seasonRankingsTbody');
+    tbody.innerHTML = '';
+
+    rows.forEach((row, i) => {
+        // Column names from CareerStatsBySeason view - try multiple cases
+        const name = row.Fighter_Name || row.fighter_name || '';
+        const wins = row.Wins || row.wins || 0;
+        const losses = row.Losses || row.losses || 0;
+        const pct = row['Win Percentage'] || row.Win_Pct || row.win_pct || row['W/L %'] || '0.00%';
+        const pctVal = parseFloat(String(pct).replace('%', '')) || 0;
+        const pctClass = pctVal >= 60 ? 'pct-high' : pctVal < 40 ? 'pct-low' : 'pct-mid';
+        const rankClass = i < 3 ? `rank-${i + 1}` : '';
+        const filename = fighterToFilename(name);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="rank-cell ${rankClass}">${i + 1}</td>
+            <td class="fighter-cell">
+                <img src="/static/assets/fighters/${filename}.png" alt="${name}" class="leaderboard-portrait"
+                     onerror="this.style.display='none'">
+                <div class="fighter-cell-inner">
+                    <a href="/fighter/${encodeURIComponent(name)}" class="fighter-link">${name}</a>
+                </div>
+            </td>
+            <td class="stat-cell">${wins}</td>
+            <td class="stat-cell">${losses}</td>
+            <td class="stat-cell ${pctClass}">${pct}</td>
+        `;
+        tr.style.opacity = '0';
+        tr.style.transform = 'translateY(8px)';
+        tbody.appendChild(tr);
+        setTimeout(() => {
+            tr.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            tr.style.opacity = '1';
+            tr.style.transform = 'translateY(0)';
+        }, i * 20);
+    });
+}
+</script>
+{% endblock %}

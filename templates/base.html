@@ -21,7 +21,10 @@
             <div class="nav-links">
                 <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Roster</a>
                 <a href="/head2head" class="nav-link {% if request.path == '/head2head' %}active{% endif %}">Head to Head</a>
-                <a href="/leaderboard" class="nav-link {% if request.path == '/leaderboard' %}active{% endif %}">Leaderboard</a>
+                <a href="/leaderboard" class="nav-link {% if request.path == '/leaderboard' %}active{% endif %}">Power Rankings</a>
+                <a href="/seasons" class="nav-link {% if request.path.startswith('/seasons') %}active{% endif %}">Seasons</a>
+                <a href="/championships" class="nav-link {% if request.path == '/championships' %}active{% endif %}">Championships</a>
+                <a href="/fights" class="nav-link {% if request.path.startswith('/fights') %}active{% endif %}">Fight Log</a>
                 <a href="/graphs" class="nav-link {% if request.path == '/graphs' %}active{% endif %}">Graphs</a>
             </div>
             <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">

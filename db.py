@@ -205,6 +205,148 @@ def get_leaderboard():
     return fighters
 
 
+# ---------- Seasons ----------
+
+def get_all_seasons():
+    """Get all distinct seasons in ascending order."""
+    return select_list("SELECT DISTINCT Season FROM CareerStatsBySeason ORDER BY Season", 0)
+
+
+def get_leaderboard_by_season(season):
+    """Get all fighters with stats for a specific season, sorted by win rate."""
+    rows = select_view_row(
+        "SELECT * FROM CareerStatsBySeason WHERE Season = %s ORDER BY Fighter_Name",
+        (season,)
+    )
+    fighters = []
+    for row in rows:
+        fighters.append({
+            'name': row[0],
+            'wins': row[2] if len(row) > 2 else 0,
+            'losses': row[3] if len(row) > 3 else 0,
+            'win_pct': row[4] if len(row) > 4 else '0.00%',
+        })
+    def parse_pct(pct):
+        try:
+            return float(str(pct).replace('%', ''))
+        except (ValueError, TypeError):
+            return 0.0
+    fighters.sort(key=lambda f: parse_pct(f['win_pct']), reverse=True)
+    return fighters
+
+
+def get_season_summary(season):
+    """Get full season summary: rankings, awards, holistic accolades."""
+    queries = {
+        'rankings':     ("SELECT * FROM CareerStatsBySeason WHERE Season = %s", (season,)),
+        'awards':       ("SELECT ah.Fighter_Name, a.Award_Name FROM AwardHistory ah JOIN Award a ON ah.Award_ID = a.Award_ID WHERE ah.Season_ID = %s ORDER BY a.Award_Name", (season,)),
+        'holistic':     ("SELECT * FROM holistic_view WHERE Season = %s", (season,)),
+        'champ_history':("SELECT * FROM ChampionshipHistory WHERE Season_Won <= %s AND (Season_Lost IS NULL OR Season_Lost >= %s) ORDER BY Championship_Name, Season_Won, Month_Won", (season, season)),
+    }
+
+    def run_query(key_query):
+        key, (query, params) = key_query
+        try:
+            return key, select_view_dicts(query, params)
+        except Exception:
+            return key, []
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        results = list(pool.map(run_query, queries.items()))
+
+    return {key: data for key, data in results}
+
+
+def get_fight_log(filters, page=1, per_page=50):
+    """Return paginated fight log rows grouped by Fight_ID.
+
+    filters dict keys (all optional, pass empty string to skip):
+        season, month, fight_type, location, ppv, championship, fighter, brand
+    Column names assumed in FightLog view:
+        Fight_ID, Fighter_Name, Season, Month, Week, PPV, Location_Name,
+        FightType, Championship_Name, Brand, Win, Stocks_Remaining, Stocks_Taken
+    """
+    conditions = []
+    params = []
+
+    mapping = [
+        ('season',       'Season'),
+        ('month',        'Month'),
+        ('fight_type',   'FightType'),
+        ('location',     'Location_Name'),
+        ('ppv',          'PPV'),
+        ('championship', 'Championship_Name'),
+        ('fighter',      'Fighter_Name'),
+        ('brand',        'Brand'),
+    ]
+
+    for key, col in mapping:
+        val = filters.get(key, '')
+        if val:
+            conditions.append(f"{col} = %s")
+            params.append(val)
+
+    where  = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    offset = (page - 1) * per_page
+
+    # Paginate by distinct Fight_ID, then fetch all rows for those fights
+    sql = f"""
+        SELECT fl.*
+        FROM FightLog fl
+        INNER JOIN (
+            SELECT DISTINCT Fight_ID
+            FROM FightLog {where}
+            ORDER BY Season DESC, Month DESC, Week DESC, Fight_ID DESC
+            LIMIT %s OFFSET %s
+        ) ids ON fl.Fight_ID = ids.Fight_ID
+        ORDER BY fl.Season DESC, fl.Month DESC, fl.Week DESC, fl.Fight_ID DESC,
+                 fl.Win DESC, fl.Fighter_Name
+    """
+    rows = select_view_dicts(sql, params + [per_page, offset])
+
+    # Group by Fight_ID preserving order
+    fights = {}
+    fight_order = []
+    for row in rows:
+        fid = row.get('Fight_ID')
+        if fid not in fights:
+            fights[fid] = {
+                'fight_id':    fid,
+                'season':      row.get('Season'),
+                'month':       row.get('Month'),
+                'week':        row.get('Week'),
+                'ppv':         row.get('PPV'),
+                'location':    row.get('Location_Name') or row.get('Location'),
+                'fight_type':  row.get('FightType')     or row.get('Fight_Type'),
+                'championship':row.get('Championship_Name') or row.get('Championship'),
+                'brand':       row.get('Brand'),
+                'fighters':    [],
+            }
+            fight_order.append(fid)
+        fights[fid]['fighters'].append({
+            'name':             row.get('Fighter_Name') or row.get('Fighter'),
+            'win':              row.get('Win'),
+            'stocks_remaining': row.get('Stocks_Remaining'),
+            'stocks_taken':     row.get('Stocks_Taken'),
+        })
+
+    return [fights[fid] for fid in fight_order]
+
+
+def get_championship_history_alltime():
+    """Full championship history across all seasons, ordered chronologically."""
+    return select_view_dicts(
+        "SELECT * FROM ChampionshipHistory ORDER BY Championship_Name, Season_Won, Month_Won"
+    )
+
+
+def get_championship_history_by_season_alltime():
+    """Championship history split by season for proportional timeline rendering."""
+    return select_view_dicts(
+        "SELECT * FROM ChampionshipHistoryBySeason ORDER BY Championship_Name, Season, Month_Won, Fighter_Name"
+    )
+
+
 # ---------- Head-to-Head (parallel, same as DatabaseWorker) ----------
 
 def get_h2h_data(fighter1, fighter2, filters):
