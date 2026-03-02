@@ -4,18 +4,17 @@ from dotenv import load_dotenv
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
-dotenv_path = Path('secrets.env')
-load_dotenv(dotenv_path=dotenv_path)
-
-endpoint = os.getenv('awsendpoint')
-port = 3306
-user = os.environ.get('awsuser')
-password = os.environ.get('awspassword')
-dbname = os.environ.get('awsdb')
+load_dotenv(dotenv_path=Path('secrets.env'))
 
 
 def get_connection():
-    return pymysql.connect(host=endpoint, database=dbname, user=user, port=port, password=password)
+    return pymysql.connect(
+        host=os.getenv('awsendpoint'),
+        database=os.getenv('awsdb'),
+        user=os.getenv('awsuser'),
+        password=os.getenv('awspassword'),
+        port=3306,
+    )
 
 
 # ---------- Core query helpers (from smashbrosgui/sql.py) ----------

@@ -289,7 +289,7 @@ function buildChampBadges(rows) {
         const months = row.total_months != null ? Math.round(parseFloat(row.total_months)) : 0;
         const badge = document.createElement('div');
         badge.className = 'accolade-badge champ-badge';
-        const reignStr = reigns > 1 ? `${reigns}x ` : '';
+        const reignStr = reigns >= 1 ? `${reigns}x ` : '';
         const monthStr = months > 0 ? ` &mdash; ${months} mo.` : '';
         badge.innerHTML = `<span class="badge-icon">🏆</span><span class="badge-text">${reignStr}${champ} Champion${monthStr}</span>`;
         container.appendChild(badge);

@@ -1,9 +1,11 @@
 secrets.env
 __pycache__/
 *.pyc
+*.pyo
 .venv/
+.env
 *.egg-info/
 dist/
 build/
-.env
-.elasticbeanstalk/
+.elasticbeanstalk/*.cfg.yml
+.elasticbeanstalk/logs/
