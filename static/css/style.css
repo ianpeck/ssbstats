@@ -2251,3 +2251,166 @@ img {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================
+   ABOUT PAGE
+   ============================================ */
+
+.about-section {
+    max-width: 860px;
+}
+
+.about-block {
+    padding: 2rem 2.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.about-heading {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--accent-light);
+    letter-spacing: 0.5px;
+    margin: 0 0 1.1rem 0;
+}
+
+.about-subheading {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.3px;
+    margin: 1.5rem 0 0.6rem 0;
+}
+
+.about-block p {
+    color: var(--text-secondary);
+    line-height: 1.75;
+    margin: 0 0 0.9rem 0;
+    font-size: 0.95rem;
+}
+
+.about-block p:last-child { margin-bottom: 0; }
+
+.about-block strong { color: var(--text-primary); font-weight: 600; }
+
+/* Schema table */
+.about-schema {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0 1.25rem;
+    border-left: 2px solid rgba(96, 124, 255, 0.3);
+    padding-left: 1.25rem;
+}
+
+.schema-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+}
+
+.schema-table {
+    font-family: var(--font-heading);
+    font-size: 0.82rem;
+    color: var(--accent-light);
+    white-space: nowrap;
+    min-width: 130px;
+}
+
+.schema-desc {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+/* Architecture diagram */
+.about-arch-diagram {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0 1.75rem;
+    justify-content: center;
+}
+
+.arch-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    background: rgba(96, 124, 255, 0.07);
+    border: 1px solid rgba(96, 124, 255, 0.2);
+    border-radius: 10px;
+    padding: 0.85rem 1.1rem;
+    min-width: 120px;
+    text-align: center;
+}
+
+.arch-icon {
+    font-size: 1.5rem;
+}
+
+.arch-label {
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.arch-sub {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+.arch-arrow {
+    font-size: 1.25rem;
+    color: rgba(96, 124, 255, 0.5);
+    flex-shrink: 0;
+}
+
+/* Tech stack grid */
+.about-stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+}
+
+.stack-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.65rem 0.85rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.stack-name {
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent-light);
+}
+
+.stack-role {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 600px) {
+    .about-arch-diagram {
+        flex-direction: column;
+    }
+    .arch-arrow {
+        transform: rotate(90deg);
+    }
+    .about-block {
+        padding: 1.25rem 1rem;
+    }
+    .schema-item {
+        flex-direction: column;
+        gap: 0.1rem;
+    }
+}

@@ -134,6 +134,11 @@ def graphs():
     return render_template('graphs.html', fighters=fighters)
 
 
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+
 @app.route('/fights')
 def fights():
     seasons = db.get_all_seasons()
