@@ -254,11 +254,25 @@ The database is named `SmashBros`. Key objects the app queries:
 - **Security groups**: Firewall rules — EB instance (`sg-0f447c2a0680e3daf`) is allowed into the RDS default group on port 3306
 
 ### How to deploy a code change
+
+**Git is not connected to deployment.** The live site is updated by running `eb deploy` manually — it has nothing to do with git commits or pushes. You can commit to git and deploy to live completely independently.
+
+The full workflow:
 ```bash
-# From C:\github\ssbstats, with .venv active:
+# 1. Make your changes in VS Code
+# 2. Test locally first:
+cd C:\github\ssbstats
+.venv\Scripts\activate
+python app.py
+# visit http://localhost:5000 to verify
+
+# 3. When happy, push to live:
 eb deploy
 ```
-This zips your code (respecting `.ebignore`), uploads to S3, and deploys to the EC2 instance. Takes ~60 seconds.
+
+`eb deploy` zips your current files on disk (respecting `.ebignore`), uploads the zip to S3, and deploys it to the EC2 instance. Takes ~60 seconds. The live site at ssbstats.app updates automatically when it's done.
+
+Note: the EB CLI (`eb`) lives at `C:\Users\lemur\.pyenv\pyenv-win\versions\3.13.1\Scripts\eb.exe` — it only works from within the `C:\github\ssbstats` directory since that's where `.elasticbeanstalk\config.yml` is.
 
 ### Environment variables (secrets)
 Credentials are NOT in the code. Locally, they're read from `secrets.env`. On EB, they're set as environment variables:
