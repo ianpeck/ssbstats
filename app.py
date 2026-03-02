@@ -4,9 +4,17 @@ from decimal import Decimal
 import db
 import os
 import re
+import time
 import yaml
 
 app = Flask(__name__)
+
+# Cache-bust static assets on every deploy (timestamp set at startup)
+_STATIC_VERSION = str(int(time.time()))
+
+@app.context_processor
+def inject_static_version():
+    return {'static_v': _STATIC_VERSION}
 
 # Cache autocomplete lists at startup (they don't change often)
 _autocomplete_cache = {}
