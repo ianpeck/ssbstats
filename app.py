@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, jsonify
+from concurrent.futures import ThreadPoolExecutor
+from decimal import Decimal
 import db
 import os
 import re
@@ -139,10 +141,25 @@ def api_head2head():
         return jsonify({'error': str(e)}), 500
 
 
+def _serialize(val):
+    """Convert DB values to JSON-safe types."""
+    if isinstance(val, Decimal):
+        return float(val)
+    if hasattr(val, 'isoformat'):
+        return val.isoformat()
+    return val
+
+
 @app.route('/api/fighter/<name>')
 def api_fighter(name):
     try:
-        stats = db.get_fighter_career_stats(name)
+        # Run career stats and accolades queries in parallel
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            career_future = pool.submit(db.get_fighter_career_stats, name)
+            accolades_future = pool.submit(db.get_fighter_accolades, name)
+            stats = career_future.result()
+            accolades_raw = accolades_future.result()
+
         # Format for JSON
         result = {'name': name, 'image': fighter_to_filename(name) + '.png'}
 
@@ -187,6 +204,12 @@ def api_fighter(name):
         result['defending_title'] = []
         for row in stats.get('defending_title', []):
             result['defending_title'].append({'wins': row[-3] if len(row) >= 3 else 0, 'losses': row[-2] if len(row) >= 2 else 0, 'win_pct': str(row[-1]) if len(row) >= 1 else '0.00%'})
+
+        # Accolades — dicts with real column names so JS can display dynamically
+        result['accolades'] = {
+            key: [{k: _serialize(v) for k, v in row.items()} for row in rows]
+            for key, rows in accolades_raw.items()
+        }
 
         return jsonify(result)
     except Exception as e:

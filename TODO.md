@@ -15,13 +15,11 @@
   - include video game ther are from too which would be cool
   - nickname too?
 - [ ] **7. Fighter Page Improvement**
-  - When uncollpasing it should only uncollapse one of them not the other ones in same row, leave the air as empty background not box
-  - maybe a graph alongside stats by season
   - add i.e. 2 time brawl champion etc with total months held (ChampionshipHistoryBySeason view)
-  - add Award counts would be cool
-  - add streaks from longestwinstreaks and longestlosingstreaks into fighter
-  - Championship stats also broken down by which championship on top of all
-  - holisticview to show fighters accoldaes by season
+  - add Award counts would be cool (Award table and AwardHistory table JOINed on Award_ID should show winners of the award). This would be added to the fighter page in like an accolades section
+  - add streaks from longestwinstreaks view and longestlosingstreaks view into fighter page
+  - Championship stats also broken down by which championship on top of all champonship matches (champfightstatsbychampionship view)
+  - holisticview to show fighters accoldaes by season (have this as a separte section as well)
 - [ ] **8. Head to Head supporting more than 2 fighters, toggle to add more fighters (tag team or tripe threat)**
   - ensure h2h stats do not count losses against each other if they are in a triple threat and they both lose to the thrid guy
   - separate stat to show matches that are not Tag Team but also have 3 or 4 fighters and fight type is 3 stock (triple threat and fatal 4 way matches)

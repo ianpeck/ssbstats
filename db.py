@@ -72,6 +72,18 @@ def select_view_row(query, params=None):
         conn.close()
 
 
+def select_view_dicts(query, params=None):
+    """Like select_view_row but returns list of dicts with column names."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(query, params) if params else cur.execute(query)
+        cols = [d[0] for d in cur.description] if cur.description else []
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 # ---------- Autocomplete data ----------
 
 def get_all_fighters():
@@ -129,6 +141,34 @@ def get_fighter_career_stats(name):
         stats[key] = data
 
     return stats
+
+
+# ---------- Fighter accolades (new views) ----------
+
+def get_fighter_accolades(name):
+    """Run all accolade-related queries in parallel."""
+    queries = {
+        'champ_reigns':   ("SELECT Championship_Name, COUNT(*) as reign_count, SUM(months_held) as total_months FROM ChampionshipHistory WHERE Fighter_Name = %s GROUP BY Championship_Name ORDER BY Championship_Name", (name,)),
+        'awards':         ("SELECT ah.Season_ID, a.Award_Name FROM AwardHistory ah JOIN Award a ON ah.Award_ID = a.Award_ID WHERE ah.Fighter_Name = %s ORDER BY ah.Season_ID DESC", (name,)),
+        'win_streaks':    ("SELECT * FROM longestwinstreaks WHERE Fighter_Name = %s", (name,)),
+        'loss_streaks':   ("SELECT * FROM longestlosingstreaks WHERE Fighter_Name = %s", (name,)),
+        'active_win':     ("SELECT Win_Streak FROM allwinstreaks WHERE Fighter_Name = %s AND Active_Win_Streak = 'Active'", (name,)),
+        'active_loss':    ("SELECT Losing_Streak FROM alllosingsteaks WHERE Fighter_Name = %s AND Active_Losing_Streak = 'Active'", (name,)),
+        'champ_by_champ': ("SELECT * FROM champfightstatsbychampionship WHERE Fighter_Name = %s", (name,)),
+        'holistic':       ("SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season", (name,)),
+    }
+
+    def run_query(key_query):
+        key, (query, params) = key_query
+        try:
+            return key, select_view_dicts(query, params)
+        except Exception:
+            return key, []
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(run_query, queries.items()))
+
+    return {key: data for key, data in results}
 
 
 # ---------- Leaderboard ----------

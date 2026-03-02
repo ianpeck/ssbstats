@@ -21,6 +21,9 @@
             {% if blurb.get('bio') %}
             <p class="fighter-bio">{{ blurb.bio }}</p>
             {% endif %}
+            <div id="activeStreakRow" style="display:none;" class="active-streak-row">
+                <div id="activeStreakBadge"></div>
+            </div>
             <div class="fighter-stat-cards" id="statCards">
                 <div class="stat-card glass-card">
                     <div class="stat-card-value" id="totalWins">--</div>
@@ -34,6 +37,14 @@
                     <div class="stat-card-value" id="winPct">--</div>
                     <div class="stat-card-label">Win Rate</div>
                 </div>
+                <div class="stat-card-subtle streak-win-card">
+                    <div class="subtle-value" id="winStreakVal">--</div>
+                    <div class="subtle-label">Longest Win Streak</div>
+                </div>
+                <div class="stat-card-subtle streak-loss-card">
+                    <div class="subtle-value" id="lossStreakVal">--</div>
+                    <div class="subtle-label">Longest Losing Streak</div>
+                </div>
             </div>
         </div>
     </div>
@@ -42,6 +53,15 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
         <p>Loading fighter stats...</p>
+    </div>
+
+    <!-- Accolades -->
+    <div class="accolades-section" id="accoladesSection" style="display: none;">
+        <div class="accolades-inner">
+            <div class="accolades-group" id="champBadges"></div>
+            <div class="accolades-group" id="eventBadges"></div>
+            <div class="accolades-group" id="awardBadges"></div>
+        </div>
     </div>
 
     <!-- Stats Breakdown -->
@@ -132,21 +152,23 @@
             </div>
         </div>
 
-        <!-- Championship -->
+        <!-- Championship Stats by Title -->
         <div class="stats-table-wrapper glass-card collapsible-card">
             <button class="collapsible-header" aria-expanded="false">
-                <span class="table-title">Championship Stats</span>
+                <span class="table-title">Championship Stats by Title</span>
                 <span class="chevron">&#8963;</span>
             </button>
             <div class="collapsible-body">
             <div class="collapsible-body-inner">
                 <table class="stats-table">
-                    <thead><tr><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                    <tbody id="champTbody"><tr><td colspan="3" class="empty-row">No data</td></tr></tbody>
+                    <thead><tr><th>Championship</th><th>Wins</th><th>Losses</th><th>Win %</th></tr></thead>
+                    <tbody id="champByChampTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
                 </table>
             </div>
             </div>
         </div>
+
+
 
     </div>
 </section>
@@ -175,7 +197,22 @@ document.addEventListener('DOMContentLoaded', function() {
             fillTable('fightTypeTbody', data.by_fight_type, ['type', 'wins', 'losses', 'win_pct']);
             fillTable('brandTbody', data.by_brand, ['brand', 'wins', 'losses', 'win_pct']);
             fillTable('ppvTbody', data.by_ppv, ['ppv', 'wins', 'losses', 'win_pct']);
-            fillTable('champTbody', data.championship, ['wins', 'losses', 'win_pct']);
+
+            const acc = data.accolades || {};
+
+            // --- Accolades section ---
+            buildChampBadges(acc.champ_reigns || []);
+            buildEventBadges(acc.holistic || []);
+            buildAwardBadges(acc.awards || []);
+            if ((acc.champ_reigns || []).length > 0 || (acc.awards || []).length > 0 || (acc.holistic || []).length > 0) {
+                document.getElementById('accoladesSection').style.display = 'block';
+            }
+
+            // --- Championship Stats by Title ---
+            fillTable('champByChampTbody', acc.champ_by_champ || [], ['Championship_Name', 'Wins', 'Losses', 'Win Percentage']);
+
+            // --- Streaks ---
+            buildStreaks(acc.win_streaks || [], acc.loss_streaks || [], acc.active_win || [], acc.active_loss || []);
 
             // Enable transitions now that data is rendered
             document.querySelectorAll('.collapsible-body').forEach(body => {
@@ -227,6 +264,143 @@ document.addEventListener('DOMContentLoaded', function() {
             : '<span class="collapse-all-icon">&#8627;</span> Expand All';
     }
 });
+
+// Build championship reign badges — cols: Championship_Name, reign_count, total_months
+function buildChampBadges(rows) {
+    if (!rows.length) return;
+    const container = document.getElementById('champBadges');
+    rows.forEach(row => {
+        const champ = row.Championship_Name || '?';
+        const reigns = parseInt(row.reign_count) || 1;
+        const months = row.total_months != null ? Math.round(parseFloat(row.total_months)) : 0;
+        const badge = document.createElement('div');
+        badge.className = 'accolade-badge champ-badge';
+        const reignStr = reigns > 1 ? `${reigns}x ` : '';
+        const monthStr = months > 0 ? ` &mdash; ${months} mo.` : '';
+        badge.innerHTML = `<span class="badge-icon">🏆</span><span class="badge-text">${reignStr}${champ} Champion${monthStr}</span>`;
+        container.appendChild(badge);
+    });
+}
+
+// Build event accolade badges from holistic_view — groups by event+championship, lists seasons
+function buildEventBadges(rows) {
+    if (!rows.length) return;
+    const container = document.getElementById('eventBadges');
+
+    const accoladeMap = [
+        { col: 'Won_Tournament',        label: 'Tournament Winner',   icon: '🎯' },
+        { col: 'Won_Royal_Rumble',      label: 'Royal Rumble Winner', icon: '💥' },
+        { col: 'Won_Scramble',          label: 'Scramble Winner',     icon: '🎲' },
+        { col: 'Won_Smash_Series',      label: 'Smash Series Winner', icon: '⚡' },
+        { col: 'Won_Money_In_The_Bank', label: 'Money in the Bank',   icon: '💰' },
+        { col: 'Won_Smash_Bros',        label: 'Smash Bros Winner',   icon: '🎮' },
+        { col: 'Successful_Cash_In',    label: 'Successful Cash-In',  icon: '💸' },
+        { col: 'Defended_Cash_In',      label: 'Defended Cash-In',    icon: '🛡️' },
+    ];
+
+    // Group by col+value, collect seasons in order
+    const groups = {};
+    rows.forEach(row => {
+        accoladeMap.forEach(({ col, label, icon }) => {
+            const val = row[col];
+            if (val == null) return;
+            const champ = String(val);
+            const key = `${col}|${champ}`;
+            if (!groups[key]) groups[key] = { label, icon, champ, seasons: [] };
+            groups[key].seasons.push(row.Season);
+        });
+    });
+
+    // Render in accoladeMap order so layout is consistent
+    accoladeMap.forEach(({ col }) => {
+        Object.entries(groups).filter(([k]) => k.startsWith(col + '|')).forEach(([, info]) => {
+            const { label, icon, champ, seasons } = info;
+            const count = seasons.length;
+            const seasonStr = seasons.map(s => `S${s}`).join(', ');
+            const badge = document.createElement('div');
+            badge.className = 'accolade-badge event-badge';
+            const countStr = count > 1 ? `${count}x ` : '';
+            // If value is a flag ('Y'), omit it from the label; otherwise prefix with championship name
+            const prefix = (champ === 'Y' || champ === 'y') ? '' : `${champ} `;
+            badge.innerHTML = `<span class="badge-icon">${icon}</span><span class="badge-text">${countStr}${prefix}${label} <span class="badge-season">${seasonStr}</span></span>`;
+            container.appendChild(badge);
+        });
+    });
+}
+
+// Build award badges — groups by Award_Name, lists seasons won
+function buildAwardBadges(rows) {
+    if (!rows.length) return;
+    const container = document.getElementById('awardBadges');
+
+    // Group by award name, collect seasons
+    const groups = {};
+    rows.forEach(row => {
+        const award = row.Award_Name || '?';
+        if (!groups[award]) groups[award] = [];
+        groups[award].push(row.Season_ID);
+    });
+
+    Object.entries(groups).forEach(([award, seasons]) => {
+        const count = seasons.length;
+        const seasonStr = seasons.map(s => `S${s}`).join(', ');
+        const badge = document.createElement('div');
+        badge.className = 'accolade-badge award-badge';
+        const countStr = count > 1 ? `${count}x ` : '';
+        badge.innerHTML = `<span class="badge-icon">🏅</span><span class="badge-text">${countStr}${award} <span class="badge-season">${seasonStr}</span></span>`;
+        container.appendChild(badge);
+    });
+}
+
+// Populate streak subtle cards + active streak badge
+function buildStreaks(winRows, lossRows, activeWinRows, activeLossRows) {
+    const winVal = winRows.length ? (winRows[0].longest_streak || 0) : 0;
+    const lossVal = lossRows.length ? (lossRows[0].longest_streak || 0) : 0;
+    animateCounter('winStreakVal', 0, parseInt(winVal), 800);
+    animateCounter('lossStreakVal', 0, parseInt(lossVal), 800);
+
+    const activeWin = activeWinRows.length ? parseInt(activeWinRows[0].Win_Streak) : 0;
+    const activeLoss = activeLossRows.length ? parseInt(activeLossRows[0].Losing_Streak) : 0;
+
+    if (activeWin || activeLoss) {
+        const row = document.getElementById('activeStreakRow');
+        const badge = document.getElementById('activeStreakBadge');
+        row.style.display = 'flex';
+        if (activeWin) {
+            badge.innerHTML = `<span class="active-streak-pill win-streak-pill">W${activeWin} <span class="active-streak-label">Active Win Streak</span></span>`;
+        } else {
+            badge.innerHTML = `<span class="active-streak-pill loss-streak-pill">L${activeLoss} <span class="active-streak-label">Active Losing Streak</span></span>`;
+        }
+    }
+}
+
+// Generic table filler using dynamic column names from DB
+function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
+    if (!rows.length) return;
+    const cols = Object.keys(rows[0]).filter(c => c !== 'Fighter_Name' && c !== 'fighter_name' && !skipCols.includes(c));
+
+    // Build header
+    const thead = document.getElementById(theadId);
+    if (thead) {
+        thead.innerHTML = '<tr>' + cols.map(c => `<th>${c.replace(/_/g, ' ')}</th>`).join('') + '</tr>';
+    }
+
+    // Build rows
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    rows.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        cols.forEach(col => {
+            const td = document.createElement('td');
+            td.textContent = row[col] !== null && row[col] !== undefined ? row[col] : '--';
+            tr.appendChild(td);
+        });
+        tr.style.opacity = '0';
+        tbody.appendChild(tr);
+        setTimeout(() => { tr.style.transition = 'opacity 0.3s ease'; tr.style.opacity = '1'; }, i * 40);
+    });
+}
 
 function fillTable(tbodyId, rows, keys) {
     const tbody = document.getElementById(tbodyId);
