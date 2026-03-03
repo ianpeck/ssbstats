@@ -1188,9 +1188,59 @@ img {
     flex: 1;
 }
 
+.fighter-hero {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    padding: 24px 32px;
+    margin-bottom: 2rem;
+}
+.hero-portrait {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 20px var(--accent-glow));
+}
+.hero-info {
+    flex: 1;
+}
+.hero-name {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+}
+.hero-stats {
+    display: flex;
+    gap: 40px;
+}
+.hero-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.hero-stat-val {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.hero-stat-val.win { color: var(--success); }
+.hero-stat-val.loss { color: var(--danger); }
+.hero-stat-val.accent { color: var(--accent-light); }
+.hero-stat-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 .charts-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 24px;
 }
 
@@ -1198,6 +1248,9 @@ img {
     padding: 24px;
 }
 .chart-card.chart-wide {
+    grid-column: span 3;
+}
+.chart-card.chart-2col {
     grid-column: span 2;
 }
 
@@ -1218,6 +1271,11 @@ img {
 .chart-container-wide {
     aspect-ratio: 3 / 1;
     min-height: 300px;
+}
+.chart-container-combo {
+    position: relative;
+    width: 100%;
+    height: 280px;
 }
 
 /* ============================================
@@ -1336,8 +1394,19 @@ img {
     .charts-grid {
         grid-template-columns: 1fr;
     }
-    .chart-card.chart-wide {
+    .chart-card.chart-wide,
+    .chart-card.chart-2col {
         grid-column: span 1;
+    }
+    .fighter-hero {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+        padding: 20px;
+    }
+    .hero-stats {
+        justify-content: center;
+        gap: 24px;
     }
 
     .h2h-portraits {
@@ -2101,6 +2170,54 @@ img {
     font-size: 0.72rem;
     color: var(--text-muted);
     text-align: center;
+}
+
+/* Fighter page — advanced analytics collapsible */
+.fighter-advanced-analytics {
+    margin-top: 2rem;
+    margin-bottom: 0;
+}
+
+.advanced-analytics-content {
+    padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.analytics-chart-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.2rem;
+}
+
+.analytics-chart-subtitle {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0 0 1rem;
+}
+
+.analytics-chart-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    padding-bottom: 0.5rem; /* room for scrollbar */
+}
+
+.analytics-chart-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+.analytics-chart-scroll::-webkit-scrollbar-track {
+    background: rgba(96, 124, 255, 0.06);
+    border-radius: 3px;
+}
+.analytics-chart-scroll::-webkit-scrollbar-thumb {
+    background: rgba(96, 124, 255, 0.35);
+    border-radius: 3px;
+}
+
+.analytics-chart-container {
+    position: relative;
+    height: 400px;
+    /* width is set dynamically in JS based on data length */
 }
 
 /* Fighter page — fight history collapsible */

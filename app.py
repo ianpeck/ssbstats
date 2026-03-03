@@ -375,6 +375,28 @@ def api_fights():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/fighter/<name>/running-stats')
+def api_fighter_running_stats(name):
+    try:
+        rows = db.get_running_stats(name)
+        data = []
+        for row in rows:
+            data.append({
+                'season':       row.get('Season'),
+                'month':        row.get('Month'),
+                'week':         row.get('Week'),
+                'fight_id':     row.get('Fight_ID'),
+                'decision':     row.get('Decision'),
+                'career_wins':  int(row.get('Career_Running_Wins') or 0),
+                'career_losses':int(row.get('Career_Running_Losses') or 0),
+                'season_win_pct': str(row.get('Season_Running_Win_Pct') or '0.00%'),
+                'career_win_pct': str(row.get('Career_Running_Win_Pct') or '0.00%'),
+            })
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/championships')
 def api_championships():
     try:

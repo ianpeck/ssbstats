@@ -14,30 +14,51 @@
         <button class="btn btn-primary" id="loadGraphsBtn">Load Charts</button>
     </div>
 
-    <!-- Loading -->
     <div class="loading-overlay" id="graphLoading" style="display: none;">
         <div class="spinner"></div>
         <p>Loading charts...</p>
     </div>
 
+    <!-- Fighter hero card -->
+    <div class="fighter-hero glass-card" id="fighterHero" style="display: none;">
+        <img id="heroPortrait" class="hero-portrait" src="" alt="" />
+        <div class="hero-info">
+            <h2 id="heroName" class="hero-name"></h2>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <span id="heroWins" class="hero-stat-val win">—</span>
+                    <span class="hero-stat-label">Wins</span>
+                </div>
+                <div class="hero-stat">
+                    <span id="heroLosses" class="hero-stat-val loss">—</span>
+                    <span class="hero-stat-label">Losses</span>
+                </div>
+                <div class="hero-stat">
+                    <span id="heroWinRate" class="hero-stat-val accent">—</span>
+                    <span class="hero-stat-label">Win Rate</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="charts-grid" id="chartsGrid" style="display: none;">
-        <!-- Career Overview Pie -->
+        <!-- Season combo chart (2/3 width) -->
+        <div class="chart-card glass-card chart-2col">
+            <h3 class="chart-title">Performance by Season</h3>
+            <div class="chart-container chart-container-combo">
+                <canvas id="seasonComboChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Career Overview Doughnut (1/3 width) -->
         <div class="chart-card glass-card">
-            <h3 class="chart-title">Career Win/Loss</h3>
+            <h3 class="chart-title">Career Win / Loss</h3>
             <div class="chart-container">
                 <canvas id="careerPieChart"></canvas>
             </div>
         </div>
 
-        <!-- Season Line Chart -->
-        <div class="chart-card glass-card">
-            <h3 class="chart-title">Win Rate by Season</h3>
-            <div class="chart-container">
-                <canvas id="seasonLineChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Location Bar Chart -->
+        <!-- Location Bar Chart (full width) -->
         <div class="chart-card glass-card chart-wide">
             <h3 class="chart-title">Wins & Losses by Location</h3>
             <div class="chart-container chart-container-wide">
@@ -45,7 +66,7 @@
             </div>
         </div>
 
-        <!-- Fight Type Bar Chart -->
+        <!-- Fight Type -->
         <div class="chart-card glass-card">
             <h3 class="chart-title">Stats by Match Type</h3>
             <div class="chart-container">
@@ -60,6 +81,14 @@
                 <canvas id="brandPieChart"></canvas>
             </div>
         </div>
+
+        <!-- PPV -->
+        <div class="chart-card glass-card" id="ppvCard">
+            <h3 class="chart-title">Stats by PPV</h3>
+            <div class="chart-container">
+                <canvas id="ppvChart"></canvas>
+            </div>
+        </div>
     </div>
 </section>
 {% endblock %}
@@ -68,11 +97,19 @@
 <script>
 let charts = {};
 
+const TOOLTIP_STYLE = {
+    backgroundColor: 'rgba(18, 18, 42, 0.95)',
+    titleFont: { family: 'Inter' },
+    bodyFont: { family: 'Inter' },
+    borderColor: '#607cff',
+    borderWidth: 1,
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     const input = document.getElementById('graphFighterInput');
     setupAutocomplete(input, 'fighters');
-
     document.getElementById('loadGraphsBtn').addEventListener('click', loadCharts);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') loadCharts(); });
 });
 
 function loadCharts() {
@@ -81,8 +118,8 @@ function loadCharts() {
 
     document.getElementById('graphLoading').style.display = 'flex';
     document.getElementById('chartsGrid').style.display = 'none';
+    document.getElementById('fighterHero').style.display = 'none';
 
-    // Destroy old charts
     Object.values(charts).forEach(c => c.destroy());
     charts = {};
 
@@ -90,22 +127,34 @@ function loadCharts() {
         .then(res => res.json())
         .then(data => {
             document.getElementById('graphLoading').style.display = 'none';
-            document.getElementById('chartsGrid').style.display = 'grid';
-
             if (data.error) return;
 
             Chart.defaults.color = '#b0b8d1';
             Chart.defaults.borderColor = 'rgba(96, 124, 255, 0.15)';
 
+            renderFighterHero(data);
+            renderSeasonCombo(data);
             renderCareerPie(data);
-            renderSeasonLine(data);
             renderLocationBar(data);
             renderFightTypeChart(data);
             renderBrandPie(data);
+            renderPPVChart(data);
+
+            document.getElementById('chartsGrid').style.display = 'grid';
         })
-        .catch(err => {
+        .catch(() => {
             document.getElementById('graphLoading').innerHTML = '<p>Error loading charts</p>';
         });
+}
+
+function renderFighterHero(data) {
+    document.getElementById('heroPortrait').src = `/static/assets/fighters/${data.image}`;
+    document.getElementById('heroPortrait').alt = data.name;
+    document.getElementById('heroName').textContent = data.name;
+    document.getElementById('heroWins').textContent = data.career.wins;
+    document.getElementById('heroLosses').textContent = data.career.losses;
+    document.getElementById('heroWinRate').textContent = data.career.win_pct;
+    document.getElementById('fighterHero').style.display = 'flex';
 }
 
 function renderCareerPie(data) {
@@ -127,64 +176,86 @@ function renderCareerPie(data) {
             maintainAspectRatio: true,
             plugins: {
                 legend: { position: 'bottom', labels: { padding: 20, font: { size: 14, family: 'Inter' } } },
-                tooltip: {
-                    backgroundColor: 'rgba(18, 18, 42, 0.95)',
-                    titleFont: { family: 'Inter' },
-                    bodyFont: { family: 'Inter' },
-                    borderColor: '#607cff',
-                    borderWidth: 1,
-                }
+                tooltip: TOOLTIP_STYLE,
             },
             animation: { animateRotate: true, duration: 1000 }
         }
     });
 }
 
-function renderSeasonLine(data) {
+function renderSeasonCombo(data) {
     if (!data.by_season || data.by_season.length === 0) return;
-    const ctx = document.getElementById('seasonLineChart').getContext('2d');
+    const ctx = document.getElementById('seasonComboChart').getContext('2d');
     const sorted = [...data.by_season].sort((a, b) => parseInt(a.season) - parseInt(b.season));
 
     charts.season = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
-            labels: sorted.map(s => 'S' + s.season),
+            labels: sorted.map(s => 'Season ' + s.season),
             datasets: [
                 {
+                    type: 'bar',
                     label: 'Wins',
                     data: sorted.map(s => parseInt(s.wins) || 0),
-                    borderColor: '#4ade80',
-                    backgroundColor: 'rgba(74, 222, 128, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 5,
-                    pointHoverRadius: 8,
+                    backgroundColor: 'rgba(74, 222, 128, 0.7)',
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    order: 2,
                 },
                 {
+                    type: 'bar',
                     label: 'Losses',
                     data: sorted.map(s => parseInt(s.losses) || 0),
-                    borderColor: '#f87171',
-                    backgroundColor: 'rgba(248, 113, 113, 0.1)',
-                    fill: true,
-                    tension: 0.4,
+                    backgroundColor: 'rgba(248, 113, 113, 0.7)',
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    order: 2,
+                },
+                {
+                    type: 'line',
+                    label: 'Win Rate %',
+                    data: sorted.map(s => parseFloat(s.win_pct) || 0),
+                    borderColor: '#607cff',
+                    backgroundColor: 'rgba(96, 124, 255, 0.08)',
+                    borderWidth: 2,
                     pointRadius: 5,
                     pointHoverRadius: 8,
+                    pointBackgroundColor: '#607cff',
+                    yAxisID: 'yRate',
+                    tension: 0.3,
+                    fill: true,
+                    order: 1,
                 }
             ]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom', labels: { padding: 20, font: { size: 13, family: 'Inter' } } },
+                legend: { position: 'bottom', labels: { padding: 16, font: { size: 13, family: 'Inter' } } },
                 tooltip: {
-                    backgroundColor: 'rgba(18, 18, 42, 0.95)',
-                    borderColor: '#607cff',
-                    borderWidth: 1,
+                    ...TOOLTIP_STYLE,
+                    callbacks: {
+                        afterBody: (items) => `Win Rate: ${sorted[items[0].dataIndex].win_pct}`
+                    }
                 }
             },
             scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(96, 124, 255, 0.08)' } },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(96, 124, 255, 0.08)' },
+                    title: { display: true, text: 'Fights', color: '#a8aab8', font: { size: 11 } }
+                },
+                yRate: {
+                    position: 'right',
+                    min: 0,
+                    max: 100,
+                    grid: { drawOnChartArea: false },
+                    ticks: { callback: v => v + '%', color: '#8399ff' },
+                    title: { display: true, text: 'Win Rate', color: '#8399ff', font: { size: 11 } }
+                },
                 x: { grid: { color: 'rgba(96, 124, 255, 0.08)' } }
             },
             animation: { duration: 1200 }
@@ -227,9 +298,10 @@ function renderLocationBar(data) {
             plugins: {
                 legend: { position: 'bottom', labels: { padding: 20, font: { size: 13, family: 'Inter' } } },
                 tooltip: {
-                    backgroundColor: 'rgba(18, 18, 42, 0.95)',
-                    borderColor: '#607cff',
-                    borderWidth: 1,
+                    ...TOOLTIP_STYLE,
+                    callbacks: {
+                        afterBody: (items) => `Win Rate: ${top[items[0].dataIndex].win_pct}`
+                    }
                 }
             },
             scales: {
@@ -244,15 +316,16 @@ function renderLocationBar(data) {
 function renderFightTypeChart(data) {
     if (!data.by_fight_type || data.by_fight_type.length === 0) return;
     const ctx = document.getElementById('fightTypeChart').getContext('2d');
+    const sorted = [...data.by_fight_type].sort((a, b) => (parseInt(b.wins) + parseInt(b.losses)) - (parseInt(a.wins) + parseInt(a.losses)));
 
     charts.fightType = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: data.by_fight_type.map(f => f.type),
+            labels: sorted.map(f => f.type),
             datasets: [
                 {
                     label: 'Wins',
-                    data: data.by_fight_type.map(f => parseInt(f.wins) || 0),
+                    data: sorted.map(f => parseInt(f.wins) || 0),
                     backgroundColor: 'rgba(74, 222, 128, 0.7)',
                     borderColor: '#22c55e',
                     borderWidth: 1,
@@ -260,7 +333,7 @@ function renderFightTypeChart(data) {
                 },
                 {
                     label: 'Losses',
-                    data: data.by_fight_type.map(f => parseInt(f.losses) || 0),
+                    data: sorted.map(f => parseInt(f.losses) || 0),
                     backgroundColor: 'rgba(248, 113, 113, 0.7)',
                     borderColor: '#ef4444',
                     borderWidth: 1,
@@ -275,9 +348,10 @@ function renderFightTypeChart(data) {
             plugins: {
                 legend: { position: 'bottom', labels: { padding: 20, font: { size: 13, family: 'Inter' } } },
                 tooltip: {
-                    backgroundColor: 'rgba(18, 18, 42, 0.95)',
-                    borderColor: '#607cff',
-                    borderWidth: 1,
+                    ...TOOLTIP_STYLE,
+                    callbacks: {
+                        afterBody: (items) => `Win Rate: ${sorted[items[0].dataIndex].win_pct}`
+                    }
                 }
             },
             scales: {
@@ -312,12 +386,68 @@ function renderBrandPie(data) {
             plugins: {
                 legend: { position: 'bottom', labels: { padding: 15, font: { size: 13, family: 'Inter' } } },
                 tooltip: {
-                    backgroundColor: 'rgba(18, 18, 42, 0.95)',
-                    borderColor: '#607cff',
-                    borderWidth: 1,
+                    ...TOOLTIP_STYLE,
+                    callbacks: {
+                        afterBody: (items) => `Win Rate: ${data.by_brand[items[0].dataIndex].win_pct}`
+                    }
                 }
             },
             animation: { animateRotate: true, duration: 1000 }
+        }
+    });
+}
+
+function renderPPVChart(data) {
+    const card = document.getElementById('ppvCard');
+    if (!data.by_ppv || data.by_ppv.length === 0) {
+        card.style.display = 'none';
+        return;
+    }
+    card.style.display = '';
+    const ctx = document.getElementById('ppvChart').getContext('2d');
+    const sorted = [...data.by_ppv].sort((a, b) => (parseInt(b.wins) + parseInt(b.losses)) - (parseInt(a.wins) + parseInt(a.losses)));
+
+    charts.ppv = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: sorted.map(p => p.ppv),
+            datasets: [
+                {
+                    label: 'Wins',
+                    data: sorted.map(p => parseInt(p.wins) || 0),
+                    backgroundColor: 'rgba(74, 222, 128, 0.7)',
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                },
+                {
+                    label: 'Losses',
+                    data: sorted.map(p => parseInt(p.losses) || 0),
+                    backgroundColor: 'rgba(248, 113, 113, 0.7)',
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 16, font: { size: 12, family: 'Inter' } } },
+                tooltip: {
+                    ...TOOLTIP_STYLE,
+                    callbacks: {
+                        afterBody: (items) => `Win Rate: ${sorted[items[0].dataIndex].win_pct}`
+                    }
+                }
+            },
+            scales: {
+                x: { beginAtZero: true, grid: { color: 'rgba(96, 124, 255, 0.08)' } },
+                y: { grid: { display: false } }
+            },
+            animation: { duration: 1000 }
         }
     });
 }

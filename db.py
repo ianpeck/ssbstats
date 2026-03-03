@@ -339,6 +339,19 @@ def get_fight_log(filters, page=1, per_page=100):
     return [fights[fid] for fid in fight_order]
 
 
+def get_running_stats(name):
+    """Fight-by-fight running W/L totals and win % from CareerRunningStats view."""
+    return select_view_dicts(
+        "SELECT Season, Month, Week, Fight_ID, Decision, "
+        "Season_Running_Wins, Season_Running_Losses, "
+        "Career_Running_Wins, Career_Running_Losses, "
+        "Season_Running_Win_Pct, Career_Running_Win_Pct "
+        "FROM CareerRunningStats WHERE Fighter_Name = %s "
+        "ORDER BY Season, Month, Week, Fight_ID",
+        (name,)
+    )
+
+
 def get_championship_history_alltime():
     """Full championship history across all seasons, ordered chronologically."""
     return select_view_dicts(

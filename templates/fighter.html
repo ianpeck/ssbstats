@@ -176,6 +176,35 @@
     </div>
 </section>
 
+<!-- Advanced Analytics (collapsible, lazy-loaded) -->
+<section class="fighter-advanced-analytics">
+    <div class="stats-table-wrapper glass-card collapsible-card fight-history-card">
+        <div class="fight-history-header" id="advancedAnalyticsToggle">
+            <span class="fight-history-label">
+                <span class="fight-history-icon">&#128200;</span> Advanced Analytics
+            </span>
+            <span class="fight-history-chevron" id="advancedAnalyticsChevron">&#8963;</span>
+        </div>
+        <div class="fight-history-body" id="advancedAnalyticsBody" style="display:none;">
+            <div class="loading-overlay" id="advancedAnalyticsLoading"
+                 style="display:none; position:relative; min-height:90px; border-radius:0;">
+                <div class="spinner"></div>
+            </div>
+            <div class="advanced-analytics-content" id="advancedAnalyticsContent">
+                <div class="analytics-chart-wrapper">
+                    <h3 class="analytics-chart-title">Career Win Rate Momentum</h3>
+                    <p class="analytics-chart-subtitle">Win rate after each fight &mdash; dots are green (W) or red (L). Dashed yellow line = season win rate. Dashed gray = 50%.</p>
+                    <div class="analytics-chart-scroll">
+                        <div class="analytics-chart-container" id="runningWinRateContainer">
+                            <canvas id="runningWinRateChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Fight History (collapsible, lazy-loaded) -->
 <section class="fighter-fight-history">
     <div class="stats-table-wrapper glass-card collapsible-card fight-history-card">
@@ -437,6 +466,153 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
         setTimeout(() => { tr.style.transition = 'opacity 0.3s ease'; tr.style.opacity = '1'; }, i * 40);
     });
 }
+
+// --- Advanced Analytics ---
+(function() {
+    const FIGHTER_NAME = {{ fighter_name | tojson }};
+    let opened = false;
+    let runningChart = null;
+
+    document.getElementById('advancedAnalyticsToggle').addEventListener('click', () => {
+        const body    = document.getElementById('advancedAnalyticsBody');
+        const chevron = document.getElementById('advancedAnalyticsChevron');
+        const isOpen  = body.style.display !== 'none';
+        body.style.display    = isOpen ? 'none' : 'block';
+        chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+        if (!isOpen && !opened) { opened = true; loadRunningStats(); }
+    });
+
+    function loadRunningStats() {
+        const loading = document.getElementById('advancedAnalyticsLoading');
+        loading.style.display = 'flex';
+        fetch(`/api/fighter/${encodeURIComponent(FIGHTER_NAME)}/running-stats`)
+            .then(r => r.json())
+            .then(data => {
+                loading.style.display = 'none';
+                if (!Array.isArray(data) || data.length === 0) return;
+                renderRunningWinRate(data);
+            })
+            .catch(() => { document.getElementById('advancedAnalyticsLoading').style.display = 'none'; });
+    }
+
+    function renderRunningWinRate(data) {
+        // Mark season-start indices for x-axis labels
+        const xLabels = [];
+        let prevSeason = null;
+        data.forEach(d => {
+            if (d.season !== prevSeason) { xLabels.push(`S${d.season}`); prevSeason = d.season; }
+            else xLabels.push('');
+        });
+
+        const careerPcts  = data.map(d => parseFloat(d.career_win_pct) || 0);
+        const seasonPcts  = data.map(d => parseFloat(d.season_win_pct) || 0);
+        const pointColors = data.map(d => d.decision === 'w' ? '#4ade80' : '#f87171');
+        const pointBorders= data.map(d => d.decision === 'w' ? '#22c55e' : '#ef4444');
+
+        // Size the chart container to data length so it scrolls horizontally
+        const PX_PER_FIGHT = 10;
+        const chartWidth = Math.max(900, data.length * PX_PER_FIGHT);
+        const container = document.getElementById('runningWinRateContainer');
+        container.style.width = chartWidth + 'px';
+
+        const canvas = document.getElementById('runningWinRateChart');
+        canvas.width  = chartWidth;
+        canvas.height = 400;
+
+        const ctx = canvas.getContext('2d');
+        if (runningChart) runningChart.destroy();
+        runningChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: xLabels,
+                datasets: [
+                    {
+                        label: 'Career Win Rate %',
+                        data: careerPcts,
+                        borderColor: '#607cff',
+                        backgroundColor: 'rgba(96, 124, 255, 0.08)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: pointBorders,
+                        pointBorderWidth: 1.5,
+                        tension: 0.25,
+                        fill: true,
+                    },
+                    {
+                        label: 'Season Win Rate %',
+                        data: seasonPcts,
+                        borderColor: 'rgba(251, 191, 36, 0.65)',
+                        backgroundColor: 'transparent',
+                        borderWidth: 1.5,
+                        borderDash: [5, 4],
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        tension: 0.25,
+                        fill: false,
+                    },
+                    {
+                        label: '50% Baseline',
+                        data: new Array(data.length).fill(50),
+                        borderColor: 'rgba(176, 184, 209, 0.25)',
+                        borderWidth: 1,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        fill: false,
+                    },
+                ]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 16, font: { size: 12, family: 'Inter' }, filter: item => item.text !== '50% Baseline' } },
+                    tooltip: {
+                        backgroundColor: 'rgba(18, 18, 42, 0.95)',
+                        titleFont: { family: 'Inter' },
+                        bodyFont: { family: 'Inter' },
+                        borderColor: '#607cff',
+                        borderWidth: 1,
+                        callbacks: {
+                            title: (items) => {
+                                const d = data[items[0].dataIndex];
+                                return `Fight #${items[0].dataIndex + 1}  —  ${d.decision === 'w' ? 'Win ✓' : 'Loss ✗'}`;
+                            },
+                            beforeBody: (items) => {
+                                const d = data[items[0].dataIndex];
+                                return `Season ${d.season}, Month ${d.month}, Week ${d.week}`;
+                            },
+                            label: (item) => {
+                                if (item.dataset.label === '50% Baseline') return null;
+                                return `  ${item.dataset.label}: ${item.raw.toFixed(2)}%`;
+                            },
+                            afterBody: (items) => {
+                                const d = data[items[0].dataIndex];
+                                return `Career Record: ${d.career_wins}-${d.career_losses}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        min: 0, max: 100,
+                        grid: { color: 'rgba(96, 124, 255, 0.08)' },
+                        ticks: { callback: v => v + '%', color: '#b0b8d1' },
+                        title: { display: true, text: 'Win Rate', color: '#a8aab8', font: { size: 11 } }
+                    },
+                    x: {
+                        grid: { color: 'rgba(96, 124, 255, 0.05)' },
+                        ticks: { color: '#607cff', font: { size: 11, weight: 'bold' }, maxRotation: 0, autoSkip: false },
+                        title: { display: true, text: 'Fight #', color: '#a8aab8', font: { size: 11 } }
+                    }
+                },
+                animation: { duration: 800 }
+            }
+        });
+    }
+})();
 
 // --- Fight History (uses renderFight from app.js) ---
 (function() {

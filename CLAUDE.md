@@ -53,21 +53,90 @@ Secrets on EB are set via `eb setenv` (not `secrets.env`).
 
 Autocomplete lists (fighters, locations, etc.) are cached in `_autocomplete_cache` at startup — if the DB is unreachable on startup, restart the server after fixing connectivity.
 
-## Database Schema Overview
+## Database — Full Reference
 
-**Key views** (read-only, no params):
-- `careerstats` — total W/L/% per fighter
-- `CareerStatsBySeason`, `CareerStatsByLocation`, `CareerStatsByFightType`, `CareerStatsByBrand`, `CareerStatsByPPV`
-- `CurrentChampions` — who holds each title now
-- `holistic_view` — season-by-season accolades summary
-- `longestwinstreaks`, `longestlosingstreaks`, `allwinstreaks`, `alllosingsteaks` (note: typo in DB name, missing 'r')
-- `FightLog` — full fight history with fighter results
-- `ChampionshipHistory`, `ChampionshipHistoryBySeason`
-- `champfightstats`, `champfightstatsbychampionship`, `defendingtitle`
+### Base Tables
 
-**Key tables**: `Fighter`, `Fight`, `Results`, `Championship`, `Season`, `PPV`, `Brand`, `Location`, `FightType`, `Award`, `AwardHistory`
+| Table | Key Columns |
+|-------|------------|
+| `Fighter` | `Fighter_Name (PK)`, `Game_Series`, `Brand_ID` |
+| `Fight` | `Fight_ID (PK)`, `Location_ID`, `Brand_ID`, `PPV_ID`, `Championship_ID`, `FightType_ID`, `Season_ID`, `Month`, `Week`, `Contender_Indicator` |
+| `Results` | `Result_ID (PK)`, `Fighter_Name`, `Fight_ID`, `Decision (W/L)`, `Match_Result`, `Seed`, `DefendingIndicator` |
+| `Championship` | `Championship_ID (PK)`, `Championship_Name` |
+| `Season` | `Season_ID (PK)`, `Game` |
+| `PPV` | `PPV_ID (PK)`, `PPV_Name`, `Description` |
+| `Brand` | `Brand_ID (PK)`, `Brand_Name`, `Owner` |
+| `Location` | `Location_ID (PK)`, `Location_Name`, `Location_GameSeries`, `Location_Origin` |
+| `FightType` | `FightType_ID (PK)`, `Description` |
+| `Award` | `Award_ID (PK)`, `Award_Name` |
+| `AwardHistory` | `AwardHistory_ID (PK)`, `Season_ID`, `Fighter_Name`, `Award_ID` |
 
-**Stored procedures** for H2H: `headtohead(f1, f2)`, `headtoheadLocation`, `headtoheadFightType`, `headtoheadSeason`, `headtoheadMonth`, `headtoheadChamp`, `headtoheadPPV`
+### Lookup Data (static)
+
+- **Seasons**: 1–5 = Brawl era, 6–7 = Ultimate era
+- **Brands**: 1=Brawl (Ethan), 2=Melee (Ian), 3=Ultimate (Shared)
+- **Championships**: Melee, Animal, Special, Brawl, Human, Hardcore, Ultimate, Monster, Chaos, Smash Bros., Unified Tag 1, Unified Tag 2 — "Unified Tag 1/2" displayed as "Unified Tag" via `normalize_champ_name()`
+- **FightTypes**: 3 stock, 3 minute, Coin, Special, 5 stock, 5 minute, Pokeball, Royal Rumble, Money in the Bank, 1 stock, Scramble, Tag Team, Handicap, Cash In, Tournament, 1 minute, Stamina, Smash Series
+
+### Views
+
+All career stat views share the pattern: `Fighter_Name, [dimension], Wins, Losses, Win Percentage`
+
+| View | Dimension | Notes |
+|------|-----------|-------|
+| `careerstats` | — | Overall career totals |
+| `CareerStatsBySeason` | `Season (int)` | |
+| `CareerStatsByLocation` | `Location_Name` | |
+| `CareerStatsByFightType` | `FightType` | |
+| `CareerStatsByBrand` | `Brand` | |
+| `CareerStatsByPPV` | `PPV` | |
+| `CareerStatsByOpponent` | `Opponent` | H2H record vs every opponent |
+| `CareerRunningStats` | per-fight | `Fighter_Name, Season, Month, Week, Fight_ID, Decision, Season_Running_Wins, Season_Running_Losses, Career_Running_Wins, Career_Running_Losses, Season_Running_Win_Pct (str), Career_Running_Win_Pct (str)` — cumulative running W/L totals and win % after each individual fight in chronological order. Used for momentum/trend charts. |
+
+**Championship views:**
+- `CurrentChampions`: `Fighter_Name, Championship_Name, Season_Won, Month_Won`
+- `ChampionshipHistory`: `Fighter_Name, Championship_Name, months_held, Season_Won, Month_Won, Season_Lost, Month_Lost`
+- `ChampionshipHistoryBySeason`: `Fighter_Name, Championship_Name, Season, Month_Won, Months_Held_In_Season`
+- `champfightstats`: `Fighter_Name, Wins, Losses, Win Percentage` — record in all championship matches
+- `champfightstatsbychampionship`: `Fighter_Name, Championship_Name, Wins, Losses, Win Percentage`
+- `defendingtitle`: `Fighter_Name, Wins, Losses, Win Percentage` — record when defending a title
+
+**Streak views:**
+- `allwinstreaks`: `Win_Streak, Fighter_Name, Active_Win_Streak ('Active'/''), Season_Started, Month_Started, Week_Started, Season_Ended, Month_Ended, Week_Ended`
+- `alllosingsteaks` (typo, missing 'r'): same structure with `Losing_Streak, Active_Losing_Streak`
+- `longestwinstreaks`: `longest_streak, Fighter_Name` — one row per fighter, their personal best streak
+- `longestlosingstreaks`: same for losses
+
+**Fight history:**
+- `FightLog`: `Fight_ID, Result_ID, Fighter_Name, Decision, Match_Result, Seed, DefendingIndicator, Location_Name, Brand_Name, PPV_Name, Championship_Name, Description (FightType), Contender_Indicator, Season, Month, Week`
+
+**Holistic / accolades:**
+- `holistic_view`: `Season, Fighter_Name, Wins, Losses, Win_Percentage, Months_With_Major, Months_With_Title, Titles_Held (text), Title_Count, Won_Tournament, Won_Royal_Rumble, Won_Scramble, Scramble_Seed_As_Winner, Won_Smash_Series, Won_Money_In_The_Bank, Won_Smash_Bros, Defended_Cash_In, Successful_Cash_In`
+
+**Special event views:**
+- `tournamentwinners`: `Season, Name, Title, Seed`
+- `scramblewinner`: `Season, Name, Title, Seed`
+- `cashins`: `Season_ID, Month, week, PPV_Name, Championship_Name, Fight_Winner_Name, Fight_Winner (Champion/Challenger), Fight_Loser_Name`
+- `tagteamstats`: `Fighter 1, Fighter 2, Wins, Losses, Win Percentage`
+- `triplecrown`: `Fighter_Name` — fighters who held the triple crown
+- `ScrambleWinPercentageBySeed`: `Seed, Wins, Losses, Win Percentage`
+- `TournamentWinPercentageBySeed`: `Seed, Championships, Wins, Losses, Win Percentage`
+
+### Stored Procedures
+
+| Procedure | Parameters | Purpose |
+|-----------|-----------|---------|
+| `headtohead` | `FighterOne, FighterTwo` | Overall H2H record |
+| `headtoheadLocation` | `FighterOne, FighterTwo, LocationStage` | H2H at a specific stage |
+| `headtoheadFightType` | `FighterOne, FighterTwo, MatchType` | H2H by match type |
+| `headtoheadSeason` | `FighterOne, FighterTwo, Season` | H2H in a season |
+| `headtoheadMonth` | `FighterOne, FighterTwo, Month` | H2H in a month |
+| `headtoheadChamp` | `FighterOne, FighterTwo` | H2H in championship matches |
+| `headtoheadPPV` | `FighterOne, FighterTwo, PPV` | H2H at a PPV |
+| `headtoheadAllFighters` | `YourFighter` | Record vs every opponent |
+| `allFightsBetweenTwoFighters` | `FighterOne, FighterTwo` | Every individual fight between two fighters |
+| `holistic` | `My_Season` | Holistic season summary |
+| `statsbyseason` | `season` | Stats for a specific season |
 
 ## Asset Naming Conventions
 
