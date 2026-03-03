@@ -2220,6 +2220,80 @@ img {
     /* width is set dynamically in JS based on data length */
 }
 
+/* Advanced Analytics — divider between chart sections */
+.analytics-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 1.75rem 0;
+}
+
+/* Rivals section */
+.rivals-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
+}
+
+.rivals-column-title {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 0 0 0.6rem;
+}
+.rivals-column-title.victim-title  { color: #4ade80; }
+.rivals-column-title.nemesis-title { color: #f87171; }
+
+.rival-cards { display: flex; flex-direction: column; gap: 0.45rem; }
+
+.rival-card {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 10px;
+    border: 1px solid;
+    background: rgba(255, 255, 255, 0.02);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+}
+.rival-card:hover { transform: translateX(3px); }
+.rival-card.victim-card   { border-color: rgba(74,  222, 128, 0.22); box-shadow: 0 2px 8px rgba(74,  222, 128, 0.04); }
+.rival-card.nemesis-card  { border-color: rgba(248, 113, 113, 0.22); box-shadow: 0 2px 8px rgba(248, 113, 113, 0.04); }
+.rival-card.victim-card:hover  { box-shadow: 0 2px 18px rgba(74,  222, 128, 0.18); }
+.rival-card.nemesis-card:hover { box-shadow: 0 2px 18px rgba(248, 113, 113, 0.18); }
+
+.rival-rank { font-size: 0.7rem; font-weight: 800; width: 18px; text-align: center; flex-shrink: 0; opacity: 0.75; }
+.victim-card  .rival-rank { color: #4ade80; }
+.nemesis-card .rival-rank { color: #f87171; }
+
+.rival-portrait {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid;
+    background: var(--bg-card);
+}
+.victim-card  .rival-portrait { border-color: rgba(74,  222, 128, 0.4); }
+.nemesis-card .rival-portrait { border-color: rgba(248, 113, 113, 0.4); }
+
+.rival-info   { flex: 1; min-width: 0; }
+.rival-name   { font-size: 0.88rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rival-record { font-size: 0.74rem; color: var(--text-muted); margin-top: 1px; }
+
+.rival-winrate { font-size: 0.88rem; font-weight: 700; flex-shrink: 0; }
+.victim-card  .rival-winrate { color: #4ade80; }
+.nemesis-card .rival-winrate { color: #f87171; }
+
+.rivals-empty { font-size: 0.82rem; color: var(--text-muted); margin: 0.25rem 0; }
+
+@media (max-width: 600px) {
+    .rivals-section { grid-template-columns: 1fr; }
+}
+
 /* Fighter page — fight history collapsible */
 .fighter-fight-history {
     margin-top: 2rem;

@@ -339,17 +339,46 @@ def get_fight_log(filters, page=1, per_page=100):
     return [fights[fid] for fid in fight_order]
 
 
-def get_running_stats(name):
-    """Fight-by-fight running W/L totals and win % from CareerRunningStats view."""
-    return select_view_dicts(
-        "SELECT Season, Month, Week, Fight_ID, Decision, "
-        "Season_Running_Wins, Season_Running_Losses, "
-        "Career_Running_Wins, Career_Running_Losses, "
-        "Season_Running_Win_Pct, Career_Running_Win_Pct "
-        "FROM CareerRunningStats WHERE Fighter_Name = %s "
-        "ORDER BY Season, Month, Week, Fight_ID",
-        (name,)
-    )
+def get_advanced_analytics(name):
+    """All data for the Advanced Analytics section, fetched in parallel."""
+    queries = {
+        'running_stats': (
+            "SELECT Season, Month, Week, Fight_ID, Decision, "
+            "Season_Running_Wins, Season_Running_Losses, "
+            "Career_Running_Wins, Career_Running_Losses, "
+            "Season_Running_Win_Pct, Career_Running_Win_Pct "
+            "FROM CareerRunningStats WHERE Fighter_Name = %s "
+            "ORDER BY Season, Month, Week, Fight_ID",
+            (name,)
+        ),
+        'by_opponent': (
+            "SELECT * FROM CareerStatsByOpponent WHERE Fighter_Name = %s "
+            "ORDER BY (Wins + Losses) DESC",
+            (name,)
+        ),
+        'all_win_streaks': (
+            "SELECT * FROM allwinstreaks WHERE Fighter_Name = %s "
+            "ORDER BY Season_Started, Month_Started, Week_Started",
+            (name,)
+        ),
+        'all_loss_streaks': (
+            "SELECT * FROM alllosingsteaks WHERE Fighter_Name = %s "
+            "ORDER BY Season_Started, Month_Started, Week_Started",
+            (name,)
+        ),
+    }
+
+    def run_query(key_query):
+        key, (query, params) = key_query
+        try:
+            return key, select_view_dicts(query, params)
+        except Exception:
+            return key, []
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(run_query, queries.items()))
+
+    return {key: data for key, data in results}
 
 
 def get_championship_history_alltime():

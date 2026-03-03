@@ -375,24 +375,43 @@ def api_fights():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/fighter/<name>/running-stats')
-def api_fighter_running_stats(name):
+@app.route('/api/fighter/<name>/advanced')
+def api_fighter_advanced(name):
     try:
-        rows = db.get_running_stats(name)
-        data = []
-        for row in rows:
-            data.append({
-                'season':       row.get('Season'),
-                'month':        row.get('Month'),
-                'week':         row.get('Week'),
-                'fight_id':     row.get('Fight_ID'),
-                'decision':     row.get('Decision'),
-                'career_wins':  int(row.get('Career_Running_Wins') or 0),
-                'career_losses':int(row.get('Career_Running_Losses') or 0),
+        raw = db.get_advanced_analytics(name)
+
+        running = []
+        for row in raw.get('running_stats', []):
+            running.append({
+                'season':        row.get('Season'),
+                'month':         row.get('Month'),
+                'week':          row.get('Week'),
+                'fight_id':      row.get('Fight_ID'),
+                'decision':      row.get('Decision'),
+                'career_wins':   int(row.get('Career_Running_Wins') or 0),
+                'career_losses': int(row.get('Career_Running_Losses') or 0),
                 'season_win_pct': str(row.get('Season_Running_Win_Pct') or '0.00%'),
                 'career_win_pct': str(row.get('Career_Running_Win_Pct') or '0.00%'),
             })
-        return jsonify(data)
+
+        opponents = []
+        for row in raw.get('by_opponent', []):
+            opponents.append({
+                'opponent': row.get('Opponent', ''),
+                'wins':     int(row.get('Wins') or 0),
+                'losses':   int(row.get('Losses') or 0),
+                'win_pct':  str(row.get('Win Percentage') or '0.00%'),
+            })
+
+        win_streaks  = [{k: _serialize(v) for k, v in r.items()} for r in raw.get('all_win_streaks', [])]
+        loss_streaks = [{k: _serialize(v) for k, v in r.items()} for r in raw.get('all_loss_streaks', [])]
+
+        return jsonify({
+            'running_stats':    running,
+            'by_opponent':      opponents,
+            'all_win_streaks':  win_streaks,
+            'all_loss_streaks': loss_streaks,
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

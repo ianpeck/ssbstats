@@ -191,15 +191,49 @@
                 <div class="spinner"></div>
             </div>
             <div class="advanced-analytics-content" id="advancedAnalyticsContent">
+
+                <!-- 1. Career Win Rate Momentum -->
                 <div class="analytics-chart-wrapper">
                     <h3 class="analytics-chart-title">Career Win Rate Momentum</h3>
-                    <p class="analytics-chart-subtitle">Win rate after each fight &mdash; dots are green (W) or red (L). Dashed yellow line = season win rate. Dashed gray = 50%.</p>
+                    <p class="analytics-chart-subtitle">Win rate after each fight &mdash; dots are green (W) or red (L). Dashed yellow = season rate. Dashed gray = 50%.</p>
                     <div class="analytics-chart-scroll">
                         <div class="analytics-chart-container" id="runningWinRateContainer">
                             <canvas id="runningWinRateChart"></canvas>
                         </div>
                     </div>
                 </div>
+
+                <div class="analytics-divider"></div>
+
+                <!-- 2. Rivals -->
+                <div class="analytics-chart-wrapper">
+                    <h3 class="analytics-chart-title">Rivals &mdash; Victims &amp; Nemeses</h3>
+                    <p class="analytics-chart-subtitle">Top 5 each side sorted by total wins or losses &mdash; volume counts more than rate.</p>
+                    <div class="rivals-section" id="rivalsSection"></div>
+                </div>
+
+                <div class="analytics-divider"></div>
+
+                <!-- 3. Streak History -->
+                <div class="analytics-chart-wrapper">
+                    <h3 class="analytics-chart-title">Streak History</h3>
+                    <p class="analytics-chart-subtitle">Win streaks above zero (green), losing streaks below (red). Brighter bar = currently active streak.</p>
+                    <div class="analytics-chart-container" style="height: 260px;">
+                        <canvas id="streakChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="analytics-divider"></div>
+
+                <!-- 4. Season Radar -->
+                <div class="analytics-chart-wrapper">
+                    <h3 class="analytics-chart-title">Season Profile Radar</h3>
+                    <p class="analytics-chart-subtitle">Multi-dimensional season grades normalized to 100. Each colored shape = one season.</p>
+                    <div class="analytics-chart-container" style="height: 420px;">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -253,6 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fillTable('ppvTbody', data.by_ppv, ['ppv', 'wins', 'losses', 'win_pct']);
 
             const acc = data.accolades || {};
+            window.fighterHolistic = acc.holistic || [];
 
             // --- Current champion titles ---
             if (data.current_titles && data.current_titles.length) {
@@ -471,141 +506,232 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
 (function() {
     const FIGHTER_NAME = {{ fighter_name | tojson }};
     let opened = false;
-    let runningChart = null;
+    const charts = {};
 
     document.getElementById('advancedAnalyticsToggle').addEventListener('click', () => {
         const body    = document.getElementById('advancedAnalyticsBody');
         const chevron = document.getElementById('advancedAnalyticsChevron');
         const isOpen  = body.style.display !== 'none';
-        body.style.display    = isOpen ? 'none' : 'block';
+        body.style.display      = isOpen ? 'none' : 'block';
         chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
-        if (!isOpen && !opened) { opened = true; loadRunningStats(); }
+        if (!isOpen && !opened) { opened = true; loadAdvanced(); }
     });
 
-    function loadRunningStats() {
+    function loadAdvanced() {
         const loading = document.getElementById('advancedAnalyticsLoading');
         loading.style.display = 'flex';
-        fetch(`/api/fighter/${encodeURIComponent(FIGHTER_NAME)}/running-stats`)
+        fetch(`/api/fighter/${encodeURIComponent(FIGHTER_NAME)}/advanced`)
             .then(r => r.json())
-            .then(data => {
+            .then(d => {
                 loading.style.display = 'none';
-                if (!Array.isArray(data) || data.length === 0) return;
-                renderRunningWinRate(data);
+                renderRunningWinRate(d.running_stats   || []);
+                renderRivals(        d.by_opponent     || []);
+                renderStreakTimeline(d.all_win_streaks  || [], d.all_loss_streaks || []);
+                renderSeasonRadar(window.fighterHolistic || []);
             })
             .catch(() => { document.getElementById('advancedAnalyticsLoading').style.display = 'none'; });
     }
 
+    // ── 1. Career Momentum ─────────────────────────────────────────────────
     function renderRunningWinRate(data) {
-        // Mark season-start indices for x-axis labels
-        const xLabels = [];
+        if (!data.length) return;
+        const xLabels = [], careerPcts = [], seasonPcts = [], ptColors = [], ptBorders = [];
         let prevSeason = null;
         data.forEach(d => {
-            if (d.season !== prevSeason) { xLabels.push(`S${d.season}`); prevSeason = d.season; }
-            else xLabels.push('');
+            xLabels.push(d.season !== prevSeason ? (prevSeason = d.season, `S${d.season}`) : '');
+            careerPcts.push(parseFloat(d.career_win_pct) || 0);
+            seasonPcts.push(parseFloat(d.season_win_pct) || 0);
+            ptColors.push( d.decision === 'w' ? '#4ade80' : '#f87171');
+            ptBorders.push(d.decision === 'w' ? '#22c55e' : '#ef4444');
         });
 
-        const careerPcts  = data.map(d => parseFloat(d.career_win_pct) || 0);
-        const seasonPcts  = data.map(d => parseFloat(d.season_win_pct) || 0);
-        const pointColors = data.map(d => d.decision === 'w' ? '#4ade80' : '#f87171');
-        const pointBorders= data.map(d => d.decision === 'w' ? '#22c55e' : '#ef4444');
-
-        // Size the chart container to data length so it scrolls horizontally
-        const PX_PER_FIGHT = 10;
-        const chartWidth = Math.max(900, data.length * PX_PER_FIGHT);
+        const W = Math.max(900, data.length * 10);
         const container = document.getElementById('runningWinRateContainer');
-        container.style.width = chartWidth + 'px';
-
+        container.style.width = W + 'px';
         const canvas = document.getElementById('runningWinRateChart');
-        canvas.width  = chartWidth;
-        canvas.height = 400;
+        canvas.width = W; canvas.height = 400;
 
-        const ctx = canvas.getContext('2d');
-        if (runningChart) runningChart.destroy();
-        runningChart = new Chart(ctx, {
+        if (charts.momentum) charts.momentum.destroy();
+        charts.momentum = new Chart(canvas.getContext('2d'), {
             type: 'line',
-            data: {
-                labels: xLabels,
-                datasets: [
-                    {
-                        label: 'Career Win Rate %',
-                        data: careerPcts,
-                        borderColor: '#607cff',
-                        backgroundColor: 'rgba(96, 124, 255, 0.08)',
-                        borderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 7,
-                        pointBackgroundColor: pointColors,
-                        pointBorderColor: pointBorders,
-                        pointBorderWidth: 1.5,
-                        tension: 0.25,
-                        fill: true,
-                    },
-                    {
-                        label: 'Season Win Rate %',
-                        data: seasonPcts,
-                        borderColor: 'rgba(251, 191, 36, 0.65)',
-                        backgroundColor: 'transparent',
-                        borderWidth: 1.5,
-                        borderDash: [5, 4],
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
-                        tension: 0.25,
-                        fill: false,
-                    },
-                    {
-                        label: '50% Baseline',
-                        data: new Array(data.length).fill(50),
-                        borderColor: 'rgba(176, 184, 209, 0.25)',
-                        borderWidth: 1,
-                        borderDash: [6, 4],
-                        pointRadius: 0,
-                        fill: false,
-                    },
-                ]
-            },
+            data: { labels: xLabels, datasets: [
+                { label: 'Career Win Rate %', data: careerPcts, borderColor: '#607cff', backgroundColor: 'rgba(96,124,255,0.08)', borderWidth: 2, pointRadius: 4, pointHoverRadius: 7, pointBackgroundColor: ptColors, pointBorderColor: ptBorders, pointBorderWidth: 1.5, tension: 0.25, fill: true },
+                { label: 'Season Win Rate %', data: seasonPcts, borderColor: 'rgba(251,191,36,0.65)', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, pointHoverRadius: 5, tension: 0.25, fill: false },
+                { label: '50% Baseline', data: new Array(data.length).fill(50), borderColor: 'rgba(176,184,209,0.22)', borderWidth: 1, borderDash: [6,4], pointRadius: 0, fill: false },
+            ]},
             options: {
-                responsive: false,
-                maintainAspectRatio: false,
+                responsive: false, maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: { position: 'bottom', labels: { padding: 16, font: { size: 12, family: 'Inter' }, filter: item => item.text !== '50% Baseline' } },
-                    tooltip: {
-                        backgroundColor: 'rgba(18, 18, 42, 0.95)',
-                        titleFont: { family: 'Inter' },
-                        bodyFont: { family: 'Inter' },
-                        borderColor: '#607cff',
-                        borderWidth: 1,
+                    legend: { position: 'bottom', labels: { padding: 16, font: { size: 12, family: 'Inter' }, filter: i => i.text !== '50% Baseline' } },
+                    tooltip: { backgroundColor: 'rgba(18,18,42,0.95)', titleFont: { family: 'Inter' }, bodyFont: { family: 'Inter' }, borderColor: '#607cff', borderWidth: 1,
                         callbacks: {
-                            title: (items) => {
-                                const d = data[items[0].dataIndex];
-                                return `Fight #${items[0].dataIndex + 1}  —  ${d.decision === 'w' ? 'Win ✓' : 'Loss ✗'}`;
-                            },
-                            beforeBody: (items) => {
-                                const d = data[items[0].dataIndex];
-                                return `Season ${d.season}, Month ${d.month}, Week ${d.week}`;
-                            },
-                            label: (item) => {
-                                if (item.dataset.label === '50% Baseline') return null;
-                                return `  ${item.dataset.label}: ${item.raw.toFixed(2)}%`;
-                            },
-                            afterBody: (items) => {
-                                const d = data[items[0].dataIndex];
-                                return `Career Record: ${d.career_wins}-${d.career_losses}`;
-                            }
+                            title:      (its) => { const d = data[its[0].dataIndex]; return `Fight #${its[0].dataIndex+1}  —  ${d.decision==='w' ? 'Win ✓' : 'Loss ✗'}`; },
+                            beforeBody: (its) => { const d = data[its[0].dataIndex]; return `Season ${d.season}, Month ${d.month}, Week ${d.week}`; },
+                            label:      (it)  => it.dataset.label === '50% Baseline' ? null : `  ${it.dataset.label}: ${it.raw.toFixed(2)}%`,
+                            afterBody:  (its) => { const d = data[its[0].dataIndex]; return `Career Record: ${d.career_wins}-${d.career_losses}`; },
                         }
                     }
                 },
                 scales: {
-                    y: {
-                        min: 0, max: 100,
-                        grid: { color: 'rgba(96, 124, 255, 0.08)' },
-                        ticks: { callback: v => v + '%', color: '#b0b8d1' },
-                        title: { display: true, text: 'Win Rate', color: '#a8aab8', font: { size: 11 } }
-                    },
-                    x: {
-                        grid: { color: 'rgba(96, 124, 255, 0.05)' },
-                        ticks: { color: '#607cff', font: { size: 11, weight: 'bold' }, maxRotation: 0, autoSkip: false },
-                        title: { display: true, text: 'Fight #', color: '#a8aab8', font: { size: 11 } }
+                    y: { min: 0, max: 100, grid: { color: 'rgba(96,124,255,0.08)' }, ticks: { callback: v => v+'%', color: '#b0b8d1' }, title: { display: true, text: 'Win Rate', color: '#a8aab8', font: { size: 11 } } },
+                    x: { grid: { color: 'rgba(96,124,255,0.05)' }, ticks: { color: '#607cff', font: { size: 11, weight: 'bold' }, maxRotation: 0, autoSkip: false }, title: { display: true, text: 'Fight #', color: '#a8aab8', font: { size: 11 } } },
+                },
+                animation: { duration: 800 }
+            }
+        });
+    }
+
+    // ── 2. Rivals (Victims & Nemeses) ──────────────────────────────────────
+    function ftf(name) {
+        const ov = { 'banjo & kazooie': 'banjoandkazooie', 'banjo and kazooie': 'banjoandkazooie' };
+        const l = name.toLowerCase();
+        return ov[l] || l.replace(/\s/g,'').replace(/\./g,'').replace(/&/g,'and');
+    }
+
+    function renderRivals(opponents) {
+        const section = document.getElementById('rivalsSection');
+        if (!opponents.length) { section.innerHTML = '<p class="rivals-empty">Not enough matchup data yet.</p>'; return; }
+
+        const nemeses = opponents.filter(o => o.losses > o.wins).sort((a,b) => b.losses - a.losses).slice(0,5);
+        const victims = opponents.filter(o => o.wins   > o.losses).sort((a,b) => b.wins   - a.wins  ).slice(0,5);
+
+        function makeCard(opp, rank, type) {
+            const card = document.createElement('div');
+            card.className = `rival-card ${type}-card`;
+
+            const rankEl = document.createElement('span');
+            rankEl.className = 'rival-rank';
+            rankEl.textContent = `#${rank}`;
+
+            const img = document.createElement('img');
+            img.className = 'rival-portrait';
+            img.src = `/static/assets/fighters/${ftf(opp.opponent)}.png`;
+            img.alt = opp.opponent;
+            img.onerror = function() { this.onerror=null; this.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Crect fill='%2312122a' width='60' height='60'/%3E%3Ctext fill='%23607cff' x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-size='22'%3E%3F%3C/text%3E%3C/svg%3E"; };
+
+            const info = document.createElement('div');
+            info.className = 'rival-info';
+            info.innerHTML = `<div class="rival-name">${opp.opponent}</div><div class="rival-record">${opp.wins}W &ndash; ${opp.losses}L</div>`;
+
+            const rate = document.createElement('span');
+            rate.className = 'rival-winrate';
+            rate.textContent = opp.win_pct;
+
+            card.append(rankEl, img, info, rate);
+            card.addEventListener('click', () => { window.location.href = `/fighter/${encodeURIComponent(opp.opponent)}`; });
+            return card;
+        }
+
+        section.innerHTML = `
+            <div class="rivals-column">
+                <div class="rivals-column-title victim-title">&#9650; Victims</div>
+                <div class="rival-cards" id="victimCards"></div>
+            </div>
+            <div class="rivals-column">
+                <div class="rivals-column-title nemesis-title">&#9660; Nemeses</div>
+                <div class="rival-cards" id="nemesisCards"></div>
+            </div>`;
+
+        if (!victims.length) document.getElementById('victimCards').innerHTML = '<p class="rivals-empty">No dominant matchups yet</p>';
+        else victims.forEach((v,i) => document.getElementById('victimCards').appendChild(makeCard(v, i+1, 'victim')));
+
+        if (!nemeses.length) document.getElementById('nemesisCards').innerHTML = '<p class="rivals-empty">No nemeses yet</p>';
+        else nemeses.forEach((n,i) => document.getElementById('nemesisCards').appendChild(makeCard(n, i+1, 'nemesis')));
+    }
+
+    // ── 3. Streak History ──────────────────────────────────────────────────
+    function renderStreakTimeline(winStreaks, lossStreaks) {
+        if (!winStreaks.length && !lossStreaks.length) return;
+        const all = [
+            ...winStreaks.map( s => ({ v:  (parseInt(s.Win_Streak)    ||0), type:'win',  active: s.Active_Win_Streak    ==='Active', season: s.Season_Started, month: s.Month_Started, week: s.Week_Started })),
+            ...lossStreaks.map(s => ({ v: -(parseInt(s.Losing_Streak) ||0), type:'loss', active: s.Active_Losing_Streak ==='Active', season: s.Season_Started, month: s.Month_Started, week: s.Week_Started })),
+        ].sort((a,b) => a.season-b.season || a.month-b.month || a.week-b.week);
+
+        const labels = all.map((s,i) => (i===0 || all[i-1].season!==s.season) ? `S${s.season}` : '');
+        const values = all.map(s => s.v);
+        const colors = all.map(s => s.type==='win'
+            ? (s.active ? 'rgba(74,222,128,0.95)' : 'rgba(74,222,128,0.55)')
+            : (s.active ? 'rgba(248,113,113,0.95)' : 'rgba(248,113,113,0.55)'));
+
+        if (charts.streak) charts.streak.destroy();
+        charts.streak = new Chart(document.getElementById('streakChart').getContext('2d'), {
+            type: 'bar',
+            data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: colors, borderWidth: 1, borderRadius: 4 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { backgroundColor: 'rgba(18,18,42,0.95)', titleFont: { family:'Inter' }, bodyFont: { family:'Inter' }, borderColor:'#607cff', borderWidth:1,
+                        callbacks: {
+                            title: (its) => { const s=all[its[0].dataIndex]; return `${s.type==='win'?'✓ Win':'✗ Losing'} Streak${s.active?' (Active)':''}: ${Math.abs(s.v)}`; },
+                            label: (it)  => { const s=all[it.dataIndex]; return `  S${s.season} M${s.month} W${s.week}`; },
+                        }
+                    }
+                },
+                scales: {
+                    y: { grid: { color: 'rgba(96,124,255,0.08)' }, ticks: { callback: v => Math.abs(v), color: '#b0b8d1' }, title: { display:true, text:'Streak Length', color:'#a8aab8', font:{size:11} } },
+                    x: { grid: { color: 'rgba(96,124,255,0.04)' }, ticks: { color:'#607cff', font:{size:11,weight:'bold'}, maxRotation:0, autoSkip:false } },
+                },
+                animation: { duration: 600 }
+            }
+        });
+    }
+
+    // ── 4. Season Radar ────────────────────────────────────────────────────
+    const PALETTE = [
+        { b:'#607cff', bg:'rgba(96,124,255,0.12)'  },
+        { b:'#4ade80', bg:'rgba(74,222,128,0.12)'  },
+        { b:'#fbbf24', bg:'rgba(251,191,36,0.12)'  },
+        { b:'#f87171', bg:'rgba(248,113,113,0.12)' },
+        { b:'#a78bfa', bg:'rgba(167,139,250,0.12)' },
+        { b:'#22d3ee', bg:'rgba(34,211,238,0.12)'  },
+        { b:'#fb923c', bg:'rgba(251,146,60,0.12)'  },
+    ];
+    const EVENT_COLS = ['Won_Tournament','Won_Royal_Rumble','Won_Scramble','Won_Smash_Series','Won_Money_In_The_Bank','Won_Smash_Bros'];
+
+    function renderSeasonRadar(holistic) {
+        if (!holistic || !holistic.length) return;
+
+        function parseRow(row) {
+            const wr = parseFloat(String(row.Win_Percentage||0).replace('%','')) || 0;
+            const mm = Math.min((parseInt(row.Months_With_Major)||0) / 7 * 100, 100);
+            const tm = Math.min((parseInt(row.Months_With_Title)||0) / 7 * 100, 100);
+            const ev = EVENT_COLS.filter(c => row[c]!=null && row[c]!=='').length / EVENT_COLS.length * 100;
+            const tc = Math.min((parseInt(row.Title_Count)||0) / 5 * 100, 100);
+            return [wr, mm, tm, ev, tc];
+        }
+
+        const datasets = holistic.map((row, i) => {
+            const c = PALETTE[(parseInt(row.Season)-1) % PALETTE.length];
+            return { label: `Season ${row.Season}`, data: parseRow(row), _row: row, borderColor: c.b, backgroundColor: c.bg, borderWidth: 2, pointRadius: 4, pointBackgroundColor: c.b };
+        });
+
+        if (charts.radar) charts.radar.destroy();
+        charts.radar = new Chart(document.getElementById('radarChart').getContext('2d'), {
+            type: 'radar',
+            data: { labels: ['Win Rate', 'Major Title Reign', 'Title Reign', 'Event Wins', 'Unique Titles Held'], datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { r: { min:0, max:100, grid:{color:'rgba(96,124,255,0.15)'}, angleLines:{color:'rgba(96,124,255,0.15)'}, ticks:{display:false}, pointLabels:{color:'#b0b8d1', font:{size:12,family:'Inter'}} } },
+                plugins: {
+                    legend: { position:'bottom', labels:{padding:16, font:{size:12,family:'Inter'}} },
+                    tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
+                        callbacks: { label: (it) => {
+                            const row = it.dataset._row;
+                            const axis = it.chart.data.labels[it.dataIndex];
+                            const s = it.dataset.label;
+                            if (axis === 'Win Rate') return `  ${s}: ${row.Win_Percentage}`;
+                            if (axis === 'Major Title Reign') return `  ${s}: ${row.Months_With_Major || 0} month(s)`;
+                            if (axis === 'Title Reign') return `  ${s}: ${row.Months_With_Title || 0} month(s)`;
+                            if (axis === 'Event Wins') {
+                                const NAMES = {'Won_Tournament':'Tournament','Won_Royal_Rumble':'Royal Rumble','Won_Scramble':'Scramble','Won_Smash_Series':'Smash Series','Won_Money_In_The_Bank':'Money in the Bank','Won_Smash_Bros':'Smash Bros'};
+                                const won = EVENT_COLS.filter(c => row[c]!=null && row[c]!=='').map(c => NAMES[c]);
+                                return `  ${s}: ${won.length ? won.join(', ') : 'None'}`;
+                            }
+                            if (axis === 'Unique Titles Held') return `  ${s}: ${row.Titles_Held || 'None'}`;
+                            return `  ${s}: ${it.raw.toFixed(0)}`;
+                        }}
                     }
                 },
                 animation: { duration: 800 }
