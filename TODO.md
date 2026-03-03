@@ -47,3 +47,6 @@
   - would only have their matches
   - Big Green W if they won for easy viewing in Fighter PAge but red L on far left if lost or maybe something even nicer looking. That makes sense htough
 - [X] **16. About page to explain what this data is and how the actual code works at a high level with tools used**
+- **17. Gantt chart shoudl move title reign to top left**
+- **18. Fighter Compare Page**
+- **19. Fighter Page should just have graphs and nothing collapsed at all**
