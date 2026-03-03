@@ -6,4 +6,9 @@ __pycache__/
 dist/
 build/
 .env
+
+# Elastic Beanstalk Files
 .elasticbeanstalk/
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
