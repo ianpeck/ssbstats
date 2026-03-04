@@ -14,8 +14,13 @@ function fighterToFilename(name) {
     return lower.replace(/ /g, '').replace(/\./g, '').replace(/&/g, 'and');
 }
 
+const _STAGE_OVERRIDES = { 'mushroom kingdom ii': 'mushroomkingdom2' };
 function stageToFilename(name) {
-    return name.toLowerCase().replace(/ /g, '').replace(/,/g, '').replace(/'/g, '').replace(/\(/g, '').replace(/\)/g, '').replace(/-/g, '');
+    const lower = name.toLowerCase();
+    if (_STAGE_OVERRIDES[lower]) return _STAGE_OVERRIDES[lower];
+    // Strip diacritics (é→e, ō→o, etc.) then remove special chars
+    const ascii = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return ascii.toLowerCase().replace(/ /g, '').replace(/,/g, '').replace(/'/g, '').replace(/\(/g, '').replace(/\)/g, '').replace(/-/g, '').replace(/\./g, '');
 }
 
 function debounce(fn, delay) {

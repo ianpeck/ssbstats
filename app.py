@@ -5,6 +5,7 @@ import db
 import os
 import re
 import time
+import unicodedata
 import yaml
 
 app = Flask(__name__)
@@ -72,9 +73,18 @@ def fighter_to_filename(name):
     return lower.replace(' ', '').replace('.', '').replace('&', 'and')
 
 
+_STAGE_OVERRIDES = {
+    'mushroom kingdom ii': 'mushroomkingdom2',
+}
+
 def stage_to_filename(name):
-    """Convert stage name to asset filename."""
-    return name.lower().replace(' ', '').replace(',', '').replace("'", '').replace('(', '').replace(')', '').replace('-', '')
+    """Convert stage name to asset filename, stripping accents and special chars."""
+    lower = name.lower()
+    if lower in _STAGE_OVERRIDES:
+        return _STAGE_OVERRIDES[lower]
+    # Normalize unicode: é → e, ō → o, etc.
+    normalized = unicodedata.normalize('NFD', name).encode('ascii', 'ignore').decode('ascii')
+    return normalized.lower().replace(' ', '').replace(',', '').replace("'", '').replace('(', '').replace(')', '').replace('-', '').replace('.', '')
 
 
 def normalize_champ_name(s):
@@ -496,7 +506,9 @@ def api_championships():
         for row in rows:
             if row.get('Championship_Name'):
                 row['Championship_Name'] = normalize_champ_name(row['Championship_Name'])
-        return jsonify([{k: _serialize(v) for k, v in row.items()} for row in rows])
+        serialized = [{k: _serialize(v) for k, v in row.items()} for row in rows]
+        current = db.get_current_fight_date()
+        return jsonify({'rows': serialized, 'current_season': current[0], 'current_month': current[1]})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

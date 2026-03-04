@@ -156,7 +156,7 @@ def get_fighter_accolades(name):
         'current_titles': ("SELECT Championship_Name FROM CurrentChampions WHERE Fighter_Name = %s", (name,)),
         'champ_by_champ': ("SELECT * FROM champfightstatsbychampionship WHERE Fighter_Name = %s", (name,)),
         'holistic':       ("SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season", (name,)),
-        'triple_crown':   ("SELECT * FROM TripleCrown", ()),
+        'triple_crown':   ("SELECT * FROM triplecrown", ()),
     }
 
     def run_query(key_query):
@@ -214,7 +214,7 @@ def get_leaderboard():
             "SELECT Fighter_Name, COUNT(DISTINCT Championship_Name) as unique_titles "
             "FROM ChampionshipHistory GROUP BY Fighter_Name"
         )
-        f_tc      = pool.submit(select_view_dicts, "SELECT * FROM TripleCrown")
+        f_tc      = pool.submit(select_view_dicts, "SELECT * FROM triplecrown")
 
         career_rows  = f_career.result()
         try:
@@ -573,12 +573,23 @@ def get_championship_history_alltime():
     )
 
 
+def get_current_fight_date():
+    """Return (season, month) of the most recent fight in FightLog."""
+    rows = select_view_dicts(
+        "SELECT Season, Month FROM FightLog "
+        "ORDER BY Season DESC, Month DESC LIMIT 1"
+    )
+    if rows:
+        return int(rows[0].get('Season') or 1), int(rows[0].get('Month') or 1)
+    return 1, 1
+
+
 def get_all_ppvs():
     """All PPV events with season, month, fight count, and title fight count."""
     return select_view_dicts(
         "SELECT PPV_Name, Season, Month, "
         "COUNT(DISTINCT Fight_ID) as fight_count, "
-        "SUM(CASE WHEN Championship_Name IS NOT NULL AND Championship_Name != '' THEN 1 ELSE 0 END) as title_fights "
+        "COUNT(DISTINCT CASE WHEN Championship_Name IS NOT NULL AND Championship_Name != '' THEN Fight_ID END) as title_fights "
         "FROM FightLog "
         "WHERE PPV_Name IS NOT NULL AND PPV_Name != '' "
         "GROUP BY PPV_Name, Season, Month "

@@ -6,6 +6,10 @@
     <h1 class="section-title">PPV Events</h1>
     <p class="section-subtitle">Every pay-per-view card in league history</p>
 
+    <div class="season-pills" id="seasonPills">
+        <button class="season-pill active" data-season="">All Seasons</button>
+    </div>
+
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
         <p>Loading events...</p>
@@ -37,6 +41,7 @@
 {% block scripts %}
 <script>
 let allEvents = [];
+let activeSeason = '';
 
 document.addEventListener('DOMContentLoaded', function() {
     fetch('/api/events')
@@ -45,6 +50,27 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('loadingOverlay').style.display = 'none';
             document.getElementById('eventsContent').style.display = 'block';
             allEvents = data;
+
+            // Build season pills from data
+            const seasons = [...new Set(data.map(e => e.Season))].sort((a, b) => a - b);
+            const pillsEl = document.getElementById('seasonPills');
+            seasons.forEach(s => {
+                const btn = document.createElement('button');
+                btn.className = 'season-pill';
+                btn.dataset.season = s;
+                btn.textContent = `S${s}`;
+                pillsEl.appendChild(btn);
+            });
+            pillsEl.querySelectorAll('.season-pill').forEach(pill => {
+                pill.addEventListener('click', function() {
+                    pillsEl.querySelectorAll('.season-pill').forEach(p => p.classList.remove('active'));
+                    this.classList.add('active');
+                    activeSeason = this.dataset.season;
+                    const filtered = activeSeason ? allEvents.filter(e => String(e.Season) === activeSeason) : allEvents;
+                    renderEvents(filtered);
+                });
+            });
+
             renderEvents(data);
         })
         .catch(() => {

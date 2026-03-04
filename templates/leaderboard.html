@@ -165,7 +165,6 @@ function renderLeaderboard(data) {
         const pctClass = pct >= 60 ? 'pct-high' : pct < 40 ? 'pct-low' : 'pct-mid';
         const rankClass = i < 3 ? `rank-${i + 1}` : '';
         const filename = fighterToFilename(fighter.name);
-        const tcBadge = fighter.triple_crown ? `<span class="lb-tc-badge" title="Triple Crown">👑 Triple Crown</span>` : '';
         const titleBadges = (fighter.titles || [])
             .map(t => `<span class="lb-champ-tag">👑 ${t}</span>`).join('');
         const extraCells = `
@@ -183,7 +182,7 @@ function renderLeaderboard(data) {
                      class="leaderboard-portrait" onerror="this.style.display='none'">
                 <div class="fighter-cell-inner">
                     <a href="/fighter/${encodeURIComponent(fighter.name)}" class="fighter-link">${fighter.name}</a>
-                    ${tcBadge}${titleBadges}
+                    ${titleBadges}
                 </div>
             </td>
             <td class="stat-cell">${fighter.wins}</td>

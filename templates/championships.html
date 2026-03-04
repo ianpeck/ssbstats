@@ -19,13 +19,17 @@
 
 {% block scripts %}
 <script>
+let champCurrentSeason = null, champCurrentMonth = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     fetch('/api/championships')
         .then(r => r.json())
-        .then(rows => {
+        .then(data => {
+            champCurrentSeason = data.current_season;
+            champCurrentMonth  = data.current_month;
             document.getElementById('loadingOverlay').style.display = 'none';
             document.getElementById('champContent').style.display = 'block';
-            renderHistory(rows);
+            renderHistory(data.rows);
         })
         .catch(() => {
             document.getElementById('loadingOverlay').innerHTML = '<p>Error loading championship history.</p>';
@@ -37,23 +41,30 @@ document.addEventListener('DOMContentLoaded', function() {
 // Win month does NOT count (won at end of month → reign starts 1st of next month).
 // Loss month DOES count (lost at end of month → still owned it that month).
 // Same-month win+loss → 0 months held.
-// Season_Lost null → current champion, shown as "active".
+// Season_Lost null → current champion, use latest fight date to compute real months.
 function splitReign(seasonWon, monthWon, seasonLost, monthLost) {
-    if (seasonLost == null) {
+    const isCurrent = (seasonLost == null);
+    const endSeason = isCurrent ? champCurrentSeason : seasonLost;
+    const endMonth  = isCurrent ? champCurrentMonth  : monthLost;
+
+    if (endSeason == null) {
         return [{ season: seasonWon, months: 0, isCurrent: true }];
     }
-    const absStart = (seasonWon  - 1) * 12 + monthWon  + 1; // reign starts NEXT month
-    const absEnd   = (seasonLost - 1) * 12 + monthLost + 1; // loss month included (exclusive ptr)
-    if (absEnd <= absStart) return [{ season: seasonWon, months: 0 }];
+
+    const absStart = (seasonWon - 1) * 12 + monthWon  + 1; // reign starts NEXT month
+    const absEnd   = (endSeason  - 1) * 12 + endMonth  + 1; // end month inclusive
+    if (absEnd <= absStart) return [{ season: seasonWon, months: 0, isCurrent }];
+
     const subs = [];
     let pos = absStart;
     while (pos < absEnd) {
         const season    = Math.ceil(pos / 12);
         const seasonEnd = season * 12;
         const months    = Math.min(seasonEnd + 1, absEnd) - pos;
-        subs.push({ season, months });
+        subs.push({ season, months, isCurrent: false });
         pos = seasonEnd + 1;
     }
+    if (subs.length > 0) subs[subs.length - 1].isCurrent = isCurrent;
     return subs;
 }
 
@@ -123,8 +134,10 @@ function renderHistory(rows) {
         allSegs.forEach((seg, si) => {
             const { season, months, isCurrent, fighters } = seg;
             const isLast  = si === allSegs.length - 1;
-            const flexVal = isCurrent ? 3 : (months > 0 ? months : 0.4);
-            const monthLabel = isCurrent ? 'active' : (months > 0 ? `${months} mo.` : '<1 mo.');
+            const flexVal = months > 0 ? months : (isCurrent ? 3 : 0.4);
+            const monthLabel = isCurrent
+                ? (months > 0 ? `${months} mo. (active)` : 'active')
+                : (months > 0 ? `${months} mo.` : '<1 mo.');
             const isTag = fighters.length > 1;
 
             if (lastSeason !== null && season !== lastSeason) {
