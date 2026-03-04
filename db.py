@@ -97,7 +97,7 @@ def get_all_fight_types():
     return select_list("SELECT * FROM FightType", 1)
 
 
-def get_all_ppvs():
+def get_all_ppv_names():
     return select_list("SELECT * FROM PPV", 1)
 
 
@@ -156,6 +156,7 @@ def get_fighter_accolades(name):
         'current_titles': ("SELECT Championship_Name FROM CurrentChampions WHERE Fighter_Name = %s", (name,)),
         'champ_by_champ': ("SELECT * FROM champfightstatsbychampionship WHERE Fighter_Name = %s", (name,)),
         'holistic':       ("SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season", (name,)),
+        'triple_crown':   ("SELECT * FROM TripleCrown", ()),
     }
 
     def run_query(key_query):
@@ -165,7 +166,7 @@ def get_fighter_accolades(name):
         except Exception:
             return key, []
 
-    with ThreadPoolExecutor(max_workers=9) as pool:
+    with ThreadPoolExecutor(max_workers=10) as pool:
         results = list(pool.map(run_query, queries.items()))
 
     return {key: data for key, data in results}
@@ -182,23 +183,99 @@ def get_current_champions():
 
 # ---------- Leaderboard ----------
 
+def _row_name(row):
+    """Find the fighter name value in a dict row regardless of exact column name."""
+    for key in ('Fighter_Name', 'fighter_name', 'Name', 'name'):
+        if row.get(key):
+            return str(row[key])
+    for k, v in row.items():
+        if 'name' in k.lower() and v:
+            return str(v)
+    return None
+
+
+_EVENT_COLS_LB = [
+    'Won_Tournament', 'Won_Royal_Rumble', 'Won_Scramble',
+    'Won_Smash_Series', 'Won_Money_In_The_Bank', 'Won_Smash_Bros',
+]
+
 def get_leaderboard():
-    """Get all fighters with career stats, sorted by win rate."""
-    rows = select_view_row("SELECT * FROM careerstats ORDER BY Fighter_Name")
+    """Get all fighters with career stats plus extended accolade metrics."""
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        f_career  = pool.submit(select_view_row, "SELECT * FROM careerstats ORDER BY Fighter_Name")
+        f_hol     = pool.submit(
+            select_view_dicts,
+            "SELECT Fighter_Name, Months_With_Title, Months_With_Major, " +
+            ", ".join(_EVENT_COLS_LB) +
+            " FROM holistic_view"
+        )
+        f_titles  = pool.submit(
+            select_view_dicts,
+            "SELECT Fighter_Name, COUNT(DISTINCT Championship_Name) as unique_titles "
+            "FROM ChampionshipHistory GROUP BY Fighter_Name"
+        )
+        f_tc      = pool.submit(select_view_dicts, "SELECT * FROM TripleCrown")
+
+        career_rows  = f_career.result()
+        try:
+            holistic_all = f_hol.result()
+        except Exception:
+            # Months_With_Major may not exist — fall back to query without it
+            try:
+                holistic_all = select_view_dicts(
+                    "SELECT Fighter_Name, Months_With_Title, " +
+                    ", ".join(_EVENT_COLS_LB) +
+                    " FROM holistic_view"
+                )
+            except Exception:
+                holistic_all = []
+        titles_rows  = f_titles.result()
+        try:
+            tc_rows = f_tc.result()
+        except Exception:
+            tc_rows = []
+
+    # Build holistic lookup: {name: [rows]}
+    hol_by_fighter = {}
+    for r in holistic_all:
+        hol_by_fighter.setdefault(r['Fighter_Name'], []).append(r)
+
+    titles_by_fighter = {r['Fighter_Name']: int(r['unique_titles'] or 0) for r in titles_rows}
+    # Triple crown: set of fighter names who achieved it (column name may vary)
+    tc_fighters = {_row_name(r) for r in tc_rows if _row_name(r)}
+
     fighters = []
-    for row in rows:
+    for row in career_rows:
+        name    = row[0]
+        wins    = int(row[1]) if len(row) > 1 else 0
+        losses  = int(row[2]) if len(row) > 2 else 0
+        win_pct = row[3] if len(row) > 3 else '0.00%'
+
+        hol = hol_by_fighter.get(name, [])
+        champ_months = sum(int(r.get('Months_With_Title') or 0) for r in hol)
+        major_months = sum(int(r.get('Months_With_Major') or 0) for r in hol)
+        event_set = set()
+        for r in hol:
+            for col in _EVENT_COLS_LB:
+                if r.get(col) not in (None, '', 'None'):
+                    event_set.add(col)
+
         fighters.append({
-            'name': row[0],
-            'wins': row[1] if len(row) > 1 else 0,
-            'losses': row[2] if len(row) > 2 else 0,
-            'win_pct': row[3] if len(row) > 3 else '0.00%',
+            'name':          name,
+            'wins':          wins,
+            'losses':        losses,
+            'win_pct':       win_pct,
+            'total_fights':  wins + losses,
+            'champ_months':  champ_months,
+            'major_months':  major_months,
+            'event_wins':    len(event_set),
+            'unique_titles': titles_by_fighter.get(name, 0),
+            'triple_crown':  1 if name in tc_fighters else 0,
         })
-    # Sort by win percentage descending
+
     def parse_pct(pct):
         try:
-            if isinstance(pct, str):
-                return float(pct.replace('%', ''))
-            return float(pct)
+            return float(str(pct).replace('%', ''))
         except (ValueError, TypeError):
             return 0.0
     fighters.sort(key=lambda f: parse_pct(f['win_pct']), reverse=True)
@@ -213,19 +290,78 @@ def get_all_seasons():
 
 
 def get_leaderboard_by_season(season):
-    """Get all fighters with stats for a specific season, sorted by win rate."""
-    rows = select_view_row(
-        "SELECT * FROM CareerStatsBySeason WHERE Season = %s ORDER BY Fighter_Name",
-        (season,)
-    )
+    """Get fighters with season stats plus holistic accolades for that season."""
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_season = pool.submit(
+            select_view_dicts,
+            "SELECT * FROM CareerStatsBySeason WHERE Season = %s ORDER BY Fighter_Name",
+            (season,)
+        )
+        f_hol = pool.submit(
+            select_view_dicts,
+            "SELECT Fighter_Name, Months_With_Title, Months_With_Major, " +
+            ", ".join(_EVENT_COLS_LB) +
+            " FROM holistic_view WHERE Season = %s",
+            (season,)
+        )
+        f_titles = pool.submit(
+            select_view_dicts,
+            "SELECT Fighter_Name, COUNT(DISTINCT Championship_Name) as unique_titles "
+            "FROM ChampionshipHistory "
+            "WHERE Season_Won <= %s AND (Season_Lost IS NULL OR Season_Lost >= %s) "
+            "GROUP BY Fighter_Name",
+            (season, season)
+        )
+
+        season_rows = f_season.result()
+        try:
+            holistic_all = f_hol.result()
+        except Exception:
+            try:
+                holistic_all = select_view_dicts(
+                    "SELECT Fighter_Name, Months_With_Title, " +
+                    ", ".join(_EVENT_COLS_LB) +
+                    " FROM holistic_view WHERE Season = %s",
+                    (season,)
+                )
+            except Exception:
+                holistic_all = []
+        titles_rows = f_titles.result()
+
+    hol_by_fighter = {}
+    for r in holistic_all:
+        hol_by_fighter.setdefault(r['Fighter_Name'], []).append(r)
+    titles_by_fighter = {r['Fighter_Name']: int(r['unique_titles'] or 0) for r in titles_rows}
+
     fighters = []
-    for row in rows:
+    for row in season_rows:
+        name    = row.get('Fighter_Name') or row.get('fighter_name') or ''
+        wins    = int(row.get('Wins') or row.get('wins') or 0)
+        losses  = int(row.get('Losses') or row.get('losses') or 0)
+        win_pct = row.get('Win Percentage') or row.get('win_pct') or '0.00%'
+
+        hol = hol_by_fighter.get(name, [])
+        champ_months = sum(int(r.get('Months_With_Title') or 0) for r in hol)
+        major_months = sum(int(r.get('Months_With_Major') or 0) for r in hol)
+        event_set = set()
+        for r in hol:
+            for col in _EVENT_COLS_LB:
+                if r.get(col) not in (None, '', 'None'):
+                    event_set.add(col)
+
         fighters.append({
-            'name': row[0],
-            'wins': row[2] if len(row) > 2 else 0,
-            'losses': row[3] if len(row) > 3 else 0,
-            'win_pct': row[4] if len(row) > 4 else '0.00%',
+            'name':          name,
+            'wins':          wins,
+            'losses':        losses,
+            'win_pct':       win_pct,
+            'total_fights':  wins + losses,
+            'champ_months':  champ_months,
+            'major_months':  major_months,
+            'event_wins':    len(event_set),
+            'unique_titles': titles_by_fighter.get(name, 0),
+            'triple_crown':  0,
         })
+
     def parse_pct(pct):
         try:
             return float(str(pct).replace('%', ''))
@@ -279,6 +415,7 @@ def get_fight_log(filters, page=1, per_page=100):
         ('fighter',      'Fighter_Name',    True),   # LIKE partial match
         ('brand',        'Brand_Name',      False),
         ('decision',     'Decision',        False),
+        ('fight_id',     'Fight_ID',        False),
     ]
 
     for key, col, use_like in mapping:
@@ -381,10 +518,71 @@ def get_advanced_analytics(name):
     return {key: data for key, data in results}
 
 
+def get_comparison_data(f1, f2):
+    """All data needed for the fighter comparison page, fetched in parallel."""
+    queries = {
+        'f1_career':      ("SELECT * FROM careerstats WHERE Fighter_Name = %s", (f1,)),
+        'f2_career':      ("SELECT * FROM careerstats WHERE Fighter_Name = %s", (f2,)),
+        'f1_season':      ("SELECT * FROM CareerStatsBySeason WHERE Fighter_Name = %s ORDER BY Season", (f1,)),
+        'f2_season':      ("SELECT * FROM CareerStatsBySeason WHERE Fighter_Name = %s ORDER BY Season", (f2,)),
+        'f1_holistic':    ("SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season", (f1,)),
+        'f2_holistic':    ("SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season", (f2,)),
+        'f1_running':     ("SELECT Season, Month, Week, Fight_ID, Decision, Career_Running_Win_Pct FROM CareerRunningStats WHERE Fighter_Name = %s ORDER BY Season, Month, Week, Fight_ID", (f1,)),
+        'f2_running':     ("SELECT Season, Month, Week, Fight_ID, Decision, Career_Running_Win_Pct FROM CareerRunningStats WHERE Fighter_Name = %s ORDER BY Season, Month, Week, Fight_ID", (f2,)),
+        'f1_champs':      ("SELECT COUNT(DISTINCT Championship_Name) AS total FROM ChampionshipHistory WHERE Fighter_Name = %s", (f1,)),
+        'f2_champs':      ("SELECT COUNT(DISTINCT Championship_Name) AS total FROM ChampionshipHistory WHERE Fighter_Name = %s", (f2,)),
+        'f1_champ_stats': ("SELECT * FROM champfightstats WHERE Fighter_Name = %s", (f1,)),
+        'f2_champ_stats': ("SELECT * FROM champfightstats WHERE Fighter_Name = %s", (f2,)),
+        'fights': ("""
+            SELECT fl.Season, fl.Month, fl.Week, fl.Fight_ID, fl.Fighter_Name, fl.Decision,
+                   fl.Championship_Name, fl.Description, fl.PPV_Name, fl.Location_Name
+            FROM FightLog fl
+            WHERE fl.Fight_ID IN (
+                SELECT r1.Fight_ID FROM Results r1
+                JOIN Results r2 ON r1.Fight_ID = r2.Fight_ID AND r1.Fighter_Name = %s AND r2.Fighter_Name = %s
+            )
+            AND fl.Fighter_Name IN (%s, %s)
+            ORDER BY fl.Season DESC, fl.Month DESC, COALESCE(fl.Week, 99) DESC, fl.Fight_ID DESC
+        """, (f1, f2, f1, f2)),
+    }
+
+    with ThreadPoolExecutor(max_workers=13) as pool:
+        view_futures = {key: pool.submit(select_view_dicts, q, p) for key, (q, p) in queries.items()}
+        h2h_fut = pool.submit(h2h_query_sql, "CALL SmashBros.headtohead(%s, %s)", (f1, f2))
+
+    result = {}
+    for key, fut in view_futures.items():
+        try:
+            result[key] = fut.result()
+        except Exception:
+            result[key] = []
+    try:
+        result['h2h'] = h2h_fut.result()
+    except Exception:
+        result['h2h'] = [
+            {'Fighter': f1, 'Wins': '0', 'Losses': '0', 'W/L %': '0.00%'},
+            {'Fighter': f2, 'Wins': '0', 'Losses': '0', 'W/L %': '0.00%'},
+        ]
+    return result
+
+
 def get_championship_history_alltime():
     """Full championship history across all seasons, ordered chronologically."""
     return select_view_dicts(
         "SELECT * FROM ChampionshipHistory ORDER BY Championship_Name, Season_Won, Month_Won"
+    )
+
+
+def get_all_ppvs():
+    """All PPV events with season, month, fight count, and title fight count."""
+    return select_view_dicts(
+        "SELECT PPV_Name, Season, Month, "
+        "COUNT(DISTINCT Fight_ID) as fight_count, "
+        "SUM(CASE WHEN Championship_Name IS NOT NULL AND Championship_Name != '' THEN 1 ELSE 0 END) as title_fights "
+        "FROM FightLog "
+        "WHERE PPV_Name IS NOT NULL AND PPV_Name != '' "
+        "GROUP BY PPV_Name, Season, Month "
+        "ORDER BY Season DESC, Month DESC"
     )
 
 

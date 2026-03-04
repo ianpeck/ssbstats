@@ -329,11 +329,36 @@ img {
     color: var(--text-muted);
 }
 
-.roster-search-wrapper,
-.leaderboard-search-wrapper {
+.roster-search-wrapper {
     max-width: 400px;
     margin: 0 auto 2rem;
 }
+
+.leaderboard-controls {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+.leaderboard-controls .search-input { flex: 1; min-width: 200px; max-width: 360px; }
+
+.lb-filter-group { display: flex; align-items: center; gap: 0.6rem; }
+.lb-filter-label { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; }
+.lb-min-pills { display: flex; gap: 4px; }
+.lb-min-pill {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-family: var(--font-body);
+    padding: 3px 10px;
+    transition: all var(--transition);
+}
+.lb-min-pill:hover { border-color: var(--accent); color: var(--accent); }
+.lb-min-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* ============================================
    ROSTER GRID
@@ -471,6 +496,16 @@ img {
     background: rgba(251, 191, 36, 0.15);
     border: 1px solid rgba(251, 191, 36, 0.4);
     color: #fbbf24;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.lb-tc-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(251, 191, 36, 0.2));
+    border: 1px solid rgba(168, 85, 247, 0.5);
+    color: #c084fc;
     padding: 2px 8px;
     border-radius: 999px;
     white-space: nowrap;
@@ -1008,6 +1043,12 @@ img {
     border: 1px solid rgba(167, 139, 250, 0.35);
     color: #c4b5fd;
 }
+.triple-crown-badge {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(251, 191, 36, 0.15));
+    border: 1px solid rgba(168, 85, 247, 0.5);
+    color: #c084fc;
+    font-weight: 700;
+}
 .badge-icon { font-size: 1rem; }
 .badge-season { font-size: 0.75rem; opacity: 0.7; margin-left: 4px; }
 
@@ -1040,11 +1081,19 @@ img {
     font-size: 0.9rem;
 }
 
+.fighter-stats-section {
+    margin-top: 2rem;
+}
+
 .fighter-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 24px;
     align-items: start;
+}
+
+.stats-card-full {
+    grid-column: 1 / -1;
 }
 
 /* ============================================
@@ -2175,7 +2224,7 @@ img {
 /* Fighter page — advanced analytics collapsible */
 .fighter-advanced-analytics {
     margin-top: 2rem;
-    margin-bottom: 0;
+    margin-bottom: 2rem;
 }
 
 .advanced-analytics-content {
@@ -2294,6 +2343,150 @@ img {
     .rivals-section { grid-template-columns: 1fr; }
 }
 
+/* Fighter page — location stats (full-width) */
+.fighter-location-stats {
+    margin-top: 2rem;
+}
+
+/* ============================================
+   EVENTS PAGE
+   ============================================ */
+
+.event-season-group { margin-bottom: 2.5rem; }
+
+.event-season-heading {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent-light);
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.event-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.event-card {
+    padding: 1.2rem 1.3rem;
+    cursor: pointer;
+    transition: transform var(--transition), border-color var(--transition);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.event-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+}
+
+.event-card-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.event-card-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.event-card-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+}
+
+.event-stat {
+    font-size: 0.75rem;
+    background: rgba(96,124,255,0.1);
+    color: var(--accent-light);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.event-stat-title {
+    background: rgba(251,191,36,0.12);
+    color: #fbbf24;
+}
+
+.event-card-action {
+    margin-top: auto;
+    padding-top: 0.6rem;
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+/* Event overlay / modal */
+.event-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8,8,20,0.75);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem;
+    overflow-y: auto;
+}
+
+.event-overlay-panel {
+    width: 100%;
+    max-width: 860px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.event-overlay-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1.5rem 1.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    gap: 1rem;
+}
+
+.event-overlay-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.event-overlay-meta {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0.25rem 0 0;
+}
+
+.event-overlay-close {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 2px 10px;
+    flex-shrink: 0;
+    transition: all var(--transition);
+}
+
+.event-overlay-close:hover { border-color: var(--accent); color: var(--accent); }
+
+#overlayFights { padding: 0.75rem; }
+
 /* Fighter page — fight history collapsible */
 .fighter-fight-history {
     margin-top: 2rem;
@@ -2309,6 +2502,14 @@ img {
     cursor: pointer;
     user-select: none;
     transition: background var(--transition);
+    /* Reset button defaults */
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
 }
 
 .fight-history-card .fight-history-header:hover {
@@ -2604,4 +2805,215 @@ img {
         flex-direction: column;
         gap: 0.1rem;
     }
+}
+
+.clickable-row { cursor: pointer; }
+.clickable-row:hover td { background: rgba(96,124,255,0.07); }
+
+.chart-section-title {
+    font-family: var(--font-heading);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 1rem 0;
+}
+
+/* ── Comparison Page ─────────────────────────────────────────── */
+
+.compare-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.compare-hero {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+}
+
+.compare-fighter-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+.compare-vs-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding-top: 1.5rem;
+}
+
+.vs-text {
+    font-family: var(--font-heading);
+    font-size: 2.5rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #607cff, #fb923c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.08em;
+}
+
+/* Scoreboard */
+.compare-scoreboard {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.sb-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+    min-width: 120px;
+}
+
+.sb-left { align-items: flex-end; }
+.sb-right { align-items: flex-start; }
+
+.sb-portrait {
+    width: 72px;
+    height: 75px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+}
+
+.sb-name {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+
+.sb-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 2;
+    min-width: 180px;
+}
+
+.sb-scores {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+}
+
+.sb-score {
+    font-family: var(--font-heading);
+    font-size: 3.5rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.sb-dash {
+    font-size: 2rem;
+    color: var(--text-secondary);
+    font-weight: 300;
+}
+
+.sb-bar-track {
+    display: flex;
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.06);
+}
+
+.sb-bar-fill {
+    height: 100%;
+    transition: width 0.7s cubic-bezier(.4,0,.2,1);
+}
+
+.sb-bar-f1 { background: #607cff; border-radius: 4px 0 0 4px; }
+.sb-bar-f2 { background: #fb923c; border-radius: 0 4px 4px 0; }
+
+.sb-label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* Color helpers */
+.f1-color { color: #607cff; }
+.f2-color { color: #fb923c; }
+
+/* Stats Comparison Grid */
+.compare-card {
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.compare-grid-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-body);
+}
+
+.compare-grid-table thead th {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0.5rem 1rem 1rem;
+    letter-spacing: 0.03em;
+}
+
+.compare-grid-table .grid-metric {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 0.6rem 0.5rem;
+    width: 34%;
+}
+
+.compare-grid-table .grid-val {
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.6rem 1rem;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.compare-grid-table .grid-winner {
+    color: var(--text-primary);
+}
+
+.f1-winner-cell { background: rgba(96,124,255,0.13); color: #607cff !important; }
+.f2-winner-cell { background: rgba(251,146,60,0.13);  color: #fb923c !important; }
+
+.compare-grid-table tbody tr:not(:last-child) td {
+    border-bottom: 1px solid rgba(96,124,255,0.07);
+}
+
+@media (max-width: 700px) {
+    .compare-hero { flex-direction: column; align-items: center; }
+    .compare-scoreboard { flex-direction: column; }
+    .sb-left, .sb-right { align-items: center; }
+    .sb-score { font-size: 2.5rem; }
 }

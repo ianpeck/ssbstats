@@ -24,8 +24,8 @@
                 <a href="/leaderboard" class="nav-link {% if request.path == '/leaderboard' %}active{% endif %}">Power Rankings</a>
                 <a href="/seasons" class="nav-link {% if request.path.startswith('/seasons') %}active{% endif %}">Seasons</a>
                 <a href="/championships" class="nav-link {% if request.path == '/championships' %}active{% endif %}">Championships</a>
+                <a href="/events" class="nav-link {% if request.path == '/events' %}active{% endif %}">Events (PPVs)</a>
                 <a href="/fights" class="nav-link {% if request.path.startswith('/fights') %}active{% endif %}">Fight Logs</a>
-                <a href="/graphs" class="nav-link {% if request.path == '/graphs' %}active{% endif %}">Graphs</a>
                 <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">About</a>
             </div>
             <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">

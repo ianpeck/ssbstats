@@ -66,131 +66,21 @@
             <div class="accolades-group" id="awardBadges"></div>
         </div>
     </div>
-
-    <!-- Stats Breakdown -->
-    <div class="stats-grid-header" id="statsGridHeader" style="display: none;">
-        <button class="collapse-all-btn" id="collapseAllBtn" title="Expand all sections">
-            <span class="collapse-all-icon">&#8627;</span> Expand All
-        </button>
-    </div>
-    <div class="fighter-stats-grid" id="statsGrid" style="display: none;">
-
-        <!-- By Season -->
-        <div class="stats-table-wrapper glass-card collapsible-card">
-            <button class="collapsible-header" aria-expanded="false">
-                <span class="table-title">Stats by Season</span>
-                <span class="chevron">&#8963;</span>
-            </button>
-            <div class="collapsible-body">
-            <div class="collapsible-body-inner">
-                <table class="stats-table">
-                    <thead><tr><th>Season</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                    <tbody id="seasonTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-                </table>
-            </div>
-            </div>
-        </div>
-
-        <!-- By Location -->
-        <div class="stats-table-wrapper glass-card collapsible-card">
-            <button class="collapsible-header" aria-expanded="false">
-                <span class="table-title">Stats by Location</span>
-                <span class="chevron">&#8963;</span>
-            </button>
-            <div class="collapsible-body">
-            <div class="collapsible-body-inner">
-                <table class="stats-table">
-                    <thead><tr><th>Location</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                    <tbody id="locationTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-                </table>
-            </div>
-            </div>
-        </div>
-
-        <!-- By Fight Type -->
-        <div class="stats-table-wrapper glass-card collapsible-card">
-            <button class="collapsible-header" aria-expanded="false">
-                <span class="table-title">Stats by Match Type</span>
-                <span class="chevron">&#8963;</span>
-            </button>
-            <div class="collapsible-body">
-            <div class="collapsible-body-inner">
-                <table class="stats-table">
-                    <thead><tr><th>Type</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                    <tbody id="fightTypeTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-                </table>
-            </div>
-            </div>
-        </div>
-
-        <!-- By Brand -->
-        <div class="stats-table-wrapper glass-card collapsible-card">
-            <button class="collapsible-header" aria-expanded="false">
-                <span class="table-title">Stats by Brand</span>
-                <span class="chevron">&#8963;</span>
-            </button>
-            <div class="collapsible-body">
-            <div class="collapsible-body-inner">
-                <table class="stats-table">
-                    <thead><tr><th>Brand</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                    <tbody id="brandTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-                </table>
-            </div>
-            </div>
-        </div>
-
-        <!-- By PPV -->
-        <div class="stats-table-wrapper glass-card collapsible-card">
-            <button class="collapsible-header" aria-expanded="false">
-                <span class="table-title">Stats by PPV</span>
-                <span class="chevron">&#8963;</span>
-            </button>
-            <div class="collapsible-body">
-            <div class="collapsible-body-inner">
-                <table class="stats-table">
-                    <thead><tr><th>PPV</th><th>Wins</th><th>Losses</th><th>W/L %</th></tr></thead>
-                    <tbody id="ppvTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-                </table>
-            </div>
-            </div>
-        </div>
-
-        <!-- Championship Stats by Title -->
-        <div class="stats-table-wrapper glass-card collapsible-card">
-            <button class="collapsible-header" aria-expanded="false">
-                <span class="table-title">Championship Stats by Title</span>
-                <span class="chevron">&#8963;</span>
-            </button>
-            <div class="collapsible-body">
-            <div class="collapsible-body-inner">
-                <table class="stats-table">
-                    <thead><tr><th>Championship</th><th>Wins</th><th>Losses</th><th>Win %</th></tr></thead>
-                    <tbody id="champByChampTbody"><tr><td colspan="4" class="empty-row">No data</td></tr></tbody>
-                </table>
-            </div>
-            </div>
-        </div>
-
-
-
-    </div>
 </section>
 
-<!-- Advanced Analytics (collapsible, lazy-loaded) -->
+<!-- Advanced Analytics (unique per-fighter, always open, lazy-loaded) -->
 <section class="fighter-advanced-analytics">
-    <div class="stats-table-wrapper glass-card collapsible-card fight-history-card">
-        <div class="fight-history-header" id="advancedAnalyticsToggle">
+    <div class="stats-table-wrapper glass-card fight-history-card">
+        <div class="fight-history-header">
             <span class="fight-history-label">
                 <span class="fight-history-icon">&#128200;</span> Advanced Analytics
             </span>
-            <span class="fight-history-chevron" id="advancedAnalyticsChevron">&#8963;</span>
         </div>
-        <div class="fight-history-body" id="advancedAnalyticsBody" style="display:none;">
-            <div class="loading-overlay" id="advancedAnalyticsLoading"
-                 style="display:none; position:relative; min-height:90px; border-radius:0;">
-                <div class="spinner"></div>
-            </div>
-            <div class="advanced-analytics-content" id="advancedAnalyticsContent">
+        <div class="loading-overlay" id="advancedAnalyticsLoading"
+             style="display:none; position:relative; min-height:90px; border-radius:0;">
+            <div class="spinner"></div>
+        </div>
+        <div class="advanced-analytics-content" id="advancedAnalyticsContent">
 
                 <!-- 1. Career Win Rate Momentum -->
                 <div class="analytics-chart-wrapper">
@@ -235,20 +125,64 @@
                 </div>
 
             </div>
+    </div>
+</section>
+
+<!-- Stats Breakdown -->
+<section class="fighter-stats-section">
+    <div class="fighter-stats-grid" id="statsGrid" style="display:none;">
+
+        <!-- By Season — bar chart -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="chart-section-title">Season Stats</h3>
+            <div style="height:240px;"><canvas id="seasonChart"></canvas></div>
         </div>
+
+        <!-- By Match Type — horizontal bar chart -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="chart-section-title">Match Type Stats</h3>
+            <div id="fightTypeChartWrap"><canvas id="fightTypeChart"></canvas></div>
+        </div>
+
+        <!-- By Brand — horizontal bar chart -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="chart-section-title">Brand Stats</h3>
+            <div style="height:160px;"><canvas id="brandChart"></canvas></div>
+        </div>
+
+        <!-- Championship Stats — half-width scrollable chart -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="chart-section-title">Championship Stats by Title</h3>
+            <div class="analytics-chart-scroll"><canvas id="champByChampChart"></canvas></div>
+        </div>
+
+        <!-- By PPV — full-width scrollable chart -->
+        <div class="stats-table-wrapper glass-card stats-card-full">
+            <h3 class="chart-section-title">PPV Stats</h3>
+            <div class="analytics-chart-scroll"><canvas id="ppvChart"></canvas></div>
+        </div>
+
+    </div>
+</section>
+
+<!-- Location Stats (full-width) -->
+<section class="fighter-location-stats">
+    <div class="stats-table-wrapper glass-card">
+        <h3 class="chart-section-title">Location Stats</h3>
+        <div class="analytics-chart-scroll"><canvas id="locationChart"></canvas></div>
     </div>
 </section>
 
 <!-- Fight History (collapsible, lazy-loaded) -->
 <section class="fighter-fight-history">
-    <div class="stats-table-wrapper glass-card collapsible-card fight-history-card">
-        <div class="fight-history-header" id="fightHistoryToggle">
+    <div class="stats-table-wrapper glass-card fight-history-card">
+        <button class="fight-history-header" id="fightHistoryToggle" aria-expanded="false">
             <span class="fight-history-label">
                 <span class="fight-history-icon">&#128203;</span> Fight History
             </span>
-            <span class="fight-history-chevron" id="fightHistoryChevron">&#8963;</span>
-        </div>
-        <div class="fight-history-body" id="fightHistoryBody" style="display:none;">
+            <span class="chevron" id="fightHistoryChevron">&#9660;</span>
+        </button>
+        <div id="fightHistoryBody" style="display:none;">
             <div class="loading-overlay" id="fightHistoryLoading"
                  style="display:none; position:relative; min-height:90px; border-radius:0;">
                 <div class="spinner"></div>
@@ -272,7 +206,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             document.getElementById('loadingOverlay').style.display = 'none';
             document.getElementById('statsGrid').style.display = 'grid';
-            document.getElementById('statsGridHeader').style.display = 'flex';
 
             if (data.error) return;
 
@@ -280,11 +213,11 @@ document.addEventListener('DOMContentLoaded', function() {
             animateCounter('totalLosses', 0, parseInt(data.career.losses) || 0, 800);
             document.getElementById('winPct').textContent = data.career.win_pct;
 
-            fillTable('seasonTbody', data.by_season, ['season', 'wins', 'losses', 'win_pct']);
-            fillTable('locationTbody', data.by_location, ['location', 'wins', 'losses', 'win_pct']);
-            fillTable('fightTypeTbody', data.by_fight_type, ['type', 'wins', 'losses', 'win_pct']);
-            fillTable('brandTbody', data.by_brand, ['brand', 'wins', 'losses', 'win_pct']);
-            fillTable('ppvTbody', data.by_ppv, ['ppv', 'wins', 'losses', 'win_pct']);
+            renderSeasonChart(data.by_season || []);
+            renderFightTypeChart(data.by_fight_type || []);
+            renderBrandChart(data.by_brand || []);
+            renderPPVChart(data.by_ppv || []);
+            renderLocationChart(data.by_location || []);
 
             const acc = data.accolades || {};
             window.fighterHolistic = acc.holistic || [];
@@ -301,74 +234,39 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // --- Accolades section ---
-            buildChampBadges(acc.champ_reigns || []);
+            buildChampBadges(acc.champ_reigns || [], !!data.triple_crown);
             buildEventBadges(acc.holistic || []);
             buildAwardBadges(acc.awards || []);
-            if ((acc.champ_reigns || []).length > 0 || (acc.awards || []).length > 0 || (acc.holistic || []).length > 0) {
+            if ((acc.champ_reigns || []).length > 0 || (acc.awards || []).length > 0 || (acc.holistic || []).length > 0 || data.triple_crown) {
                 document.getElementById('accoladesSection').style.display = 'block';
             }
 
             // --- Championship Stats by Title ---
-            fillTable('champByChampTbody', acc.champ_by_champ || [], ['Championship_Name', 'Wins', 'Losses', 'Win Percentage']);
+            renderChampionshipChart(acc.champ_by_champ || []);
 
             // --- Streaks ---
             buildStreaks(acc.win_streaks || [], acc.loss_streaks || [], acc.active_win || [], acc.active_loss || []);
 
-            // Enable transitions now that data is rendered
-            document.querySelectorAll('.collapsible-body').forEach(body => {
-                body.classList.add('ready');
-            });
+            // Auto-load advanced analytics
+            setTimeout(() => {
+                if (window._loadAdvancedAnalytics) window._loadAdvancedAnalytics();
+            }, 150);
         })
         .catch(() => {
             document.getElementById('loadingOverlay').innerHTML = '<p>Error loading stats</p>';
         });
-
-    // Collapsible toggle
-    document.querySelectorAll('.collapsible-header').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const body = this.nextElementSibling;
-            const expanded = this.getAttribute('aria-expanded') === 'true';
-
-            if (expanded) {
-                body.style.maxHeight = '0';
-                this.setAttribute('aria-expanded', 'false');
-            } else {
-                body.style.maxHeight = body.scrollHeight + 'px';
-                this.setAttribute('aria-expanded', 'true');
-            }
-            updateCollapseAllBtn();
-        });
-    });
-
-    // Collapse all button
-    document.getElementById('collapseAllBtn').addEventListener('click', function() {
-        const anyOpen = !!document.querySelector('.collapsible-header[aria-expanded="true"]');
-        document.querySelectorAll('.collapsible-header').forEach(btn => {
-            const body = btn.nextElementSibling;
-            if (anyOpen) {
-                body.style.maxHeight = '0';
-                btn.setAttribute('aria-expanded', 'false');
-            } else {
-                body.style.maxHeight = body.scrollHeight + 'px';
-                btn.setAttribute('aria-expanded', 'true');
-            }
-        });
-        updateCollapseAllBtn();
-    });
-
-    function updateCollapseAllBtn() {
-        const anyOpen = !!document.querySelector('.collapsible-header[aria-expanded="true"]');
-        const btn = document.getElementById('collapseAllBtn');
-        btn.innerHTML = anyOpen
-            ? '<span class="collapse-all-icon">&#8633;</span> Collapse All'
-            : '<span class="collapse-all-icon">&#8627;</span> Expand All';
-    }
 });
 
 // Build championship reign badges — cols: Championship_Name, reign_count, total_months
-function buildChampBadges(rows) {
-    if (!rows.length) return;
+function buildChampBadges(rows, hasTripleCrown) {
+    if (!rows.length && !hasTripleCrown) return;
     const container = document.getElementById('champBadges');
+    if (hasTripleCrown) {
+        const tc = document.createElement('div');
+        tc.className = 'accolade-badge triple-crown-badge';
+        tc.innerHTML = '<span class="badge-icon">👑</span><span class="badge-text">Triple Crown</span>';
+        container.appendChild(tc);
+    }
     rows.forEach(row => {
         const champ = row.Championship_Name || '?';
         const reigns = parseInt(row.reign_count) || 1;
@@ -505,17 +403,14 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
 // --- Advanced Analytics ---
 (function() {
     const FIGHTER_NAME = {{ fighter_name | tojson }};
-    let opened = false;
+    let loaded = false;
     const charts = {};
 
-    document.getElementById('advancedAnalyticsToggle').addEventListener('click', () => {
-        const body    = document.getElementById('advancedAnalyticsBody');
-        const chevron = document.getElementById('advancedAnalyticsChevron');
-        const isOpen  = body.style.display !== 'none';
-        body.style.display      = isOpen ? 'none' : 'block';
-        chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
-        if (!isOpen && !opened) { opened = true; loadAdvanced(); }
-    });
+    window._loadAdvancedAnalytics = function() {
+        if (loaded) return;
+        loaded = true;
+        loadAdvanced();
+    };
 
     function loadAdvanced() {
         const loading = document.getElementById('advancedAnalyticsLoading');
@@ -744,15 +639,17 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
 (function() {
     const FIGHTER_NAME = {{ fighter_name | tojson }};
     const PER_PAGE = 100;
-    let page = 1, hasMore = true, loading = false, opened = false;
+    let page = 1, hasMore = true, loading = false, loaded = false;
 
     document.getElementById('fightHistoryToggle').addEventListener('click', () => {
         const body    = document.getElementById('fightHistoryBody');
         const chevron = document.getElementById('fightHistoryChevron');
-        const isOpen  = body.style.display !== 'none';
-        body.style.display    = isOpen ? 'none' : 'block';
-        chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
-        if (!isOpen && !opened) { opened = true; loadPage(true); }
+        const toggle  = document.getElementById('fightHistoryToggle');
+        const open    = body.style.display !== 'none';
+        body.style.display        = open ? 'none' : 'block';
+        chevron.style.transform   = open ? '' : 'rotate(180deg)';
+        toggle.setAttribute('aria-expanded', String(!open));
+        if (!open && !loaded) { loaded = true; loadPage(true); }
     });
 
     document.getElementById('fightHistoryLoadMoreBtn').addEventListener('click', () => {
@@ -797,6 +694,192 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
             });
     }
 })();
+
+// ── Stats Charts ──────────────────────────────────────────────
+function renderSeasonChart(data) {
+    if (!data.length) return;
+    const labels = data.map(r => 'S' + r.season);
+    const wins   = data.map(r => parseInt(r.wins)   || 0);
+    const losses = data.map(r => parseInt(r.losses)  || 0);
+    const pcts   = data.map(r => parseFloat(String(r.win_pct).replace('%','')) || 0);
+    new Chart(document.getElementById('seasonChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: [
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 4 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 4 },
+        ]},
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
+                x: { grid:{display:false}, ticks:{color:'#607cff', font:{size:13,weight:'bold'}} }
+            },
+            plugins: {
+                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
+                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
+                    callbacks: { afterTitle: (its) => `Win Rate: ${pcts[its[0].dataIndex].toFixed(1)}%` }
+                }
+            },
+            animation: { duration: 700 }
+        }
+    });
+}
+
+function renderFightTypeChart(data) {
+    if (!data.length) return;
+    const sorted = [...data].sort((a,b) => (parseInt(b.wins)||0)+(parseInt(b.losses)||0) - (parseInt(a.wins)||0) - (parseInt(a.losses)||0));
+    const labels = sorted.map(r => r.type);
+    const wins   = sorted.map(r => parseInt(r.wins)   || 0);
+    const losses = sorted.map(r => parseInt(r.losses)  || 0);
+    const h = Math.max(200, labels.length * 34);
+    document.getElementById('fightTypeChartWrap').style.height = h + 'px';
+    new Chart(document.getElementById('fightTypeChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: [
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 3 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 3 },
+        ]},
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
+                y: { grid:{display:false}, ticks:{color:'#b0b8d1', font:{size:11}} }
+            },
+            plugins: {
+                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
+                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
+                    callbacks: { afterTitle: (its) => `Win Rate: ${sorted[its[0].dataIndex].win_pct}` }
+                }
+            },
+            animation: { duration: 700 }
+        }
+    });
+}
+
+function renderBrandChart(data) {
+    if (!data.length) return;
+    const labels = data.map(r => r.brand);
+    const wins   = data.map(r => parseInt(r.wins)   || 0);
+    const losses = data.map(r => parseInt(r.losses)  || 0);
+    const pcts   = data.map(r => parseFloat(String(r.win_pct).replace('%','')) || 0);
+    new Chart(document.getElementById('brandChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: [
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 4 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 4 },
+        ]},
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
+                y: { grid:{display:false}, ticks:{color:'#b0b8d1', font:{size:12}} }
+            },
+            plugins: {
+                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
+                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
+                    callbacks: { afterTitle: (its) => `Win Rate: ${pcts[its[0].dataIndex].toFixed(1)}%` }
+                }
+            },
+            animation: { duration: 700 }
+        }
+    });
+}
+
+function renderPPVChart(data) {
+    if (!data.length) return;
+    const sorted = [...data].sort((a,b) => (parseInt(b.wins)||0)+(parseInt(b.losses)||0) - (parseInt(a.wins)||0) - (parseInt(a.losses)||0));
+    const labels = sorted.map(r => r.ppv);
+    const wins   = sorted.map(r => parseInt(r.wins)   || 0);
+    const losses = sorted.map(r => parseInt(r.losses)  || 0);
+    const canvas = document.getElementById('ppvChart');
+    canvas.width  = Math.max(700, labels.length * 90);
+    canvas.height = 260;
+    new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: [
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 4 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 4 },
+        ]},
+        options: {
+            responsive: false, maintainAspectRatio: false,
+            scales: {
+                y: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
+                x: { grid:{display:false}, ticks:{color:'#b0b8d1', font:{size:11}, maxRotation:35} }
+            },
+            plugins: {
+                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
+                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
+                    callbacks: { afterTitle: (its) => `Win Rate: ${sorted[its[0].dataIndex].win_pct}` }
+                }
+            },
+            animation: { duration: 700 }
+        }
+    });
+}
+
+function renderLocationChart(data) {
+    if (!data.length) return;
+    const sorted = [...data].sort((a,b) => (parseInt(b.wins)||0)+(parseInt(b.losses)||0) - (parseInt(a.wins)||0) - (parseInt(a.losses)||0));
+    const labels = sorted.map(r => r.location);
+    const wins   = sorted.map(r => parseInt(r.wins)   || 0);
+    const losses = sorted.map(r => parseInt(r.losses)  || 0);
+    const canvas = document.getElementById('locationChart');
+    canvas.width  = Math.max(700, labels.length * 90);
+    canvas.height = 260;
+    new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: [
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 4 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 4 },
+        ]},
+        options: {
+            responsive: false, maintainAspectRatio: false,
+            scales: {
+                y: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
+                x: { grid:{display:false}, ticks:{color:'#b0b8d1', font:{size:11}, maxRotation:35} }
+            },
+            plugins: {
+                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
+                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
+                    callbacks: { afterTitle: (its) => `Win Rate: ${sorted[its[0].dataIndex].win_pct}` }
+                }
+            },
+            animation: { duration: 700 }
+        }
+    });
+}
+
+function renderChampionshipChart(data) {
+    if (!data.length) return;
+    const sorted = [...data].sort((a,b) => (parseInt(b.Wins)||0)+(parseInt(b.Losses)||0) - (parseInt(a.Wins)||0) - (parseInt(a.Losses)||0));
+    const labels = sorted.map(r => r.Championship_Name);
+    const wins   = sorted.map(r => parseInt(r.Wins)   || 0);
+    const losses = sorted.map(r => parseInt(r.Losses)  || 0);
+    const canvas = document.getElementById('champByChampChart');
+    canvas.width  = Math.max(700, labels.length * 90);
+    canvas.height = 260;
+    new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: [
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 4 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 4 },
+        ]},
+        options: {
+            responsive: false, maintainAspectRatio: false,
+            scales: {
+                y: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
+                x: { grid:{display:false}, ticks:{color:'#b0b8d1', font:{size:11}, maxRotation:35} }
+            },
+            plugins: {
+                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
+                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
+                    callbacks: { afterTitle: (its) => `Win Rate: ${sorted[its[0].dataIndex]['Win Percentage']}` }
+                }
+            },
+            animation: { duration: 700 }
+        }
+    });
+}
 
 function fillTable(tbodyId, rows, keys) {
     const tbody = document.getElementById(tbodyId);

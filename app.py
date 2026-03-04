@@ -47,7 +47,7 @@ def get_autocomplete_data(category):
             'fighters': db.get_all_fighters,
             'locations': db.get_all_locations,
             'fight_types': db.get_all_fight_types,
-            'ppvs': db.get_all_ppvs,
+            'ppvs': db.get_all_ppv_names,
             'championships': db.get_all_championships,
             'brands': db.get_all_brands,
         }
@@ -128,10 +128,9 @@ def championships():
     return render_template('championships.html')
 
 
-@app.route('/graphs')
-def graphs():
-    fighters = get_autocomplete_data('fighters')
-    return render_template('graphs.html', fighters=fighters)
+@app.route('/events')
+def events():
+    return render_template('events.html')
 
 
 @app.route('/about')
@@ -275,6 +274,13 @@ def api_fighter(name):
             for row in accolades_raw.get('current_titles', [])
         ]
 
+        # Triple crown — check if this fighter appears in any TripleCrown view row
+        tc_rows = accolades_raw.get('triple_crown', [])
+        result['triple_crown'] = any(
+            any(str(v) == name for v in row.values() if v is not None)
+            for row in tc_rows
+        )
+
         # Accolades — dicts with real column names so JS can display dynamically
         result['accolades'] = {
             key: [{k: _serialize(v) for k, v in row.items()} for row in rows]
@@ -362,6 +368,7 @@ def api_fights():
             'fighter':      request.args.get('fighter', ''),
             'brand':        request.args.get('brand', ''),
             'decision':     request.args.get('decision', ''),
+            'fight_id':     request.args.get('fight_id', ''),
         }
         page = int(request.args.get('page', 1))
         fights_data = db.get_fight_log(filters, page=page)
@@ -416,6 +423,72 @@ def api_fighter_advanced(name):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/compare', methods=['POST'])
+def api_compare():
+    data = request.get_json()
+    f1 = (data.get('fighter1') or '').strip()
+    f2 = (data.get('fighter2') or '').strip()
+    if not f1 or not f2:
+        return jsonify({'error': 'Both fighters required'}), 400
+    try:
+        raw = db.get_comparison_data(f1, f2)
+
+        def career(rows):
+            if not rows:
+                return {'wins': 0, 'losses': 0, 'win_pct': '0.00%'}
+            r = rows[0]
+            return {'wins': _serialize(r.get('Wins', 0)), 'losses': _serialize(r.get('Losses', 0)), 'win_pct': str(r.get('Win Percentage', '0.00%'))}
+
+        def by_season(rows):
+            return [{'season': str(r.get('Season', '')), 'wins': _serialize(r.get('Wins', 0)), 'losses': _serialize(r.get('Losses', 0))} for r in rows]
+
+        def holistic(rows):
+            out = []
+            for r in rows:
+                row = {k: _serialize(v) for k, v in r.items()}
+                if row.get('Titles_Held'):
+                    row['Titles_Held'] = normalize_champ_name(row['Titles_Held'])
+                out.append(row)
+            return out
+
+        def running(rows):
+            return [{'season': r.get('Season'), 'month': r.get('Month'), 'week': r.get('Week'), 'decision': r.get('Decision'), 'career_win_pct': str(r.get('Career_Running_Win_Pct', '0.00%'))} for r in rows]
+
+        def unique_champs(rows):
+            return int(rows[0].get('total', 0)) if rows else 0
+
+        def champ_stats(rows):
+            if not rows:
+                return {'wins': 0, 'losses': 0, 'win_pct': '0.00%'}
+            r = rows[0]
+            return {'wins': _serialize(r.get('Wins', 0)), 'losses': _serialize(r.get('Losses', 0)), 'win_pct': str(r.get('Win Percentage', '0.00%'))}
+
+        h2h = raw.get('h2h', [])
+        fights = [{k: _serialize(v) for k, v in r.items()} for r in raw.get('fights', [])]
+
+        def fighter_payload(name, prefix):
+            return {
+                'name': name,
+                'image': fighter_to_filename(name) + '.png',
+                'career': career(raw.get(f'{prefix}_career', [])),
+                'by_season': by_season(raw.get(f'{prefix}_season', [])),
+                'holistic': holistic(raw.get(f'{prefix}_holistic', [])),
+                'running': running(raw.get(f'{prefix}_running', [])),
+                'unique_champs': unique_champs(raw.get(f'{prefix}_champs', [])),
+                'champ_stats': champ_stats(raw.get(f'{prefix}_champ_stats', [])),
+                'h2h_wins': int(h2h[0 if prefix == 'f1' else 1].get('Wins', 0)) if len(h2h) > 1 else 0,
+                'h2h_losses': int(h2h[0 if prefix == 'f1' else 1].get('Losses', 0)) if len(h2h) > 1 else 0,
+            }
+
+        return jsonify({
+            'fighter1': fighter_payload(f1, 'f1'),
+            'fighter2': fighter_payload(f2, 'f2'),
+            'fights_between': fights,
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/championships')
 def api_championships():
     try:
@@ -423,6 +496,15 @@ def api_championships():
         for row in rows:
             if row.get('Championship_Name'):
                 row['Championship_Name'] = normalize_champ_name(row['Championship_Name'])
+        return jsonify([{k: _serialize(v) for k, v in row.items()} for row in rows])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/events')
+def api_events():
+    try:
+        rows = db.get_all_ppvs()
         return jsonify([{k: _serialize(v) for k, v in row.items()} for row in rows])
     except Exception as e:
         return jsonify({'error': str(e)}), 500

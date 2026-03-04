@@ -11,8 +11,17 @@
         <button class="season-pill active" data-season="">All Time</button>
     </div>
 
-    <div class="leaderboard-search-wrapper">
+    <div class="leaderboard-controls">
         <input type="text" id="leaderboardSearch" class="search-input" placeholder="Search fighters...">
+        <div class="lb-filter-group">
+            <label class="lb-filter-label">Min fights</label>
+            <div class="lb-min-pills">
+                <button class="lb-min-pill active" data-min="0">All</button>
+                <button class="lb-min-pill" data-min="5">5+</button>
+                <button class="lb-min-pill" data-min="10">10+</button>
+                <button class="lb-min-pill" data-min="20">20+</button>
+            </div>
+        </div>
     </div>
 
     <!-- Loading -->
@@ -30,6 +39,11 @@
                     <th class="sortable" data-sort="wins">Wins</th>
                     <th class="sortable" data-sort="losses">Losses</th>
                     <th class="sortable active" data-sort="win_pct">Win %</th>
+                    <th class="sortable" data-sort="total_fights">Fights</th>
+                    <th class="sortable" data-sort="major_months">Major Months</th>
+                    <th class="sortable" data-sort="champ_months">Champ Months</th>
+                    <th class="sortable" data-sort="event_wins">Event Wins</th>
+                    <th class="sortable" data-sort="unique_titles">Titles Held</th>
                 </tr>
             </thead>
             <tbody id="leaderboardTbody"></tbody>
@@ -41,16 +55,43 @@
 {% block scripts %}
 <script>
 let leaderboardData = [];
-let currentSort = { key: 'win_pct', dir: 'desc' };
-let currentSeason = '';
+let currentSort    = { key: 'win_pct', dir: 'desc' };
+let currentSeason  = '';
+let minFights      = 0;
+
+function getFiltered() {
+    const q = document.getElementById('leaderboardSearch').value.toLowerCase();
+    return leaderboardData.filter(f =>
+        f.name.toLowerCase().includes(q) &&
+        (f.total_fights || 0) >= minFights
+    );
+}
+
+function applySort(data) {
+    const key = currentSort.key;
+    return [...data].sort((a, b) => {
+        let av = a[key], bv = b[key];
+        if (key === 'win_pct') {
+            av = parseFloat(String(av).replace('%', '')) || 0;
+            bv = parseFloat(String(bv).replace('%', '')) || 0;
+        } else {
+            av = parseFloat(av) || 0;
+            bv = parseFloat(bv) || 0;
+        }
+        return currentSort.dir === 'desc' ? bv - av : av - bv;
+    });
+}
+
+function refresh() { renderLeaderboard(applySort(getFiltered())); }
 
 function loadRankings(season) {
     currentSeason = season;
     const url = season ? `/api/leaderboard?season=${season}` : '/api/leaderboard';
-    const subtitle = season ? `Season ${season} rankings by win rate` : 'All-time rankings by win rate';
-    document.getElementById('rankingsSubtitle').textContent = subtitle;
+    document.getElementById('rankingsSubtitle').textContent =
+        season ? `Season ${season} rankings` : 'All-time rankings';
     document.getElementById('loadingOverlay').style.display = 'flex';
     document.getElementById('leaderboardWrapper').style.display = 'none';
+
 
     fetch(url)
         .then(res => res.json())
@@ -61,7 +102,7 @@ function loadRankings(season) {
             currentSort = { key: 'win_pct', dir: 'desc' };
             document.querySelectorAll('.sortable').forEach(s => s.classList.remove('active', 'asc'));
             document.querySelector('.sortable[data-sort="win_pct"]').classList.add('active');
-            renderLeaderboard(data);
+            refresh();
         })
         .catch(() => {
             document.getElementById('loadingOverlay').innerHTML = '<p>Error loading rankings</p>';
@@ -69,7 +110,6 @@ function loadRankings(season) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Load seasons and build pills
     fetch('/api/seasons')
         .then(r => r.json())
         .then(seasons => {
@@ -81,7 +121,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.textContent = `S${s}`;
                 pillsEl.appendChild(btn);
             });
-            // Attach click to all pills
             pillsEl.querySelectorAll('.season-pill').forEach(pill => {
                 pill.addEventListener('click', function() {
                     pillsEl.querySelectorAll('.season-pill').forEach(p => p.classList.remove('active'));
@@ -91,42 +130,28 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-    // Initial load
     loadRankings('');
 
-    // Search
-    document.getElementById('leaderboardSearch').addEventListener('input', function() {
-        const q = this.value.toLowerCase();
-        const filtered = leaderboardData.filter(f => f.name.toLowerCase().includes(q));
-        renderLeaderboard(filtered);
+    document.getElementById('leaderboardSearch').addEventListener('input', refresh);
+
+    document.querySelectorAll('.lb-min-pill').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.lb-min-pill').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            minFights = parseInt(this.dataset.min) || 0;
+            refresh();
+        });
     });
 
-    // Sort headers
     document.querySelectorAll('.sortable').forEach(th => {
         th.addEventListener('click', function() {
             const key = this.dataset.sort;
-            if (currentSort.key === key) {
-                currentSort.dir = currentSort.dir === 'desc' ? 'asc' : 'desc';
-            } else {
-                currentSort.key = key;
-                currentSort.dir = 'desc';
-            }
+            currentSort.dir = currentSort.key === key && currentSort.dir === 'desc' ? 'asc' : 'desc';
+            currentSort.key = key;
             document.querySelectorAll('.sortable').forEach(s => s.classList.remove('active', 'asc'));
             this.classList.add('active');
             if (currentSort.dir === 'asc') this.classList.add('asc');
-
-            const sorted = [...leaderboardData].sort((a, b) => {
-                let av = a[key], bv = b[key];
-                if (key === 'win_pct') {
-                    av = parseFloat(String(av).replace('%', '')) || 0;
-                    bv = parseFloat(String(bv).replace('%', '')) || 0;
-                } else {
-                    av = parseInt(av) || 0;
-                    bv = parseInt(bv) || 0;
-                }
-                return currentSort.dir === 'desc' ? bv - av : av - bv;
-            });
-            renderLeaderboard(sorted);
+            refresh();
         });
     });
 });
@@ -137,44 +162,44 @@ function renderLeaderboard(data) {
 
     data.forEach((fighter, i) => {
         const pct = parseFloat(String(fighter.win_pct).replace('%', '')) || 0;
-        let pctClass = 'pct-mid';
-        if (pct >= 60) pctClass = 'pct-high';
-        else if (pct < 40) pctClass = 'pct-low';
-
-        const filename = fighterToFilename(fighter.name);
+        const pctClass = pct >= 60 ? 'pct-high' : pct < 40 ? 'pct-low' : 'pct-mid';
         const rankClass = i < 3 ? `rank-${i + 1}` : '';
-
+        const filename = fighterToFilename(fighter.name);
+        const tcBadge = fighter.triple_crown ? `<span class="lb-tc-badge" title="Triple Crown">👑 Triple Crown</span>` : '';
         const titleBadges = (fighter.titles || [])
-            .map(t => `<span class="lb-champ-tag">👑 ${t}</span>`)
-            .join('');
+            .map(t => `<span class="lb-champ-tag">👑 ${t}</span>`).join('');
+        const extraCells = `
+            <td class="stat-cell">${fighter.total_fights ?? ''}</td>
+            <td class="stat-cell">${fighter.major_months ?? 0}</td>
+            <td class="stat-cell">${fighter.champ_months ?? 0}</td>
+            <td class="stat-cell">${fighter.event_wins != null ? fighter.event_wins + '/6' : ''}</td>
+            <td class="stat-cell">${fighter.unique_titles ?? 0}</td>`;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="rank-cell ${rankClass}">${i + 1}</td>
             <td class="fighter-cell">
-                <img src="/static/assets/fighters/${filename}.png" alt="${fighter.name}" class="leaderboard-portrait"
-                     onerror="this.style.display='none'">
+                <img src="/static/assets/fighters/${filename}.png" alt="${fighter.name}"
+                     class="leaderboard-portrait" onerror="this.style.display='none'">
                 <div class="fighter-cell-inner">
                     <a href="/fighter/${encodeURIComponent(fighter.name)}" class="fighter-link">${fighter.name}</a>
-                    ${titleBadges}
+                    ${tcBadge}${titleBadges}
                 </div>
             </td>
             <td class="stat-cell">${fighter.wins}</td>
             <td class="stat-cell">${fighter.losses}</td>
             <td class="stat-cell ${pctClass}">${fighter.win_pct}</td>
-        `;
+            ${extraCells}`;
 
         tr.style.opacity = '0';
         tr.style.transform = 'translateY(10px)';
         tbody.appendChild(tr);
-
         setTimeout(() => {
             tr.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
             tr.style.opacity = '1';
             tr.style.transform = 'translateY(0)';
-        }, i * 25);
+        }, i * 20);
     });
 }
-
 </script>
 {% endblock %}

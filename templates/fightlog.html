@@ -216,6 +216,13 @@ document.addEventListener('DOMContentLoaded', () => {
         loadFights(false);
     });
 
+    // Apply URL params on load (e.g. from comparison page fight links)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('fighter')) document.getElementById('filterFighter').value = urlParams.get('fighter');
+    if (urlParams.get('season'))  document.getElementById('filterSeason').value  = urlParams.get('season');
+    currentFilters = getFilters();
+    if (urlParams.get('fight_id')) currentFilters.fight_id = urlParams.get('fight_id');
+
     loadFights(true);
 });
 </script>

@@ -1,359 +1,454 @@
 {% extends "base.html" %}
-{% block title %}SSB Stats - Head to Head{% endblock %}
+{% block title %}SSB Stats - Compare{% endblock %}
 
 {% block content %}
-<section class="h2h-section">
-    <h1 class="section-title">Head to Head</h1>
+<section class="compare-page">
+    <h1 class="section-title">Fighter Comparison</h1>
 
-    <!-- Fighter / Stage Images -->
-    <div class="h2h-portraits">
-        <div class="portrait-panel fighter1-panel">
-            <div class="portrait-frame" id="fighter1Frame">
-                <img id="fighter1Img" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 1</text></svg>" alt="Fighter 1">
+    <!-- Selector Hero -->
+    <div class="compare-hero">
+        <div class="compare-fighter-slot">
+            <div class="portrait-frame" id="f1Frame">
+                <img id="f1Img" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 1</text></svg>" alt="Fighter 1">
             </div>
             <div class="autocomplete-wrapper">
-                <input type="text" id="fighter1Input" class="fighter-input" placeholder="Enter Fighter" data-category="fighters" autocomplete="off">
-                <div class="autocomplete-dropdown" id="fighter1Dropdown"></div>
+                <input type="text" id="f1Input" class="fighter-input" placeholder="Fighter 1" data-category="fighters" autocomplete="off">
+                <div class="autocomplete-dropdown" id="f1Dropdown"></div>
             </div>
         </div>
 
-        <div class="portrait-panel stage-panel">
-            <div class="portrait-frame stage-frame" id="stageFrame">
-                <img id="stageImg" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 586 300%22><rect fill=%22%2312122a%22 width=%22586%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Stage</text></svg>" alt="Stage">
-            </div>
-            <div class="autocomplete-wrapper">
-                <input type="text" id="mapInput" class="fighter-input" placeholder="Enter Map" data-category="locations" autocomplete="off">
-                <div class="autocomplete-dropdown" id="mapDropdown"></div>
-            </div>
+        <div class="compare-vs-col">
+            <div class="vs-text">VS</div>
+            <button class="btn btn-primary btn-lg" id="compareBtn" onclick="doCompare()">Compare</button>
+            <div id="compareError" class="error-msg"></div>
         </div>
 
-        <div class="portrait-panel fighter2-panel">
-            <div class="portrait-frame" id="fighter2Frame">
-                <img id="fighter2Img" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 2</text></svg>" alt="Fighter 2">
+        <div class="compare-fighter-slot">
+            <div class="portrait-frame" id="f2Frame">
+                <img id="f2Img" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23fb923c%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 2</text></svg>" alt="Fighter 2">
             </div>
             <div class="autocomplete-wrapper">
-                <input type="text" id="fighter2Input" class="fighter-input" placeholder="Enter Fighter" data-category="fighters" autocomplete="off">
-                <div class="autocomplete-dropdown" id="fighter2Dropdown"></div>
+                <input type="text" id="f2Input" class="fighter-input" placeholder="Fighter 2" data-category="fighters" autocomplete="off">
+                <div class="autocomplete-dropdown" id="f2Dropdown"></div>
             </div>
         </div>
     </div>
 
-    <!-- Win Rate Comparison Bar (shows after results) -->
-    <div class="h2h-comparison-bar" id="comparisonBar" style="display: none;">
-        <div class="comparison-label" id="comp-f1-name">Fighter 1</div>
-        <div class="comparison-track">
-            <div class="comparison-fill comparison-fill-left" id="comp-f1-bar" style="width: 50%;">
-                <span class="comparison-pct" id="comp-f1-pct">0%</span>
-            </div>
-            <div class="comparison-fill comparison-fill-right" id="comp-f2-bar" style="width: 50%;">
-                <span class="comparison-pct" id="comp-f2-pct">0%</span>
-            </div>
-        </div>
-        <div class="comparison-label" id="comp-f2-name">Fighter 2</div>
-    </div>
-
-    <!-- Filters -->
-    <div class="h2h-filters">
-        <div class="filter-grid">
-            <div class="filter-group">
-                <label>Match Type</label>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="matchTypeInput" class="filter-input" placeholder="Enter Match Type" data-category="fight_types" autocomplete="off">
-                    <div class="autocomplete-dropdown" id="matchTypeDropdown"></div>
-                </div>
-            </div>
-            <div class="filter-group">
-                <label>Season</label>
-                <input type="text" id="seasonInput" class="filter-input" placeholder="Enter Season">
-            </div>
-            <div class="filter-group">
-                <label>Month</label>
-                <input type="text" id="monthInput" class="filter-input" placeholder="Enter Month Number">
-            </div>
-            <div class="filter-group">
-                <label>Week</label>
-                <input type="text" id="weekInput" class="filter-input" placeholder="Enter Week">
-            </div>
-            <div class="filter-group">
-                <label>PPV</label>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="ppvInput" class="filter-input" placeholder="Enter PPV Name" data-category="ppvs" autocomplete="off">
-                    <div class="autocomplete-dropdown" id="ppvDropdown"></div>
-                </div>
-            </div>
-            <div class="filter-group">
-                <label>Championship</label>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="champInput" class="filter-input" placeholder="Enter Championship" data-category="championships" autocomplete="off">
-                    <div class="autocomplete-dropdown" id="champDropdown"></div>
-                </div>
-            </div>
-            <div class="filter-group">
-                <label>#1 Contender</label>
-                <input type="text" id="contenderInput" class="filter-input" placeholder="#1 Contender Match?">
-            </div>
-            <div class="filter-group">
-                <label>Brand</label>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="brandInput" class="filter-input" placeholder="Enter Brand" data-category="brands" autocomplete="off">
-                    <div class="autocomplete-dropdown" id="brandDropdown"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="h2h-actions">
-            <button class="btn btn-primary btn-lg" id="checkStatsBtn">Check Stats</button>
-            <button class="btn btn-outline btn-lg" id="clearBtn">Clear</button>
-        </div>
-        <div id="errorMsg" class="error-msg"></div>
-    </div>
-
-    <!-- Loading Spinner -->
-    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+    <!-- Loading -->
+    <div class="loading-overlay" id="compareLoading" style="display:none;">
         <div class="spinner"></div>
-        <p>Loading stats...</p>
+        <p>Loading comparison...</p>
     </div>
 
-    <!-- Results Tables -->
-    <div class="h2h-results" id="resultsSection" style="display: none;">
-        <div class="results-grid">
-            <!-- Fighter 1 Table -->
-            <div class="stats-table-wrapper glass-card">
-                <h3 class="table-title" id="f1TableTitle">Fighter 1</h3>
-                <table class="stats-table" id="fighter1Table">
-                    <thead>
-                        <tr>
-                            <th class="row-label-header">Stat</th>
-                            <th>Wins</th>
-                            <th>Losses</th>
-                            <th>W/L %</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fighter1Tbody"></tbody>
-                </table>
-            </div>
+    <!-- Results -->
+    <div id="compareResults" style="display:none;">
 
-            <!-- Fighter 2 Table -->
-            <div class="stats-table-wrapper glass-card">
-                <h3 class="table-title" id="f2TableTitle">Fighter 2</h3>
-                <table class="stats-table" id="fighter2Table">
-                    <thead>
-                        <tr>
-                            <th class="row-label-header">Stat</th>
-                            <th>Wins</th>
-                            <th>Losses</th>
-                            <th>W/L %</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fighter2Tbody"></tbody>
-                </table>
+        <!-- H2H Scoreboard -->
+        <div class="glass-card compare-scoreboard">
+            <div class="sb-side sb-left">
+                <img class="sb-portrait" id="sbImg1" src="" alt="">
+                <div class="sb-name f1-color" id="sbName1"></div>
+            </div>
+            <div class="sb-center">
+                <div class="sb-scores">
+                    <span class="sb-score f1-color" id="sbScore1"></span>
+                    <span class="sb-dash">–</span>
+                    <span class="sb-score f2-color" id="sbScore2"></span>
+                </div>
+                <div class="sb-bar-track">
+                    <div class="sb-bar-fill sb-bar-f1" id="sbBarF1" style="width:50%"></div>
+                    <div class="sb-bar-fill sb-bar-f2" id="sbBarF2" style="width:50%"></div>
+                </div>
+                <div class="sb-label" id="sbLabel">Head to Head</div>
+            </div>
+            <div class="sb-side sb-right">
+                <img class="sb-portrait" id="sbImg2" src="" alt="">
+                <div class="sb-name f2-color" id="sbName2"></div>
             </div>
         </div>
+
+        <!-- Stats Comparison Grid -->
+        <div class="glass-card compare-card">
+            <table class="compare-grid-table" id="statsGrid"></table>
+        </div>
+
+        <!-- Career Fingerprint Radar -->
+        <div class="glass-card compare-card">
+            <h3 class="analytics-chart-title">Career Fingerprint</h3>
+            <p class="analytics-chart-subtitle">Normalized career performance across five dimensions</p>
+            <div style="height:420px;max-width:600px;margin:0 auto;">
+                <canvas id="compareRadar"></canvas>
+            </div>
+        </div>
+
+        <!-- Win Rate Momentum -->
+        <div class="glass-card compare-card">
+            <h3 class="analytics-chart-title">Career Win Rate Momentum</h3>
+            <p class="analytics-chart-subtitle">Running career win rate after each fight — fight number as x-axis</p>
+            <div class="analytics-chart-scroll">
+                <canvas id="compareMomentum"></canvas>
+            </div>
+        </div>
+
+        <!-- Season by Season -->
+        <div class="glass-card compare-card">
+            <h3 class="analytics-chart-title">Season by Season</h3>
+            <p class="analytics-chart-subtitle">Wins per season, side by side</p>
+            <div style="height:300px;">
+                <canvas id="compareSeasons"></canvas>
+            </div>
+        </div>
+
+        <!-- Their Fights -->
+        <div class="glass-card compare-card">
+            <h3 class="analytics-chart-title">Their Fights</h3>
+            <p class="analytics-chart-subtitle" id="fightCountLabel"></p>
+            <div id="fightsBetweenWrap"></div>
+        </div>
+
     </div>
 </section>
 {% endblock %}
 
 {% block scripts %}
 <script>
+const PORTRAIT_PLACEHOLDER = {
+    f1: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 1</text></svg>`,
+    f2: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23fb923c%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 2</text></svg>`,
+};
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Setup autocomplete for all inputs with data-category
     document.querySelectorAll('[data-category]').forEach(input => {
         setupAutocomplete(input, input.dataset.category);
     });
+    document.getElementById('f1Input').addEventListener('change', updatePortrait.bind(null, 'f1'));
+    document.getElementById('f2Input').addEventListener('change', updatePortrait.bind(null, 'f2'));
 
-    // Check Stats button
-    document.getElementById('checkStatsBtn').addEventListener('click', checkStats);
-    document.getElementById('clearBtn').addEventListener('click', clearAll);
+    // Auto-run comparison from URL params (shareable links)
+    const p = new URLSearchParams(window.location.search);
+    const pf1 = p.get('f1'), pf2 = p.get('f2');
+    if (pf1 && pf2) {
+        document.getElementById('f1Input').value = pf1;
+        document.getElementById('f2Input').value = pf2;
+        updatePortrait('f1');
+        updatePortrait('f2');
+        doCompare();
+    }
 });
 
-function checkStats() {
-    const fighter1 = document.getElementById('fighter1Input').value.trim();
-    const fighter2 = document.getElementById('fighter2Input').value.trim();
-    const errorMsg = document.getElementById('errorMsg');
+function updatePortrait(slot) {
+    const name = document.getElementById(slot + 'Input').value.trim();
+    const img  = document.getElementById(slot + 'Img');
+    if (!name) { img.src = PORTRAIT_PLACEHOLDER[slot]; return; }
+    img.onerror = () => { img.onerror = null; img.src = PORTRAIT_PLACEHOLDER[slot]; };
+    img.src = `/static/assets/fighters/${fighterToFilename(name)}.png`;
+}
 
-    if (!fighter1 || !fighter2) {
-        errorMsg.textContent = 'Please enter both fighters!';
-        return;
-    }
-    errorMsg.textContent = '';
+const charts = {};
 
-    // Update fighter images
-    const f1file = fighterToFilename(fighter1);
-    const f2file = fighterToFilename(fighter2);
-    const mapVal = document.getElementById('mapInput').value.trim();
+const F1_COLOR  = '#607cff';
+const F1_BG     = 'rgba(96,124,255,0.13)';
+const F2_COLOR  = '#fb923c';
+const F2_BG     = 'rgba(251,146,60,0.13)';
+const EVENT_COLS = ['Won_Tournament','Won_Royal_Rumble','Won_Scramble','Won_Smash_Series','Won_Money_In_The_Bank','Won_Smash_Bros'];
+const EVENT_NAMES = {
+    Won_Tournament: 'Tournament', Won_Royal_Rumble: 'Royal Rumble',
+    Won_Scramble: 'Scramble', Won_Smash_Series: 'Smash Series',
+    Won_Money_In_The_Bank: 'Money in the Bank', Won_Smash_Bros: 'Smash Bros'
+};
 
-    document.getElementById('fighter1Img').src = `/static/assets/fighters/${f1file}.png`;
-    document.getElementById('fighter2Img').src = `/static/assets/fighters/${f2file}.png`;
-    if (mapVal) {
-        const stageFile = stageToFilename(mapVal);
-        document.getElementById('stageImg').src = `/static/assets/stages/${stageFile}.png`;
-    }
+function doCompare() {
+    const f1 = document.getElementById('f1Input').value.trim();
+    const f2 = document.getElementById('f2Input').value.trim();
+    const err = document.getElementById('compareError');
+    if (!f1 || !f2) { err.textContent = 'Enter both fighters.'; return; }
+    if (f1.toLowerCase() === f2.toLowerCase()) { err.textContent = 'Pick two different fighters.'; return; }
+    err.textContent = '';
+    history.pushState(null, '', `/head2head?f1=${encodeURIComponent(f1)}&f2=${encodeURIComponent(f2)}`);
 
-    // Show loading
-    document.getElementById('loadingOverlay').style.display = 'flex';
-    document.getElementById('checkStatsBtn').disabled = true;
-    document.getElementById('checkStatsBtn').textContent = 'Loading...';
+    document.getElementById('f1Img').src = `/static/assets/fighters/${fighterToFilename(f1)}.png`;
+    document.getElementById('f2Img').src = `/static/assets/fighters/${fighterToFilename(f2)}.png`;
 
-    const payload = {
-        fighter1: fighter1,
-        fighter2: fighter2,
-        map: mapVal,
-        matchType: document.getElementById('matchTypeInput').value.trim(),
-        season: document.getElementById('seasonInput').value.trim(),
-        month: document.getElementById('monthInput').value.trim(),
-        ppv: document.getElementById('ppvInput').value.trim(),
-        championship: document.getElementById('champInput').value.trim(),
-        contender: document.getElementById('contenderInput').value.trim(),
-        brand: document.getElementById('brandInput').value.trim(),
-    };
+    document.getElementById('compareLoading').style.display = 'flex';
+    document.getElementById('compareResults').style.display = 'none';
+    document.getElementById('compareBtn').disabled = true;
 
-    fetch('/api/head2head', {
+    fetch('/api/compare', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({fighter1: f1, fighter2: f2})
     })
-    .then(res => res.json())
+    .then(r => r.json())
     .then(data => {
-        document.getElementById('loadingOverlay').style.display = 'none';
-        document.getElementById('checkStatsBtn').disabled = false;
-        document.getElementById('checkStatsBtn').textContent = 'Check Stats';
-
-        if (data.error) {
-            errorMsg.textContent = data.error;
-            return;
-        }
-
-        renderResults(data);
+        document.getElementById('compareLoading').style.display = 'none';
+        document.getElementById('compareBtn').disabled = false;
+        if (data.error) { document.getElementById('compareError').textContent = data.error; return; }
+        renderAll(data);
+        document.getElementById('compareResults').style.display = 'block';
+        document.getElementById('compareResults').scrollIntoView({behavior: 'smooth', block: 'start'});
     })
-    .catch(err => {
-        document.getElementById('loadingOverlay').style.display = 'none';
-        document.getElementById('checkStatsBtn').disabled = false;
-        document.getElementById('checkStatsBtn').textContent = 'Check Stats';
-        errorMsg.textContent = 'Connection error: ' + err.message;
+    .catch(e => {
+        document.getElementById('compareLoading').style.display = 'none';
+        document.getElementById('compareBtn').disabled = false;
+        document.getElementById('compareError').textContent = 'Error: ' + e.message;
     });
 }
 
-function renderResults(data) {
-    const section = document.getElementById('resultsSection');
-    section.style.display = 'block';
+function renderAll(d) {
+    renderScoreboard(d);
+    renderStatsGrid(d);
+    renderRadar(d);
+    renderMomentum(d);
+    renderSeasons(d);
+    renderFights(d);
+}
 
-    // Table titles
-    document.getElementById('f1TableTitle').textContent = data.fighter1.name;
-    document.getElementById('f2TableTitle').textContent = data.fighter2.name;
+// ── Scoreboard ────────────────────────────────────────────────
+function renderScoreboard(d) {
+    const f1 = d.fighter1, f2 = d.fighter2;
+    document.getElementById('sbImg1').src = `/static/assets/fighters/${f1.image}`;
+    document.getElementById('sbImg2').src = `/static/assets/fighters/${f2.image}`;
+    document.getElementById('sbName1').textContent = f1.name;
+    document.getElementById('sbName2').textContent = f2.name;
+    document.getElementById('sbScore1').textContent = f1.h2h_wins;
+    document.getElementById('sbScore2').textContent = f2.h2h_wins;
 
-    // Build table rows
-    buildTable('fighter1Tbody', data.fighter1);
-    buildTable('fighter2Tbody', data.fighter2);
+    const total = (f1.h2h_wins + f2.h2h_wins) || 1;
+    const f1pct = Math.round(f1.h2h_wins / total * 100);
+    setTimeout(() => {
+        document.getElementById('sbBarF1').style.width = f1pct + '%';
+        document.getElementById('sbBarF2').style.width = (100 - f1pct) + '%';
+    }, 120);
+    document.getElementById('sbLabel').textContent = (f1.h2h_wins + f2.h2h_wins) + ' fights on record';
 
     // Winner glow
-    const f1Frame = document.getElementById('fighter1Frame');
-    const f2Frame = document.getElementById('fighter2Frame');
-    f1Frame.classList.remove('winner-glow', 'loser-dim');
-    f2Frame.classList.remove('winner-glow', 'loser-dim');
+    document.getElementById('f1Frame').classList.toggle('winner-glow', f1.h2h_wins > f2.h2h_wins);
+    document.getElementById('f2Frame').classList.toggle('winner-glow', f2.h2h_wins > f1.h2h_wins);
+    document.getElementById('f1Frame').classList.toggle('loser-dim', f1.h2h_wins < f2.h2h_wins);
+    document.getElementById('f2Frame').classList.toggle('loser-dim', f2.h2h_wins < f1.h2h_wins);
+}
 
-    if (data.fighter1.h2h.length > 0 && data.fighter2.h2h.length > 0) {
-        const f1wins = parseInt(data.fighter1.h2h[0].wins) || 0;
-        const f2wins = parseInt(data.fighter2.h2h[0].wins) || 0;
-        if (f1wins > f2wins) {
-            f1Frame.classList.add('winner-glow');
-            f2Frame.classList.add('loser-dim');
-        } else if (f2wins > f1wins) {
-            f2Frame.classList.add('winner-glow');
-            f1Frame.classList.add('loser-dim');
+// ── Stats Grid ────────────────────────────────────────────────
+function renderStatsGrid(d) {
+    const f1 = d.fighter1, f2 = d.fighter2;
+
+    // Compute derived values
+    const f1TotalMajor = f1.holistic.reduce((s, r) => s + (parseInt(r.Months_With_Major)||0), 0);
+    const f2TotalMajor = f2.holistic.reduce((s, r) => s + (parseInt(r.Months_With_Major)||0), 0);
+    const f1TotalTitle = f1.holistic.reduce((s, r) => s + (parseInt(r.Months_With_Title)||0), 0);
+    const f2TotalTitle = f2.holistic.reduce((s, r) => s + (parseInt(r.Months_With_Title)||0), 0);
+    const evWon = (hol) => { const s = new Set(); hol.forEach(r => EVENT_COLS.forEach(c => { if (r[c] != null && r[c] !== '') s.add(c); })); return s.size; };
+
+    const rows = [
+        ['Career Win Rate',    f1.career.win_pct,                        f2.career.win_pct,                        'pct'],
+        ['Career Record',      `${f1.career.wins}W – ${f1.career.losses}L`, `${f2.career.wins}W – ${f2.career.losses}L`, 'wins'],
+        ['H2H Record',         `${f1.h2h_wins}W – ${f1.h2h_losses}L`,    `${f2.h2h_wins}W – ${f2.h2h_losses}L`,    'wins'],
+        ['Champ Match Record', `${f1.champ_stats.wins}W – ${f1.champ_stats.losses}L`, `${f2.champ_stats.wins}W – ${f2.champ_stats.losses}L`, 'wins'],
+        ['Major Title Reign',  f1TotalMajor + ' month' + (f1TotalMajor !== 1 ? 's' : ''), f2TotalMajor + ' month' + (f2TotalMajor !== 1 ? 's' : ''), 'num', f1TotalMajor, f2TotalMajor],
+        ['Title Reign',        f1TotalTitle + ' month' + (f1TotalTitle !== 1 ? 's' : ''), f2TotalTitle + ' month' + (f2TotalTitle !== 1 ? 's' : ''), 'num', f1TotalTitle, f2TotalTitle],
+        ['Unique Titles Held', f1.unique_champs,                          f2.unique_champs,                          'num', f1.unique_champs, f2.unique_champs],
+        ['Event Wins',         evWon(f1.holistic) + '/6',                 evWon(f2.holistic) + '/6',                 'num', evWon(f1.holistic), evWon(f2.holistic)],
+    ];
+
+    function numericVal(row, side) {
+        if (row[3] === 'num') return side === 'f1' ? row[4] : row[5];
+        if (row[3] === 'pct') return parseFloat(String(side === 'f1' ? row[1] : row[2]).replace('%','')) || 0;
+        if (row[3] === 'wins') {
+            const v = side === 'f1' ? row[1] : row[2];
+            return parseInt(v) || 0;
         }
+        return 0;
     }
 
-    // Comparison bar
-    updateComparisonBar(data);
-
-    // Animate into view
-    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const tbl = document.getElementById('statsGrid');
+    tbl.innerHTML = `<thead><tr>
+        <th class="grid-name f1-color">${f1.name}</th>
+        <th class="grid-metric">Metric</th>
+        <th class="grid-name f2-color">${f2.name}</th>
+    </tr></thead><tbody>` +
+    rows.map(row => {
+        const n1 = numericVal(row, 'f1'), n2 = numericVal(row, 'f2');
+        const f1win = n1 > n2, f2win = n2 > n1;
+        return `<tr>
+            <td class="grid-val ${f1win ? 'grid-winner f1-winner-cell' : ''}">${row[1]}</td>
+            <td class="grid-metric">${row[0]}</td>
+            <td class="grid-val ${f2win ? 'grid-winner f2-winner-cell' : ''}">${row[2]}</td>
+        </tr>`;
+    }).join('') + '</tbody>';
 }
 
-function buildTable(tbodyId, fighterData) {
-    const tbody = document.getElementById(tbodyId);
-    tbody.innerHTML = '';
+// ── Career Fingerprint Radar ──────────────────────────────────
+function careerRadarData(fighter) {
+    const h = fighter.holistic;
+    const wr = parseFloat(String(fighter.career.win_pct).replace('%','')) || 0;
+    const mm = Math.min(h.reduce((s,r) => s+(parseInt(r.Months_With_Major)||0), 0) / 14 * 100, 100);
+    const tm = Math.min(h.reduce((s,r) => s+(parseInt(r.Months_With_Title)||0), 0) / 14 * 100, 100);
+    const wonSet = new Set();
+    h.forEach(r => EVENT_COLS.forEach(c => { if (r[c]!=null && r[c]!=='') wonSet.add(c); }));
+    const ev = wonSet.size / EVENT_COLS.length * 100;
+    const tc = Math.min((fighter.unique_champs||0) / 5 * 100, 100);
+    return { data: [wr, mm, tm, ev, tc], wonSet, fighter };
+}
 
-    // H2H rows first (rows 0-6)
-    fighterData.h2h.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="row-label">${row.label}</td>
-            <td class="stat-cell">${row.wins}</td>
-            <td class="stat-cell">${row.losses}</td>
-            <td class="stat-cell pct-cell">${row.wl_pct}</td>
-        `;
-        tbody.appendChild(tr);
-    });
+function renderRadar(d) {
+    const r1 = careerRadarData(d.fighter1);
+    const r2 = careerRadarData(d.fighter2);
 
-    // Separator
-    const sepTr = document.createElement('tr');
-    sepTr.className = 'table-separator';
-    sepTr.innerHTML = '<td colspan="4" class="separator-cell">Individual Stats</td>';
-    tbody.appendChild(sepTr);
-
-    // Individual rows (rows 7-14)
-    fighterData.individual.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="row-label">${row.label}</td>
-            <td class="stat-cell">${row.wins}</td>
-            <td class="stat-cell">${row.losses}</td>
-            <td class="stat-cell pct-cell">${row.wl_pct}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-
-    // Animate rows
-    tbody.querySelectorAll('tr').forEach((tr, i) => {
-        tr.style.opacity = '0';
-        tr.style.transform = 'translateX(-20px)';
-        setTimeout(() => {
-            tr.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-            tr.style.opacity = '1';
-            tr.style.transform = 'translateX(0)';
-        }, i * 50);
+    if (charts.radar) charts.radar.destroy();
+    charts.radar = new Chart(document.getElementById('compareRadar').getContext('2d'), {
+        type: 'radar',
+        data: {
+            labels: ['Win Rate', 'Major Title Reign', 'Title Reign', 'Event Wins', 'Unique Titles'],
+            datasets: [
+                { label: d.fighter1.name, data: r1.data, borderColor: F1_COLOR, backgroundColor: F1_BG, borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: F1_COLOR, _r: r1 },
+                { label: d.fighter2.name, data: r2.data, borderColor: F2_COLOR, backgroundColor: F2_BG, borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: F2_COLOR, _r: r2 },
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { r: { min:0, max:100, grid:{color:'rgba(96,124,255,0.15)'}, angleLines:{color:'rgba(96,124,255,0.15)'}, ticks:{display:false}, pointLabels:{color:'#b0b8d1', font:{size:12,family:'Inter'}} } },
+            plugins: {
+                legend: { position:'bottom', labels:{padding:16, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
+                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
+                    callbacks: { label: (it) => {
+                        const r = it.dataset._r;
+                        const f = r.fighter;
+                        const axis = it.chart.data.labels[it.dataIndex];
+                        const s = it.dataset.label;
+                        if (axis === 'Win Rate') return `  ${s}: ${f.career.win_pct}`;
+                        if (axis === 'Major Title Reign') return `  ${s}: ${f.holistic.reduce((a,x) => a+(parseInt(x.Months_With_Major)||0), 0)} month(s)`;
+                        if (axis === 'Title Reign') return `  ${s}: ${f.holistic.reduce((a,x) => a+(parseInt(x.Months_With_Title)||0), 0)} month(s)`;
+                        if (axis === 'Event Wins') return `  ${s}: ${[...r.wonSet].map(c => EVENT_NAMES[c]).join(', ') || 'None'}`;
+                        if (axis === 'Unique Titles') return `  ${s}: ${f.unique_champs} title(s)`;
+                        return `  ${s}: ${it.raw.toFixed(0)}`;
+                    }}
+                }
+            },
+            animation: { duration: 900 }
+        }
     });
 }
 
-function updateComparisonBar(data) {
-    const bar = document.getElementById('comparisonBar');
-    bar.style.display = 'flex';
+// ── Win Rate Momentum ─────────────────────────────────────────
+function renderMomentum(d) {
+    const parse = arr => arr.map((r, i) => ({x: i+1, y: parseFloat(String(r.career_win_pct).replace('%','')) || 0}));
+    const f1pts = parse(d.fighter1.running);
+    const f2pts = parse(d.fighter2.running);
+    const maxFights = Math.max(f1pts.length, f2pts.length, 1);
+    const w = Math.max(900, maxFights * 10);
 
-    document.getElementById('comp-f1-name').textContent = data.fighter1.name;
-    document.getElementById('comp-f2-name').textContent = data.fighter2.name;
+    const canvas = document.getElementById('compareMomentum');
+    canvas.width = w; canvas.height = 260;
 
-    // Get total H2H wins
-    const f1wins = parseInt(data.fighter1.h2h[0]?.wins) || 0;
-    const f2wins = parseInt(data.fighter2.h2h[0]?.wins) || 0;
-    const total = f1wins + f2wins || 1;
-
-    const f1pct = Math.round((f1wins / total) * 100);
-    const f2pct = 100 - f1pct;
-
-    setTimeout(() => {
-        document.getElementById('comp-f1-bar').style.width = f1pct + '%';
-        document.getElementById('comp-f2-bar').style.width = f2pct + '%';
-        document.getElementById('comp-f1-pct').textContent = f1wins + 'W';
-        document.getElementById('comp-f2-pct').textContent = f2wins + 'W';
-    }, 100);
+    if (charts.momentum) charts.momentum.destroy();
+    charts.momentum = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: { datasets: [
+            { label: d.fighter1.name, data: f1pts, borderColor: F1_COLOR, backgroundColor: F1_BG, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.3, fill: true },
+            { label: d.fighter2.name, data: f2pts, borderColor: F2_COLOR, backgroundColor: F2_BG, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.3, fill: true },
+            { label: '50%', data: [{x:1,y:50},{x:maxFights,y:50}], borderColor:'rgba(176,184,209,0.2)', borderWidth:1, borderDash:[6,4], pointRadius:0, fill:false },
+        ]},
+        options: {
+            responsive: false, maintainAspectRatio: false,
+            parsing: false,
+            scales: {
+                y: { min:0, max:100, grid:{color:'rgba(96,124,255,0.08)'}, ticks:{callback:v=>v+'%', color:'#b0b8d1'}, title:{display:true, text:'Win Rate', color:'#a8aab8', font:{size:11}} },
+                x: { type:'linear', min:1, grid:{color:'rgba(96,124,255,0.05)'}, ticks:{color:'#607cff', font:{size:11}}, title:{display:true, text:'Fight #', color:'#a8aab8', font:{size:11}} },
+            },
+            plugins: {
+                legend: { position:'top', labels:{padding:14, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
+                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
+                    callbacks: { label: it => `  ${it.dataset.label}: ${it.parsed.y.toFixed(1)}%` }
+                }
+            },
+            animation: { duration: 800 }
+        }
+    });
 }
 
-function clearAll() {
-    document.querySelectorAll('.fighter-input, .filter-input').forEach(input => {
-        input.value = '';
-    });
-    document.getElementById('fighter1Img').src = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 1</text></svg>";
-    document.getElementById('fighter2Img').src = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 2</text></svg>";
-    document.getElementById('stageImg').src = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 586 300%22><rect fill=%22%2312122a%22 width=%22586%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Stage</text></svg>";
-    document.getElementById('resultsSection').style.display = 'none';
-    document.getElementById('comparisonBar').style.display = 'none';
-    document.getElementById('errorMsg').textContent = '';
+// ── Season by Season ──────────────────────────────────────────
+function renderSeasons(d) {
+    const f1Seasons = d.fighter1.by_season, f2Seasons = d.fighter2.by_season;
+    const allSeasons = [...new Set([...f1Seasons.map(r=>r.season), ...f2Seasons.map(r=>r.season)])].sort((a,b) => +a - +b);
+    const f1Wins = allSeasons.map(s => (f1Seasons.find(r=>r.season==s)||{wins:0}).wins);
+    const f2Wins = allSeasons.map(s => (f2Seasons.find(r=>r.season==s)||{wins:0}).wins);
+    const f1Losses = allSeasons.map(s => (f1Seasons.find(r=>r.season==s)||{losses:0}).losses);
+    const f2Losses = allSeasons.map(s => (f2Seasons.find(r=>r.season==s)||{losses:0}).losses);
 
-    const f1Frame = document.getElementById('fighter1Frame');
-    const f2Frame = document.getElementById('fighter2Frame');
-    f1Frame.classList.remove('winner-glow', 'loser-dim');
-    f2Frame.classList.remove('winner-glow', 'loser-dim');
+    if (charts.seasons) charts.seasons.destroy();
+    charts.seasons = new Chart(document.getElementById('compareSeasons').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: allSeasons.map(s => 'S' + s),
+            datasets: [
+                { label: d.fighter1.name + ' (W)', data: f1Wins,   backgroundColor: F1_COLOR, borderRadius: 4, stack: 'f1' },
+                { label: d.fighter1.name + ' (L)', data: f1Losses,  backgroundColor: 'rgba(96,124,255,0.25)', borderRadius: 4, stack: 'f1' },
+                { label: d.fighter2.name + ' (W)', data: f2Wins,   backgroundColor: F2_COLOR, borderRadius: 4, stack: 'f2' },
+                { label: d.fighter2.name + ' (L)', data: f2Losses,  backgroundColor: 'rgba(251,146,60,0.25)',  borderRadius: 4, stack: 'f2' },
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, title:{display:true, text:'Fights', color:'#a8aab8', font:{size:11}} },
+                x: { grid:{display:false}, ticks:{color:'#b0b8d1'} },
+            },
+            plugins: {
+                legend: { position:'bottom', labels:{padding:14, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
+                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1 }
+            },
+            animation: { duration: 700 }
+        }
+    });
+}
+
+// ── Their Fights ──────────────────────────────────────────────
+function renderFights(d) {
+    const rows = d.fights_between || [];
+    const f1Name = d.fighter1.name, f2Name = d.fighter2.name;
+    const wrap = document.getElementById('fightsBetweenWrap');
+    const label = document.getElementById('fightCountLabel');
+
+    // Group by Fight_ID
+    const byFight = new Map();
+    rows.forEach(row => {
+        const fid = row.Fight_ID;
+        if (!byFight.has(fid)) byFight.set(fid, {meta: row, f1Row: null, f2Row: null});
+        const f = byFight.get(fid);
+        if (row.Fighter_Name === f1Name) f.f1Row = row;
+        else f.f2Row = row;
+    });
+
+    if (!byFight.size) {
+        label.textContent = '0 total fights between them';
+        wrap.innerHTML = '<p style="color:#b0b8d1;padding:0.5rem 0;">No direct fights found.</p>';
+        return;
+    }
+
+    const tableRows = [...byFight.values()].map(({meta, f1Row, f2Row}) => {
+        const d1 = String(f1Row?.Decision || '').trim().toUpperCase();
+        const d2 = String(f2Row?.Decision || '').trim().toUpperCase();
+        // Skip tag-team fights (same decision = same side) and multi-person where neither wins (both L)
+        if (d1 === d2) return null;
+        const winner = d1 === 'W' ? f1Name : d2 === 'W' ? f2Name : '—';
+        const isF1 = winner === f1Name;
+        const champ = meta.Championship_Name || '—';
+        const date = `S${meta.Season} M${meta.Month}${meta.Week ? ' W'+meta.Week : ''}`;
+        return `<tr class="clickable-row" onclick="window.open('/fights?fight_id=${meta.Fight_ID}','_blank')" title="View in Fight Log">
+            <td>${date}</td>
+            <td>${meta.PPV_Name || '—'}</td>
+            <td>${meta.Description || '—'}</td>
+            <td>${champ}</td>
+            <td class="${isF1 ? 'f1-winner-cell' : winner === '—' ? '' : 'f2-winner-cell'}" style="font-weight:600">${winner}</td>
+        </tr>`;
+    }).filter(Boolean);
+
+    label.textContent = tableRows.length + ' total fights between them';
+
+    wrap.innerHTML = `<table class="stats-table compare-fights-table">
+        <thead><tr><th>Date</th><th>PPV</th><th>Type</th><th>Title</th><th>Winner</th></tr></thead>
+        <tbody>${tableRows.join('')}</tbody>
+    </table>`;
 }
 </script>
 {% endblock %}
