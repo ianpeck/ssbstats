@@ -7,6 +7,11 @@ import re
 import time
 import unicodedata
 import yaml
+try:
+    from groq import Groq as GroqClient
+    _groq_client = GroqClient(api_key=os.getenv('GROQ_API_KEY')) if os.getenv('GROQ_API_KEY') else None
+except ImportError:
+    _groq_client = None
 
 app = Flask(__name__)
 
@@ -535,6 +540,272 @@ def api_events():
         return jsonify([{k: _serialize(v) for k, v in row.items()} for row in rows])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/chat')
+def chat_page():
+    return render_template('chat.html')
+
+
+_CHAT_SCHEMA = """
+You are a sports statistics assistant for SSB Stats — a WWE-style franchise using Super Smash Bros characters.
+Answer questions ONLY using data from the MySQL database described below. Do not make up data.
+
+DATABASE SCHEMA
+===============
+
+VIEWS (pre-built, use these first):
+IMPORTANT: The win percentage column is named "Win Percentage" (with a space — NOT Win_Percentage). Always quote it with backticks: `Win Percentage`
+- careerstats: Fighter_Name, Wins, Losses, `Win Percentage`
+- CareerStatsBySeason: Fighter_Name, Season, Wins, Losses, `Win Percentage`
+- CareerStatsByLocation: Fighter_Name, Location_Name, Wins, Losses, `Win Percentage`
+- CareerStatsByFightType: Fighter_Name, FightType, Wins, Losses, `Win Percentage`
+- CareerStatsByBrand: Fighter_Name, Brand, Wins, Losses, `Win Percentage`
+- CareerStatsByPPV: Fighter_Name, PPV, Wins, Losses, `Win Percentage`
+- CareerStatsByOpponent: Fighter_Name, Opponent, Wins, Losses
+- CareerRunningStats: Fighter_Name, Season, Month, Week, Fight_ID, Season_Running_Wins, Season_Running_Losses, Career_Running_Wins, Career_Running_Losses, Season_Running_Win_Pct, Career_Running_Win_Pct
+- ChampionshipHistory: Fighter_Name, Championship_Name, Championship_Tier, months_held, Season_Won, Month_Won, Season_Lost, Month_Lost
+  * Season_Lost = NULL means currently active champion
+  * Championship_Tier values: 'Major', 'Minor', 'Specialty', 'Tag'
+- CurrentChampions: Fighter_Name, Championship_Name, Season_Won, Month_Won
+- champfightstats: Fighter_Name, Wins, Losses, `Win Percentage` (stats in championship matches only)
+- champfightstatsbychampionship: Fighter_Name, Championship_Name, Wins, Losses, `Win Percentage`
+- defendingtitle: Fighter_Name, Wins, Losses, `Win Percentage` (stats when defending a title)
+- allwinstreaks: Fighter_Name, Win_Streak, Active_Win_Streak, Season_Started, Month_Started, Week_Started, Season_Ended, Month_Ended, Week_Ended
+- alllosingsteaks: Fighter_Name, Losing_Streak, Active_Losing_Streak, Season_Started, Month_Started, Week_Started, Season_Ended, Month_Ended, Week_Ended  (NOTE: view name is intentionally missing an 'r' — use exactly: alllosingsteaks)
+- longestwinstreaks: Fighter_Name, longest_streak
+- longestlosingstreaks: Fighter_Name, longest_streak
+- FightLog: Fight_ID, Result_ID, Fighter_Name, Decision (W/L), Match_Result, Seed, DefendingIndicator, Location_Name, Brand_Name, PPV_Name, Championship_Name, Description (fight type), Contender_Indicator, Season, Month, Week
+- holistic_view: Fighter_Name, Season, Months_With_Title, Months_With_Major, Won_Tournament, Won_Royal_Rumble, Won_Scramble, Won_Smash_Series, Won_Money_In_The_Bank, Won_Smash_Bros, Successful_Cash_In
+  * The Won_* and Successful_Cash_In columns: a non-null, non-empty value means the fighter achieved it that season. Filter with: WHERE Won_Tournament IS NOT NULL AND Won_Tournament != ''
+- triplecrown: Fighter_Name (fighters who have held all 3 major titles)
+- majorwinner: Fighter_Name (+ columns for each major title won)
+
+BASE TABLES (for lookups):
+- Fighter: Fighter_Name
+- Location: Location_Name
+- FightType: Description
+- PPV: PPV_Name
+- Championship: Championship_Name
+- Brand: Brand_Name
+- Award: Award_ID, Award_Name
+- AwardHistory: Season_ID, Fighter_Name, Award_ID
+
+KEY RULES:
+- In ChampionshipHistory, Season_Lost = NULL and Month_Lost = NULL means the fighter is the CURRENT champion.
+- Each season = 12 months. Seasons and months are integers (Season 1, Month 1 through 12).
+- A fight can have multiple rows in FightLog (one per participant). To count distinct fights, always use COUNT(DISTINCT Fight_ID), never COUNT(*) or COUNT(Result_ID).
+  BAD:  SELECT Fighter_Name, COUNT(*) AS fights FROM FightLog GROUP BY Fighter_Name
+  GOOD: SELECT Fighter_Name, COUNT(DISTINCT Fight_ID) AS fights FROM FightLog GROUP BY Fighter_Name
+- Decision column in FightLog is 'W' for win and 'L' for loss.
+- Championship matches have a non-null/non-empty Championship_Name in FightLog.
+- Several FightLog columns are NULL when not applicable. Always filter them out when they are the subject of a query:
+  * PPV_Name: add WHERE PPV_Name IS NOT NULL AND PPV_Name != ''
+  * Championship_Name: add WHERE Championship_Name IS NOT NULL AND Championship_Name != ''
+  * Brand_Name: add WHERE Brand_Name IS NOT NULL AND Brand_Name != ''
+- For "current season" or "most recent season" questions, use: (SELECT MAX(Season) FROM CareerStatsBySeason)
+  Example: WHERE Season = (SELECT MAX(Season) FROM CareerStatsBySeason)
+- To look up award winners by name, JOIN AwardHistory with Award:
+  SELECT ah.Fighter_Name, ah.Season_ID, a.Award_Name
+  FROM AwardHistory ah JOIN Award a ON ah.Award_ID = a.Award_ID
+  WHERE a.Award_Name LIKE '%Superstar%'
+- Only generate SELECT queries. Never generate INSERT, UPDATE, DELETE, DROP, or any DDL.
+
+SQL QUALITY RULES (critical):
+- ALWAYS include the numeric/metric columns that answer the question in your SELECT — never select only Fighter_Name.
+  BAD:  SELECT Fighter_Name FROM careerstats ORDER BY Wins DESC LIMIT 1
+  GOOD: SELECT Fighter_Name, Wins, Losses, Win_Percentage FROM careerstats ORDER BY Wins DESC LIMIT 1
+- When asking "who has the most X", return the top 5 rows so ties are visible, not just LIMIT 1.
+- When a fighter can have MULTIPLE rows in a view (e.g. multiple championship reigns in ChampionshipHistory), always GROUP BY Fighter_Name and use SUM/COUNT to aggregate. Never just ORDER BY and LIMIT without grouping.
+  BAD:  SELECT Fighter_Name, months_held FROM ChampionshipHistory ORDER BY months_held DESC LIMIT 5
+  GOOD: SELECT Fighter_Name, SUM(months_held) AS total_months FROM ChampionshipHistory GROUP BY Fighter_Name ORDER BY total_months DESC LIMIT 5
+- When a question asks about a specific fighter, use WHERE Fighter_Name = 'ExactName' (case-sensitive).
+- PPV events and seasons: each PPV recurs across seasons. GROUP BY PPV_Name alone gives totals across all seasons (cumulative). To get per-show stats, always GROUP BY PPV_Name, Season first, then aggregate outer query.
+  "Which PPV has the most matches per show" (typical/average per occurrence):
+  BAD:  SELECT PPV_Name, COUNT(DISTINCT Fight_ID) AS total FROM FightLog GROUP BY PPV_Name ORDER BY total DESC
+  GOOD: SELECT PPV_Name, AVG(per_show) AS avg_matches FROM (SELECT PPV_Name, Season, COUNT(DISTINCT Fight_ID) AS per_show FROM FightLog WHERE PPV_Name IS NOT NULL AND PPV_Name != '' GROUP BY PPV_Name, Season) AS s GROUP BY PPV_Name ORDER BY avg_matches DESC LIMIT 5
+- Prefer views over raw FightLog queries when a view already aggregates the needed data.
+- To rank a specific fighter (e.g. "where does X rank in win percentage?"), use a subquery:
+  SELECT cs1.Fighter_Name, cs1.`Win Percentage`,
+         (SELECT COUNT(*) + 1 FROM careerstats cs2 WHERE cs2.`Win Percentage` > cs1.`Win Percentage`) AS rank_position,
+         (SELECT COUNT(*) FROM careerstats) AS total_fighters
+  FROM careerstats cs1 WHERE cs1.Fighter_Name = 'Captain Falcon'
+
+CRITICAL PATTERN — checking if two fighters faced each other:
+NEVER use WHERE Fighter_Name IN ('A', 'B') — that finds fights where EITHER appeared, not fights where they faced EACH OTHER.
+ALWAYS use a self-join on Fight_ID:
+  SELECT DISTINCT f1.Fight_ID, f1.Season, f1.Month, f1.Championship_Name
+  FROM FightLog f1
+  JOIN FightLog f2 ON f1.Fight_ID = f2.Fight_ID
+  WHERE f1.Fighter_Name = 'Fighter_A'
+    AND f2.Fighter_Name = 'Fighter_B'
+Add: AND f1.Championship_Name IS NOT NULL AND f1.Championship_Name != '' — for championship matches only.
+Use CareerStatsByOpponent for win/loss totals between two fighters (already aggregated).
+
+CRITICAL PATTERN — querying fights within a specific streak:
+allwinstreaks has Season_Started, Month_Started, Week_Started, Season_Ended, Month_Ended, Week_Ended.
+To filter FightLog to only fights that occurred during a fighter's streak, use a CTE with the time-ordering trick:
+  WITH streak AS (
+    SELECT Season_Started, Month_Started, Week_Started,
+           Season_Ended, Month_Ended, Week_Ended
+    FROM allwinstreaks
+    WHERE Fighter_Name = 'Kirby'
+    ORDER BY Win_Streak DESC LIMIT 1  -- use Losing_Streak for losing streaks; use longestwinstreaks for all-time longest
+  )
+  SELECT f2.Fighter_Name, COUNT(DISTINCT f1.Fight_ID) AS fights
+  FROM FightLog f1
+  JOIN FightLog f2 ON f1.Fight_ID = f2.Fight_ID
+  JOIN streak s ON (
+    (f1.Season * 10000 + f1.Month * 100 + f1.Week)
+      BETWEEN (s.Season_Started * 10000 + s.Month_Started * 100 + s.Week_Started)
+          AND (s.Season_Ended   * 10000 + s.Month_Ended   * 100 + s.Week_Ended)
+  )
+  WHERE f1.Fighter_Name = 'Kirby'
+    AND f1.Decision = 'W'
+    AND f2.Fighter_Name != 'Kirby'
+  GROUP BY f2.Fighter_Name ORDER BY fights DESC LIMIT 5
+NEVER just filter by WHERE Fighter_Name = 'X' AND Decision = 'W' without the streak date range — that counts all wins, not streak wins.
+
+RESPONSE FORMAT:
+Return ONLY a JSON object with exactly these keys:
+{
+  "sql": "your SELECT query here",
+  "explanation": "one sentence describing what the query does"
+}
+Do not include any other text, markdown, or formatting outside the JSON object.
+""".strip()
+
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    if not _groq_client:
+        return jsonify({'error': 'Chat is not configured (missing GROQ_API_KEY).'}), 503
+
+    data = request.get_json(silent=True) or {}
+    question = str(data.get('question', '')).strip()[:500]  # cap input length
+    history = data.get('history', [])[-3:]  # last 3 exchanges max
+    if not question:
+        return jsonify({'error': 'No question provided.'}), 400
+
+    import json as _json
+
+    try:
+        # Build messages with conversation history so follow-up questions work
+        messages = [{'role': 'system', 'content': _CHAT_SCHEMA}]
+        for h in history:
+            prior_q = str(h.get('question', ''))[:300]
+            prior_sql = str(h.get('sql', ''))
+            prior_rows = h.get('rows', [])
+            messages.append({'role': 'user', 'content': prior_q})
+            # Give the assistant's previous response as context
+            messages.append({'role': 'assistant', 'content': _json.dumps({
+                'sql': prior_sql,
+                'explanation': f'Query returned {len(prior_rows)} rows: {_json.dumps(prior_rows[:5])}'
+            })})
+        messages.append({'role': 'user', 'content': question})
+
+        # Step 1: ask Groq to generate SQL
+        sql_resp = _groq_client.chat.completions.create(
+            model='llama-3.3-70b-versatile',
+            messages=messages,
+            temperature=0,
+            max_tokens=512,
+        )
+        raw = sql_resp.choices[0].message.content.strip()
+
+        # Strip markdown code fences if present
+        if raw.startswith('```'):
+            raw = re.sub(r'^```[a-z]*\n?', '', raw).rstrip('`').strip()
+        try:
+            parsed = _json.loads(raw)
+        except Exception:
+            return jsonify({'answer': 'Sorry, I couldn\'t understand that question. Try rephrasing it.'})
+
+        sql = parsed.get('sql', '').strip()
+
+        # Safety: only allow SELECT
+        if not re.match(r'^\s*SELECT\b', sql, re.IGNORECASE):
+            return jsonify({'answer': 'I can only answer read-only questions about the stats database.'})
+
+        # Step 2: run the query
+        try:
+            rows = db.select_view_dicts(sql)
+        except Exception as db_err:
+            app.logger.warning('[chat] initial SQL error: %s | SQL: %s', db_err, sql)
+            # Ask Groq to self-correct once
+            fix_resp = _groq_client.chat.completions.create(
+                model='llama-3.3-70b-versatile',
+                messages=[
+                    {'role': 'system', 'content': _CHAT_SCHEMA},
+                    {'role': 'user', 'content': question},
+                    {'role': 'assistant', 'content': raw},
+                    {'role': 'user', 'content': f'That query failed with error: {db_err}. Please correct the SQL and return the same JSON format.'},
+                ],
+                temperature=0,
+                max_tokens=512,
+            )
+            raw2 = fix_resp.choices[0].message.content.strip()
+            if raw2.startswith('```'):
+                raw2 = re.sub(r'^```[a-z]*\n?', '', raw2).rstrip('`').strip()
+            try:
+                parsed2 = _json.loads(raw2)
+            except Exception as parse_err:
+                app.logger.warning('[chat] self-correction JSON parse error: %s | raw: %s', parse_err, raw2)
+                return jsonify({'answer': 'I couldn\'t understand that question — try rephrasing it.'})
+            sql = parsed2.get('sql', '').strip()
+            if not re.match(r'^\s*SELECT\b', sql, re.IGNORECASE):
+                return jsonify({'answer': 'I couldn\'t find an answer to that question.'})
+            try:
+                rows = db.select_view_dicts(sql)
+            except Exception as db_err2:
+                app.logger.warning('[chat] corrected SQL also failed: %s | SQL: %s', db_err2, sql)
+                return jsonify({'answer': 'I had trouble with that query — could you rephrase the question?', 'sql': sql, 'error': str(db_err2)})
+
+        # Serialize rows
+        serialized = [{k: _serialize(v) for k, v in row.items()} for row in rows[:50]]
+
+        # Step 3: ask Groq to turn the results into a plain English answer
+        # Include prior conversation so follow-up questions ("what about X?") are understood
+        has_rows = len(serialized) > 0
+        answer_messages = [
+            {'role': 'system', 'content': (
+                'You are a friendly, conversational sports stats assistant for a Super Smash Bros wrestling franchise. '
+                'Do not mention SQL or databases. Keep responses casual and natural, not robotic.\n\n'
+                + (
+                'IMPORTANT: The query returned data rows. You MUST give a direct, confident answer using those rows. '
+                'Do not hedge, do not say you are stumped, do not ask to rephrase. The data is correct — just answer the question in 1-3 sentences.'
+                if has_rows else
+                'The query returned no results. Use your judgment:\n'
+                '- If the query was specific and targeted (named fighters, specific event, etc.), respond with CONVICTION that it never happened. '
+                'Examples: "Nope, those two have never faced each other in a championship.", "That matchup has never taken place."\n'
+                '- If the query was vague and may have missed something, suggest rephrasing. '
+                'Examples: "Hmm, I\'m not sure I caught that — could you rephrase?", "That one\'s tricky, try wording it differently."'
+                )
+            )},
+        ]
+        # Add prior Q&A as context so follow-ups like "what about X?" make sense
+        for h in history:
+            answer_messages.append({'role': 'user', 'content': h.get('question', '')})
+            answer_messages.append({'role': 'assistant', 'content': f"I found {len(h.get('rows', []))} results for that."})
+        answer_messages.append({
+            'role': 'user',
+            'content': f'Question: {question}\n\nQuery used: {sql}\n\nResult rows ({len(serialized)} rows): {_json.dumps(serialized)}'
+        })
+
+        answer_resp = _groq_client.chat.completions.create(
+            model='llama-3.3-70b-versatile',
+            messages=answer_messages,
+            temperature=0.3,
+            max_tokens=300,
+        )
+        answer = answer_resp.choices[0].message.content.strip()
+        return jsonify({'answer': answer, 'rows': serialized, 'sql': sql})
+
+    except Exception as e:
+        err_str = str(e)
+        if '429' in err_str or 'rate_limit_exceeded' in err_str or 'tokens per day' in err_str:
+            return jsonify({'answer': "We've hit the daily AI token limit — the chat will be back up within a few hours. Check back soon!"}), 200
+        return jsonify({'error': f'Something went wrong: {str(e)}'}), 500
 
 
 if __name__ == '__main__':

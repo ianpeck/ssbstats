@@ -26,6 +26,7 @@
                 <a href="/championships" class="nav-link {% if request.path == '/championships' %}active{% endif %}">Championships</a>
                 <a href="/events" class="nav-link {% if request.path == '/events' %}active{% endif %}">Events (PPVs)</a>
                 <a href="/fights" class="nav-link {% if request.path.startswith('/fights') %}active{% endif %}">Fight Logs</a>
+                <a href="/chat" class="nav-link {% if request.path == '/chat' %}active{% endif %}">Ask AI</a>
                 <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">About</a>
             </div>
             <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
@@ -50,5 +51,157 @@
 
     <script src="{{ url_for('static', filename='js/app.js') }}?v={{ static_v }}"></script>
     {% block scripts %}{% endblock %}
+
+    <!-- Floating AI Chat Widget (available on every page) -->
+    <div id="floatChatWrap" class="float-chat-wrap">
+        <div id="floatChatPanel" class="float-chat-panel glass-card" style="display:none;">
+            <div class="float-chat-header">
+                <span>Ask the Stats AI</span>
+                <button class="float-chat-close" onclick="toggleFloatChat()">&times;</button>
+            </div>
+            <div class="float-chat-messages" id="floatChatMessages">
+                <div class="chat-message chat-message-ai">
+                    <div class="chat-bubble">Hey! Ask me anything about the league — wins, titles, streaks, matchups, and more.</div>
+                </div>
+            </div>
+            <div class="float-chat-input-row">
+                <input type="text" id="floatChatInput" class="chat-input" placeholder="Ask a question…" maxlength="300" autocomplete="off">
+                <button class="btn btn-primary chat-send-btn" onclick="floatSend()">Ask</button>
+            </div>
+        </div>
+        <button class="float-chat-btn" onclick="toggleFloatChat()" title="Ask the Stats AI">
+            <span class="float-chat-icon">✨</span>
+            <span class="float-chat-label">Ask AI</span>
+        </button>
+    </div>
+
+    <script>
+    // Restore persisted state from sessionStorage (survives page navigation within the tab)
+    let floatHistory = JSON.parse(sessionStorage.getItem('floatHistory') || '[]');
+    let floatMessages = JSON.parse(sessionStorage.getItem('floatMessages') || '[]');
+    let floatOpen = sessionStorage.getItem('floatOpen') === 'true';
+
+    function saveSession() {
+        sessionStorage.setItem('floatHistory', JSON.stringify(floatHistory));
+        sessionStorage.setItem('floatMessages', JSON.stringify(floatMessages));
+        sessionStorage.setItem('floatOpen', floatOpen);
+    }
+
+    // Restore messages into the DOM on page load
+    (function restoreMessages() {
+        if (!floatMessages.length) return;
+        const msgs = document.getElementById('floatChatMessages');
+        msgs.innerHTML = ''; // clear the default greeting if we have history
+        floatMessages.forEach(m => {
+            const wrap = document.createElement('div');
+            wrap.className = `chat-message chat-message-${m.role}`;
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble';
+            bubble.innerHTML = m.html;
+            wrap.appendChild(bubble);
+            msgs.appendChild(wrap);
+        });
+        msgs.scrollTop = msgs.scrollHeight;
+    })();
+
+    // Restore open/closed state
+    if (floatOpen) {
+        document.getElementById('floatChatPanel').style.display = 'flex';
+    }
+
+    function toggleFloatChat() {
+        floatOpen = !floatOpen;
+        document.getElementById('floatChatPanel').style.display = floatOpen ? 'flex' : 'none';
+        if (floatOpen) {
+            document.getElementById('floatChatInput').focus();
+            document.getElementById('floatChatMessages').scrollTop = 999999;
+        }
+        saveSession();
+    }
+
+    document.getElementById('floatChatInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') floatSend();
+    });
+
+    function floatSend() {
+        const inp = document.getElementById('floatChatInput');
+        const question = inp.value.trim();
+        if (!question) return;
+        inp.value = '';
+        inp.disabled = true;
+
+        floatAppend('user', floatEsc(question));
+        const thinking = floatAppend('ai', '<span class="chat-thinking">Thinking…</span>', false, true);
+
+        fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, history: floatHistory }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            thinking.remove();
+            if (data.error) {
+                floatAppend('ai', `⚠️ ${floatEsc(data.error)}`);
+            } else {
+                floatHistory.push({ question, sql: data.sql || '', rows: (data.rows || []).slice(0, 15) });
+                if (floatHistory.length > 3) floatHistory.shift();
+
+                let html = floatEsc(data.answer || 'No answer returned.');
+                if (data.rows && data.rows.length > 1) html += floatTable(data.rows);
+                floatAppend('ai', html, true);
+            }
+            saveSession();
+        })
+        .catch(() => { thinking.remove(); floatAppend('ai', '⚠️ Could not reach server.'); })
+        .finally(() => { inp.disabled = false; inp.focus(); });
+    }
+
+    function floatAppend(role, html, persist = false, ephemeral = false) {
+        const msgs = document.getElementById('floatChatMessages');
+        const wrap = document.createElement('div');
+        wrap.className = `chat-message chat-message-${role}`;
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        bubble.innerHTML = html;
+        wrap.appendChild(bubble);
+        msgs.appendChild(wrap);
+        msgs.scrollTop = msgs.scrollHeight;
+        // Only persist non-ephemeral messages (not the "Thinking…" indicator)
+        if (!ephemeral) {
+            floatMessages.push({ role, html });
+        }
+        return wrap;
+    }
+
+    function floatEsc(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function floatTable(rows) {
+        if (!rows || !rows.length) return '';
+        const PRIORITY = ['fighter_name','wins','win_streak','longest_streak','losses','losing_streak','win_percentage','win_pct'];
+        const rawCols = Object.keys(rows[0]);
+        const cols = [
+            ...rawCols.filter(c => PRIORITY.includes(c.toLowerCase())).sort((a,b) => {
+                const ai = PRIORITY.indexOf(a.toLowerCase()), bi = PRIORITY.indexOf(b.toLowerCase());
+                return (ai===-1?99:ai)-(bi===-1?99:bi);
+            }),
+            ...rawCols.filter(c => !PRIORITY.includes(c.toLowerCase())),
+        ];
+        const MAX = 10;
+        let h = '<div class="chat-table-wrap"><table class="chat-table"><thead><tr>';
+        cols.forEach(c => { h += `<th>${floatEsc(c)}</th>`; });
+        h += '</tr></thead><tbody>';
+        rows.slice(0, MAX).forEach(row => {
+            h += '<tr>';
+            cols.forEach(c => { h += `<td>${floatEsc(row[c] ?? '')}</td>`; });
+            h += '</tr>';
+        });
+        if (rows.length > MAX) h += `<tr><td colspan="${cols.length}" style="text-align:center;opacity:0.6">…${rows.length-MAX} more</td></tr>`;
+        h += '</tbody></table></div>';
+        return h;
+    }
+    </script>
 </body>
 </html>

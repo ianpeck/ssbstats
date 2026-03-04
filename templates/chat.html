@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Ask AI{% endblock %}
+
+{% block content %}
+<section class="seasons-section">
+    <h1 class="section-title">Ask the Stats AI</h1>
+    <p class="section-subtitle">Ask any question about the league and I'll look it up in the database</p>
+
+    <div class="chat-container glass-card">
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-message chat-message-ai">
+                <div class="chat-bubble">
+                    Hey! Ask me anything about SSB Stats — win records, championship history, streaks, head-to-head matchups, event winners, and more.
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-row">
+            <input type="text" id="chatInput" class="chat-input" placeholder="e.g. Who has the most title reigns?" maxlength="300" autocomplete="off">
+            <button class="btn btn-primary chat-send-btn" id="chatSendBtn" onclick="sendQuestion()">Ask</button>
+        </div>
+        <p class="chat-hint">Try: "Who is the all-time wins leader?" &bull; "Who has the longest win streak?" &bull; "What titles has Mario held?"</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const input  = document.getElementById('chatInput');
+const btn    = document.getElementById('chatSendBtn');
+const msgs   = document.getElementById('chatMessages');
+const chatHistory = []; // last 3 exchanges sent as context
+
+input.addEventListener('keydown', e => { if (e.key === 'Enter') sendQuestion(); });
+
+function sendQuestion() {
+    const question = input.value.trim();
+    if (!question) return;
+    input.value = '';
+    btn.disabled = true;
+
+    appendMessage('user', question);
+    const thinking = appendMessage('ai', '<span class="chat-thinking">Thinking…</span>');
+
+    fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, history: chatHistory }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        thinking.remove();
+        if (data.error) {
+            appendMessage('ai', `⚠️ ${data.error}`);
+        } else {
+            // Store exchange in history for follow-up context (keep last 3)
+            chatHistory.push({ question, sql: data.sql || '', rows: (data.rows || []).slice(0, 15) });
+            if (chatHistory.length > 3) chatHistory.shift();
+
+            let html = escHtml(data.answer || 'No answer returned.');
+            // If there are tabular rows, render a small table
+            if (data.rows && data.rows.length > 1) {
+                html += buildTable(data.rows);
+            }
+            // Show the SQL in a collapsible
+            if (data.sql) {
+                html += `<details class="chat-sql-details"><summary>View query</summary><code class="chat-sql">${escHtml(data.sql)}</code></details>`;
+            }
+            appendMessage('ai', html, true);
+        }
+    })
+    .catch(() => {
+        thinking.remove();
+        appendMessage('ai', '⚠️ Could not reach the server. Try again.');
+    })
+    .finally(() => { btn.disabled = false; });
+}
+
+function appendMessage(role, html, isHTML = false) {
+    const wrap = document.createElement('div');
+    wrap.className = `chat-message chat-message-${role}`;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble';
+    if (isHTML) bubble.innerHTML = html;
+    else bubble.innerHTML = html; // thinking span or escaped text
+    wrap.appendChild(bubble);
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+    return wrap;
+}
+
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function buildTable(rows) {
+    if (!rows || !rows.length) return '';
+    // Preferred column order: name → wins → losses → pct → everything else
+    const PRIORITY = ['fighter_name', 'wins', 'win_streak', 'longest_streak', 'losses', 'losing_streak', 'win_percentage', 'win_pct'];
+    const rawCols = Object.keys(rows[0]);
+    const cols = [
+        ...rawCols.filter(c => PRIORITY.includes(c.toLowerCase())).sort((a, b) => {
+            const ai = PRIORITY.indexOf(a.toLowerCase()), bi = PRIORITY.indexOf(b.toLowerCase());
+            return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+        }),
+        ...rawCols.filter(c => !PRIORITY.includes(c.toLowerCase())),
+    ];
+    const MAX_ROWS = 20;
+    let html = '<div class="chat-table-wrap"><table class="chat-table"><thead><tr>';
+    cols.forEach(c => { html += `<th>${escHtml(c)}</th>`; });
+    html += '</tr></thead><tbody>';
+    rows.slice(0, MAX_ROWS).forEach(row => {
+        html += '<tr>';
+        cols.forEach(c => { html += `<td>${escHtml(row[c] ?? '')}</td>`; });
+        html += '</tr>';
+    });
+    if (rows.length > MAX_ROWS) {
+        html += `<tr><td colspan="${cols.length}" style="text-align:center;opacity:0.6">…and ${rows.length - MAX_ROWS} more rows</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    return html;
+}
+</script>
+{% endblock %}
