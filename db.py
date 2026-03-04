@@ -157,6 +157,7 @@ def get_fighter_accolades(name):
         'champ_by_champ': ("SELECT * FROM champfightstatsbychampionship WHERE Fighter_Name = %s", (name,)),
         'holistic':       ("SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season", (name,)),
         'triple_crown':   ("SELECT * FROM triplecrown", ()),
+        'major_winner':   ("SELECT * FROM majorwinner WHERE Fighter_Name = %s", (name,)),
     }
 
     def run_query(key_query):

@@ -1049,6 +1049,18 @@ img {
     color: #c084fc;
     font-weight: 700;
 }
+.major-winner-badge {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(234, 179, 8, 0.1));
+    border: 1px solid rgba(251, 191, 36, 0.45);
+    color: #fbbf24;
+    font-weight: 700;
+}
+.super-major-winner-badge {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(251, 146, 60, 0.15));
+    border: 1px solid rgba(251, 191, 36, 0.6);
+    color: #fcd34d;
+    font-weight: 700;
+}
 .badge-icon { font-size: 1rem; }
 .badge-season { font-size: 0.75rem; opacity: 0.7; margin-left: 4px; }
 
@@ -1711,6 +1723,22 @@ img {
     border-left: 2px solid var(--accent);
 }
 
+.champ-segment-longest {
+    background: rgba(251, 191, 36, 0.08);
+    border-top: 2px solid rgba(251, 191, 36, 0.5);
+}
+
+.champ-longest-star {
+    font-size: 0.75rem;
+    line-height: 1;
+}
+
+.champ-legend {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0 0 1rem 0;
+}
+
 .champ-segment-last:first-child {
     border-left: none;
 }
@@ -2028,6 +2056,20 @@ img {
 .fight-badge-champ      { background: rgba(251,191,36,0.15); color: #fbbf24; }
 .fight-badge-ppv        { background: rgba(167,139,250,0.15);color: #a78bfa; }
 
+.fight-location-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+}
+.fight-location-thumb {
+    height: 32px;
+    width: 56px;
+    object-fit: cover;
+    border-radius: 4px;
+    opacity: 0.85;
+    flex-shrink: 0;
+}
 .fight-location-text {
     font-size: 0.78rem;
     color: var(--text-muted);

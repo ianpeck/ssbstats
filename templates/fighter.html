@@ -234,10 +234,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // --- Accolades section ---
-            buildChampBadges(acc.champ_reigns || [], !!data.triple_crown);
+            buildChampBadges(acc.champ_reigns || [], !!data.triple_crown, data.major_winner);
             buildEventBadges(acc.holistic || []);
             buildAwardBadges(acc.awards || []);
-            if ((acc.champ_reigns || []).length > 0 || (acc.awards || []).length > 0 || (acc.holistic || []).length > 0 || data.triple_crown) {
+            if ((acc.champ_reigns || []).length > 0 || (acc.awards || []).length > 0 || (acc.holistic || []).length > 0 || data.triple_crown || data.major_winner) {
                 document.getElementById('accoladesSection').style.display = 'block';
             }
 
@@ -258,9 +258,19 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Build championship reign badges — cols: Championship_Name, reign_count, total_months
-function buildChampBadges(rows, hasTripleCrown) {
-    if (!rows.length && !hasTripleCrown) return;
+function buildChampBadges(rows, hasTripleCrown, majorWinner) {
+    if (!rows.length && !hasTripleCrown && !majorWinner) return;
     const container = document.getElementById('champBadges');
+    if (majorWinner) {
+        const mw = document.createElement('div');
+        mw.className = majorWinner === 'super'
+            ? 'accolade-badge super-major-winner-badge'
+            : 'accolade-badge major-winner-badge';
+        const icon = majorWinner === 'super' ? '🌟' : '⭐';
+        const label = majorWinner === 'super' ? 'Super Major Winner' : 'Major Winner';
+        mw.innerHTML = `<span class="badge-icon">${icon}</span><span class="badge-text">${label}</span>`;
+        container.appendChild(mw);
+    }
     if (hasTripleCrown) {
         const tc = document.createElement('div');
         tc.className = 'accolade-badge triple-crown-badge';

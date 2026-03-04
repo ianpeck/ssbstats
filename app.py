@@ -291,6 +291,21 @@ def api_fighter(name):
             for row in tc_rows
         )
 
+        # Major winner — count how many non-name columns have > 0 wins
+        mw_rows = accolades_raw.get('major_winner', [])
+        if mw_rows:
+            mw_row = mw_rows[0]
+            try:
+                mw_count = sum(
+                    1 for k, v in mw_row.items()
+                    if k.lower() != 'fighter_name' and int(v or 0) > 0
+                )
+            except (TypeError, ValueError):
+                mw_count = 0
+            result['major_winner'] = 'super' if mw_count >= 3 else ('major' if mw_count >= 2 else None)
+        else:
+            result['major_winner'] = None
+
         # Accolades — dicts with real column names so JS can display dynamically
         result['accolades'] = {
             key: [{k: _serialize(v) for k, v in row.items()} for row in rows]

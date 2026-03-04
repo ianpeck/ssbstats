@@ -12,6 +12,7 @@
     </div>
 
     <div id="champContent" style="display:none;">
+        <p class="champ-legend">⭐ = Longest reign for that title</p>
         <div id="champHistoryContainer" class="champ-all-time"></div>
     </div>
 </section>
@@ -122,17 +123,27 @@ function renderHistory(rows) {
         }
 
         // Step 2: split each group into per-season sub-segments, then flatten
+        // Compute total months per group to identify the longest reign
+        // Smash Bros. title is fought annually so longest-reign star is excluded
+        const showLongest = !champName.toLowerCase().includes('smash bros');
+        const groupTotals = groups.map(g =>
+            splitReign(g.seasonWon, g.monthWon, g.seasonLost, g.monthLost)
+                .reduce((sum, sub) => sum + sub.months, 0)
+        );
+        const maxMonths = showLongest ? Math.max(...groupTotals) : -1;
+        groups.forEach((g, gi) => { g._isLongest = maxMonths > 0 && groupTotals[gi] === maxMonths; });
+
         const allSegs = [];
         groups.forEach(g => {
             splitReign(g.seasonWon, g.monthWon, g.seasonLost, g.monthLost).forEach(sub => {
-                allSegs.push({ season: sub.season, months: sub.months, isCurrent: sub.isCurrent, fighters: g.fighters });
+                allSegs.push({ season: sub.season, months: sub.months, isCurrent: sub.isCurrent, fighters: g.fighters, isLongest: g._isLongest });
             });
         });
 
         // Step 3: render with season dividers inserted whenever the season changes
         let lastSeason = null;
         allSegs.forEach((seg, si) => {
-            const { season, months, isCurrent, fighters } = seg;
+            const { season, months, isCurrent, fighters, isLongest } = seg;
             const isLast  = si === allSegs.length - 1;
             const flexVal = months > 0 ? months : (isCurrent ? 3 : 0.4);
             const monthLabel = isCurrent
@@ -155,10 +166,12 @@ function renderHistory(rows) {
 
             const segEl = document.createElement('div');
             segEl.className = 'champ-segment' +
-                (isLast ? ' champ-segment-last' : '') +
-                (isTag  ? ' champ-segment-tag'  : '');
+                (isLast    ? ' champ-segment-last'    : '') +
+                (isTag     ? ' champ-segment-tag'     : '') +
+                (isLongest ? ' champ-segment-longest' : '');
             segEl.style.flex = flexVal;
 
+            const starHTML = isLongest ? '<span class="champ-longest-star" title="Longest reign for this title">⭐</span>' : '';
             const fighterHTML = fighters.map(name => {
                 const filename = fighterToFilename(name);
                 return `<span class="champ-tag-fighter">` +
@@ -167,7 +180,7 @@ function renderHistory(rows) {
                     `</span>`;
             }).join('<span class="champ-tag-amp">&amp;</span>');
 
-            segEl.innerHTML = fighterHTML + `<span class="champ-seg-months">${monthLabel}</span>`;
+            segEl.innerHTML = starHTML + fighterHTML + `<span class="champ-seg-months">${monthLabel}</span>`;
             bar.appendChild(segEl);
         });
 

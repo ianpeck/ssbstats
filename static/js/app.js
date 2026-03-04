@@ -241,7 +241,12 @@ function renderFight(fight) {
             ${isContender  ? `<span class="fight-badge fight-badge-contender">#1 Contender</span>` : ''}
             ${championship ? `<span class="fight-badge fight-badge-champ">&#127942; ${championship}</span>` : ''}
             ${ppv          ? `<span class="fight-badge fight-badge-ppv">${ppv}</span>` : ''}
-            ${location     ? `<span class="fight-location-text">${location}</span>` : ''}
+            ${location ? `<div class="fight-location-wrap">
+                <img src="/static/assets/stages/${stageToFilename(location)}.png"
+                     alt="${location}" class="fight-location-thumb"
+                     onerror="this.style.display='none'">
+                <span class="fight-location-text">${location}</span>
+            </div>` : ''}
         </div>`;
 
     function detailFighterHTML(f) {

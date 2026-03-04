@@ -43,6 +43,7 @@
         <!-- Season Rankings -->
         <div class="glass-card" style="margin-top: 1.25rem;">
             <div class="season-card-title" style="padding: 1.25rem 1.5rem 0.5rem;">Season Rankings</div>
+            <div class="table-scroll-wrapper">
             <table class="leaderboard-table" id="seasonRankingsTable">
                 <thead>
                     <tr>
@@ -51,10 +52,16 @@
                         <th>Wins</th>
                         <th>Losses</th>
                         <th>Win %</th>
+                        <th>Fights</th>
+                        <th>Major Mo.</th>
+                        <th>Champ Mo.</th>
+                        <th>Event Wins</th>
+                        <th>Titles</th>
                     </tr>
                 </thead>
                 <tbody id="seasonRankingsTbody"></tbody>
             </table>
+            </div>
         </div>
     </div>
 </section>
@@ -105,7 +112,7 @@ function loadSeason(season) {
             renderEvents(data.holistic || []);
             renderAwards(data.awards || []);
             renderChampTimeline(data.champ_history || []);
-            renderRankings(data.rankings || []);
+            renderRankings(data.rankings || [], data.holistic || [], data.champ_history || []);
         })
         .catch(() => {
             document.getElementById('loadingOverlay').innerHTML = '<p>Error loading season data.</p>';
@@ -167,6 +174,17 @@ function renderAwards(rows) {
         if (!grouped[award]) { grouped[award] = []; order.push(award); }
         grouped[award].push(row.Fighter_Name);
     });
+
+    // Sort awards: Superstar of Year → Most Improved → Disappointing → Tag → rest
+    const PRIORITY = ['superstar', 'most improved', 'disappoint', 'tag'];
+    function awardPriority(name) {
+        const lower = name.toLowerCase();
+        for (let i = 0; i < PRIORITY.length; i++) {
+            if (lower.includes(PRIORITY[i])) return i;
+        }
+        return PRIORITY.length;
+    }
+    order.sort((a, b) => awardPriority(a) - awardPriority(b));
 
     order.forEach(award => {
         const fighters = grouped[award];
@@ -288,12 +306,35 @@ function renderChampTimeline(rows) {
     });
 }
 
-function renderRankings(rows) {
+const _SR_EVENT_COLS = ['Won_Tournament','Won_Royal_Rumble','Won_Scramble','Won_Smash_Series','Won_Money_In_The_Bank','Won_Smash_Bros'];
+
+function renderRankings(rows, holistic, champHistory) {
     const tbody = document.getElementById('seasonRankingsTbody');
     tbody.innerHTML = '';
 
+    // Build holistic stats map: fighter → {champ_months, major_months, event_wins}
+    const holisticMap = {};
+    (holistic || []).forEach(row => {
+        const name = row.Fighter_Name || row.fighter_name || '';
+        if (!holisticMap[name]) holisticMap[name] = { champ_months: 0, major_months: 0, event_wins: new Set() };
+        holisticMap[name].champ_months += parseInt(row.Months_With_Title || 0) || 0;
+        holisticMap[name].major_months += parseInt(row.Months_With_Major || 0) || 0;
+        _SR_EVENT_COLS.forEach(col => {
+            if (row[col] != null && row[col] !== '' && String(row[col]) !== 'None') {
+                holisticMap[name].event_wins.add(col);
+            }
+        });
+    });
+
+    // Build titles held map: fighter → count of distinct titles
+    const titlesMap = {};
+    (champHistory || []).forEach(row => {
+        const name = row.Fighter_Name || row.fighter_name || '';
+        if (!titlesMap[name]) titlesMap[name] = new Set();
+        if (row.Championship_Name) titlesMap[name].add(row.Championship_Name);
+    });
+
     rows.forEach((row, i) => {
-        // Column names from CareerStatsBySeason view - try multiple cases
         const name = row.Fighter_Name || row.fighter_name || '';
         const wins = row.Wins || row.wins || 0;
         const losses = row.Losses || row.losses || 0;
@@ -302,6 +343,10 @@ function renderRankings(rows) {
         const pctClass = pctVal >= 60 ? 'pct-high' : pctVal < 40 ? 'pct-low' : 'pct-mid';
         const rankClass = i < 3 ? `rank-${i + 1}` : '';
         const filename = fighterToFilename(name);
+
+        const hol = holisticMap[name] || { champ_months: 0, major_months: 0, event_wins: new Set() };
+        const eventWins = hol.event_wins.size;
+        const uniqueTitles = titlesMap[name] ? titlesMap[name].size : 0;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -316,6 +361,11 @@ function renderRankings(rows) {
             <td class="stat-cell">${wins}</td>
             <td class="stat-cell">${losses}</td>
             <td class="stat-cell ${pctClass}">${pct}</td>
+            <td class="stat-cell">${parseInt(wins) + parseInt(losses)}</td>
+            <td class="stat-cell">${hol.major_months}</td>
+            <td class="stat-cell">${hol.champ_months}</td>
+            <td class="stat-cell">${eventWins > 0 ? eventWins + '/6' : '—'}</td>
+            <td class="stat-cell">${uniqueTitles || '—'}</td>
         `;
         tr.style.opacity = '0';
         tr.style.transform = 'translateY(8px)';
