@@ -47,7 +47,7 @@
   - would only have their matches
   - Big Green W if they won for easy viewing in Fighter PAge but red L on far left if lost or maybe something even nicer looking. That makes sense htough
 - [X] **16. About page to explain what this data is and how the actual code works at a high level with tools used**
-- [ ] **17. Gantt chart shoudl move title reign to top left**
+- [ ] **17. Gantt chart should move major title reign to bottom left**
 - [X] **18. Fighter Compare Page**
   - There are Fights even when they are on the same team here...if its a tag match and they have the same decision it should not be in here
   - If they particpate in a match like a 4 way match and neither of them win, lets just not include that (or we can put No Winner)
