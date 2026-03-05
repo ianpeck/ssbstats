@@ -51,6 +51,7 @@
 - [X] **18. Fighter Compare Page**
   - There are Fights even when they are on the same team here...if its a tag match and they have the same decision it should not be in here
   - If they particpate in a match like a 4 way match and neither of them win, lets just not include that (or we can put No Winner)
-- [ ] **19. Fighter Page should just have graphs and nothing collapsed at all**
+- [X] **19. Fighter Page should just have graphs and nothing collapsed at all**
   - make them easy to see and hover over to see by season stats as an example, lolcaion one may be tricky to get them all on a page though
   - others should be super simple to change
+- [ ] **20. Strength of Schedule woudl be cool**
