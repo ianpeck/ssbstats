@@ -278,27 +278,49 @@ function renderStatsGrid(d) {
 }
 
 // ── Career Fingerprint Radar ──────────────────────────────────
-function careerRadarData(fighter) {
+function careerRawValues(fighter) {
     const h = fighter.holistic;
     const wr = parseFloat(String(fighter.career.win_pct).replace('%','')) || 0;
-    const mm = Math.min(h.reduce((s,r) => s+(parseInt(r.Months_With_Major)||0), 0) / 14 * 100, 100);
-    const tm = Math.min(h.reduce((s,r) => s+(parseInt(r.Months_With_Title)||0), 0) / 14 * 100, 100);
+    const totalMajor = h.reduce((s,r) => s+(parseInt(r.Months_With_Major)||0), 0);
+    const totalTitle = h.reduce((s,r) => s+(parseInt(r.Months_With_Title)||0), 0);
     const wonSet = new Set();
     h.forEach(r => EVENT_COLS.forEach(c => { if (r[c]!=null && r[c]!=='') wonSet.add(c); }));
-    const ev = wonSet.size / EVENT_COLS.length * 100;
-    const tc = Math.min((fighter.unique_champs||0) / 5 * 100, 100);
-    return { data: [wr, mm, tm, ev, tc], wonSet, fighter };
+    const ev = wonSet.size;
+    const tc = fighter.unique_champs || 0;
+    return { wr, totalMajor, totalTitle, ev, tc, wonSet, fighter };
+}
+
+function careerRadarData(raw, maxWR, maxMajor, maxTitle, maxEv, maxTc) {
+    const norm = v => max => max > 0 ? (v / max) * 100 : 0;
+    return {
+        data: [
+            norm(raw.wr)(maxWR),
+            norm(raw.totalTitle)(maxTitle),
+            norm(raw.totalMajor)(maxMajor),
+            norm(raw.ev)(maxEv),
+            norm(raw.tc)(maxTc),
+        ],
+        wonSet: raw.wonSet,
+        fighter: raw.fighter,
+    };
 }
 
 function renderRadar(d) {
-    const r1 = careerRadarData(d.fighter1);
-    const r2 = careerRadarData(d.fighter2);
+    const raw1 = careerRawValues(d.fighter1);
+    const raw2 = careerRawValues(d.fighter2);
+    const maxWR    = Math.max(raw1.wr,         raw2.wr);
+    const maxMajor = Math.max(raw1.totalMajor, raw2.totalMajor);
+    const maxTitle = Math.max(raw1.totalTitle, raw2.totalTitle);
+    const maxEv    = Math.max(raw1.ev,         raw2.ev);
+    const maxTc    = Math.max(raw1.tc,         raw2.tc);
+    const r1 = careerRadarData(raw1, maxWR, maxMajor, maxTitle, maxEv, maxTc);
+    const r2 = careerRadarData(raw2, maxWR, maxMajor, maxTitle, maxEv, maxTc);
 
     if (charts.radar) charts.radar.destroy();
     charts.radar = new Chart(document.getElementById('compareRadar').getContext('2d'), {
         type: 'radar',
         data: {
-            labels: ['Win Rate', 'Major Title Reign', 'Title Reign', 'Event Wins', 'Unique Titles'],
+            labels: ['Win Rate', 'Title Reign', 'Major Title Reign', 'Event Wins', 'Unique Titles'],
             datasets: [
                 { label: d.fighter1.name, data: r1.data, borderColor: F1_COLOR, backgroundColor: F1_BG, borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: F1_COLOR, _r: r1 },
                 { label: d.fighter2.name, data: r2.data, borderColor: F2_COLOR, backgroundColor: F2_BG, borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: F2_COLOR, _r: r2 },

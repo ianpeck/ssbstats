@@ -604,7 +604,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
             const tm = Math.min((parseInt(row.Months_With_Title)||0) / 7 * 100, 100);
             const ev = EVENT_COLS.filter(c => row[c]!=null && row[c]!=='').length / EVENT_COLS.length * 100;
             const tc = Math.min((parseInt(row.Title_Count)||0) / 5 * 100, 100);
-            return [wr, mm, tm, ev, tc];
+            return [wr, tm, mm, ev, tc];
         }
 
         const datasets = holistic.map((row, i) => {
@@ -615,7 +615,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
         if (charts.radar) charts.radar.destroy();
         charts.radar = new Chart(document.getElementById('radarChart').getContext('2d'), {
             type: 'radar',
-            data: { labels: ['Win Rate', 'Major Title Reign', 'Title Reign', 'Event Wins', 'Unique Titles Held'], datasets },
+            data: { labels: ['Win Rate', 'Title Reign', 'Major Title Reign', 'Event Wins', 'Unique Titles Held'], datasets },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 scales: { r: { min:0, max:100, grid:{color:'rgba(96,124,255,0.15)'}, angleLines:{color:'rgba(96,124,255,0.15)'}, ticks:{display:false}, pointLabels:{color:'#b0b8d1', font:{size:12,family:'Inter'}} } },
