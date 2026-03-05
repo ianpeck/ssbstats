@@ -470,7 +470,7 @@ def api_compare():
             return {'wins': _serialize(r.get('Wins', 0)), 'losses': _serialize(r.get('Losses', 0)), 'win_pct': str(r.get('Win Percentage', '0.00%'))}
 
         def by_season(rows):
-            return [{'season': str(r.get('Season', '')), 'wins': _serialize(r.get('Wins', 0)), 'losses': _serialize(r.get('Losses', 0))} for r in rows]
+            return [{'season': str(r.get('Season', '')), 'wins': _serialize(r.get('Wins', 0)), 'losses': _serialize(r.get('Losses', 0)), 'win_pct': str(r.get('Win Percentage', '0.00%'))} for r in rows]
 
         def holistic(rows):
             out = []
@@ -496,6 +496,9 @@ def api_compare():
         h2h = raw.get('h2h', [])
         fights = [{k: _serialize(v) for k, v in r.items()} for r in raw.get('fights', [])]
 
+        def awards(rows):
+            return [{'season': int(r.get('Season_ID', 0)), 'name': str(r.get('Award_Name', ''))} for r in rows]
+
         def fighter_payload(name, prefix):
             return {
                 'name': name,
@@ -506,6 +509,7 @@ def api_compare():
                 'running': running(raw.get(f'{prefix}_running', [])),
                 'unique_champs': unique_champs(raw.get(f'{prefix}_champs', [])),
                 'champ_stats': champ_stats(raw.get(f'{prefix}_champ_stats', [])),
+                'awards': awards(raw.get(f'{prefix}_awards', [])),
                 'h2h_wins': int(h2h[0 if prefix == 'f1' else 1].get('Wins', 0)) if len(h2h) > 1 else 0,
                 'h2h_losses': int(h2h[0 if prefix == 'f1' else 1].get('Losses', 0)) if len(h2h) > 1 else 0,
             }
@@ -523,11 +527,22 @@ def api_compare():
                 'max_champs': int(_serialize(tc_row.get('max_tc'))   or 1),
             }
 
+        def season_roster_maxes():
+            row = (raw.get('season_roster_max_holistic') or [{}])[0]
+            return {
+                'max_wr':     float(_serialize(row.get('max_wr'))    or 100),
+                'max_major':  float(_serialize(row.get('max_major')) or 1),
+                'max_title':  float(_serialize(row.get('max_title')) or 1),
+                'max_ev':     int(_serialize(row.get('max_ev'))      or 1),
+                'max_champs': int(_serialize(row.get('max_tc'))      or 1),
+            }
+
         return jsonify({
             'fighter1': fighter_payload(f1, 'f1'),
             'fighter2': fighter_payload(f2, 'f2'),
             'fights_between': fights,
             'roster_maxes': roster_maxes(),
+            'season_roster_maxes': season_roster_maxes(),
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

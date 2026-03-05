@@ -72,6 +72,15 @@ function splitReign(seasonWon, monthWon, seasonLost, monthLost) {
 function renderHistory(rows) {
     const container = document.getElementById('champHistoryContainer');
 
+    // Build fighter → set of titles held (for segment tooltips)
+    const fighterTitlesMap = {};
+    rows.forEach(row => {
+        const name = row.Fighter_Name || '?';
+        const champ = row.Championship_Name || '?';
+        if (!fighterTitlesMap[name]) fighterTitlesMap[name] = new Set();
+        fighterTitlesMap[name].add(champ);
+    });
+
     // Group by championship in arrival order
     const byChamp = {};
     const champOrder = [];
@@ -174,7 +183,9 @@ function renderHistory(rows) {
             const starHTML = isLongest ? '<span class="champ-longest-star" title="Longest reign for this title">⭐</span>' : '';
             const fighterHTML = fighters.map(name => {
                 const filename = fighterToFilename(name);
-                return `<span class="champ-tag-fighter">` +
+                const titles = fighterTitlesMap[name] ? [...fighterTitlesMap[name]].join('\n') : '';
+                const tooltipText = titles ? `${name}\nTitles held:\n${titles}` : name;
+                return `<span class="champ-tag-fighter" title="${tooltipText.replace(/"/g, '&quot;')}">` +
                     `<img src="/static/assets/fighters/${filename}.png" alt="${name}" class="champ-seg-portrait" onerror="this.style.display='none'">` +
                     `<a href="/fighter/${encodeURIComponent(name)}" class="champ-seg-name fighter-link">${name}</a>` +
                     `</span>`;

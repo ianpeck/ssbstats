@@ -1719,13 +1719,12 @@ img {
 }
 
 .champ-segment-last {
-    background: rgba(96, 124, 255, 0.07);
-    border-left: 2px solid var(--accent);
+    background: rgba(74, 222, 128, 0.07);
+    border-left: 2px solid rgba(74, 222, 128, 0.7);
 }
 
 .champ-segment-longest {
     background: rgba(251, 191, 36, 0.08);
-    border-top: 2px solid rgba(251, 191, 36, 0.5);
 }
 
 .champ-longest-star {
@@ -2261,6 +2260,100 @@ img {
     font-size: 0.72rem;
     color: var(--text-muted);
     text-align: center;
+}
+
+/* ---- Compare Against Widget ---- */
+.compare-against-section {
+    margin-bottom: 1.5rem;
+}
+
+.compare-against-card {
+    padding: 1rem 1.5rem;
+}
+
+.ca-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.ca-icon {
+    font-size: 1rem;
+    opacity: 0.7;
+}
+
+.ca-title {
+    color: var(--accent);
+}
+
+.ca-body {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.ca-fighter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 60px;
+}
+
+.ca-portrait {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    object-position: center top;
+    border-radius: 8px;
+    background: rgba(96, 124, 255, 0.05);
+    transition: opacity 0.2s;
+}
+
+.ca-name {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-align: center;
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ca-opponent-name {
+    color: #fb923c;
+}
+
+.ca-vs {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: rgba(176, 184, 209, 0.4);
+    letter-spacing: 0.05em;
+}
+
+.ca-search-wrap {
+    flex: 1;
+    min-width: 160px;
+    max-width: 320px;
+}
+
+.ca-input {
+    width: 100%;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+}
+
+.ca-btn {
+    white-space: nowrap;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
 }
 
 /* Fighter page — advanced analytics collapsible */
@@ -2908,6 +3001,61 @@ img {
     background-clip: text;
     letter-spacing: 0.08em;
 }
+
+/* Mode Toggle Bar */
+.mode-bar {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.mode-toggle {
+    display: flex;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.mode-btn {
+    padding: 0.45rem 1.1rem;
+    font-size: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.mode-btn:hover { background: rgba(96,124,255,0.1); color: #e0e4f7; }
+.mode-btn.active { background: rgba(96,124,255,0.22); color: #607cff; }
+.season-pickers {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+.season-picker-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.season-picker-vs {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0 0.25rem;
+}
+.season-select {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: #e0e4f7;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+}
+.season-select:focus { outline: none; border-color: #607cff; }
 
 /* Scoreboard */
 .compare-scoreboard {

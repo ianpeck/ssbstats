@@ -43,6 +43,21 @@
     <!-- Results -->
     <div id="compareResults" style="display:none;">
 
+        <!-- Mode Toggle Bar -->
+        <div id="modeBar" class="mode-bar">
+            <div class="mode-toggle">
+                <button id="btnCareer" class="mode-btn active">Career</button>
+                <button id="btnSeason" class="mode-btn">Season</button>
+            </div>
+            <div id="seasonPickers" class="season-pickers" style="display:none;">
+                <span class="season-picker-label f1-color" id="seasonF1Name"></span>
+                <select id="seasonF1" class="season-select"></select>
+                <span class="season-picker-vs">vs</span>
+                <span class="season-picker-label f2-color" id="seasonF2Name"></span>
+                <select id="seasonF2" class="season-select"></select>
+            </div>
+        </div>
+
         <!-- H2H Scoreboard -->
         <div class="glass-card compare-scoreboard">
             <div class="sb-side sb-left">
@@ -83,15 +98,15 @@
 
         <!-- Win Rate Momentum -->
         <div class="glass-card compare-card">
-            <h3 class="analytics-chart-title">Career Win Rate Momentum</h3>
-            <p class="analytics-chart-subtitle">Running career win rate after each fight — fight number as x-axis</p>
+            <h3 class="analytics-chart-title" id="momentumTitle">Career Win Rate Momentum</h3>
+            <p class="analytics-chart-subtitle" id="momentumSubtitle">Running career win rate after each fight — fight number as x-axis</p>
             <div class="analytics-chart-scroll">
                 <canvas id="compareMomentum"></canvas>
             </div>
         </div>
 
         <!-- Season by Season -->
-        <div class="glass-card compare-card">
+        <div id="seasonsSection" class="glass-card compare-card">
             <h3 class="analytics-chart-title">Season by Season</h3>
             <p class="analytics-chart-subtitle">Wins per season, side by side</p>
             <div style="height:300px;">
@@ -100,7 +115,7 @@
         </div>
 
         <!-- Their Fights -->
-        <div class="glass-card compare-card">
+        <div id="fightsSection" class="glass-card compare-card">
             <h3 class="analytics-chart-title">Their Fights</h3>
             <p class="analytics-chart-subtitle" id="fightCountLabel"></p>
             <div id="fightsBetweenWrap"></div>
@@ -183,7 +198,13 @@ function doCompare() {
         document.getElementById('compareLoading').style.display = 'none';
         document.getElementById('compareBtn').disabled = false;
         if (data.error) { document.getElementById('compareError').textContent = data.error; return; }
-        renderAll(data);
+        currentData = data;
+        currentMode = 'career';
+        document.getElementById('btnCareer').classList.add('active');
+        document.getElementById('btnSeason').classList.remove('active');
+        document.getElementById('seasonPickers').style.display = 'none';
+        populateSeasonPickers(data);
+        renderAll(data, 'career');
         document.getElementById('compareResults').style.display = 'block';
         document.getElementById('compareResults').scrollIntoView({behavior: 'smooth', block: 'start'});
     })
@@ -194,43 +215,138 @@ function doCompare() {
     });
 }
 
-function renderAll(d) {
-    renderScoreboard(d);
-    renderStatsGrid(d);
-    renderRadar(d);
-    renderMomentum(d);
-    renderSeasons(d);
-    renderFights(d);
+let currentData = null;
+let currentMode = 'career';
+
+function populateSeasonPickers(d) {
+    document.getElementById('seasonF1Name').textContent = d.fighter1.name;
+    document.getElementById('seasonF2Name').textContent = d.fighter2.name;
+    const populate = (selId, seasons) => {
+        const sel = document.getElementById(selId);
+        sel.innerHTML = seasons.map(s => `<option value="${s.season}">Season ${s.season}</option>`).join('');
+        if (seasons.length) sel.value = seasons[seasons.length - 1].season;
+    };
+    populate('seasonF1', d.fighter1.by_season);
+    populate('seasonF2', d.fighter2.by_season);
 }
 
+function filterToSeason(fighter, season) {
+    const s = String(season);
+    const sInt = parseInt(season);
+    const seasonRow = fighter.by_season.find(r => String(r.season) === s) || {};
+    return {
+        ...fighter,
+        holistic:  fighter.holistic.filter(r => String(r.Season) === s),
+        by_season: fighter.by_season.filter(r => String(r.season) === s),
+        running:   fighter.running.filter(r => String(r.season) === s),
+        awards:    (fighter.awards || []).filter(r => r.season === sInt),
+        career: {
+            wins:    seasonRow.wins    || 0,
+            losses:  seasonRow.losses  || 0,
+            win_pct: seasonRow.win_pct || '0.00%',
+        },
+    };
+}
+
+function renderAll(d, mode) {
+    mode = mode || 'career';
+    const isSeason = mode === 'season';
+    const f1Season = document.getElementById('seasonF1')?.value;
+    const f2Season = document.getElementById('seasonF2')?.value;
+    const d1 = isSeason ? filterToSeason(d.fighter1, f1Season) : d.fighter1;
+    const d2 = isSeason ? filterToSeason(d.fighter2, f2Season) : d.fighter2;
+    const maxes = isSeason ? {
+        ...d.season_roster_maxes,
+        max_title: 12,   // hard cap: max possible months in a single season
+        max_major: 12,
+        max_ev:    6,    // normalize against all 6 event types
+    } : d.roster_maxes;
+
+    document.getElementById('momentumTitle').textContent     = isSeason ? 'Season Win Rate Momentum' : 'Career Win Rate Momentum';
+    document.getElementById('momentumSubtitle').textContent  = isSeason ? 'Running win rate within the selected season — fight number as x-axis' : 'Running career win rate after each fight — fight number as x-axis';
+
+    renderScoreboard(d, isSeason ? { f1Season, f2Season } : null);
+    renderStatsGrid({ fighter1: d1, fighter2: d2, h2h: d }, isSeason);
+    renderRadar({ fighter1: d1, fighter2: d2, roster_maxes: maxes });
+    renderMomentum({ fighter1: d1, fighter2: d2 }, isSeason);
+    document.getElementById('seasonsSection').style.display = isSeason ? 'none' : '';
+    document.getElementById('fightsSection').style.display  = isSeason ? 'none' : '';
+    if (!isSeason) {
+        renderSeasons(d);
+        renderFights(d);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('btnCareer').addEventListener('click', () => {
+        currentMode = 'career';
+        document.getElementById('btnCareer').classList.add('active');
+        document.getElementById('btnSeason').classList.remove('active');
+        document.getElementById('seasonPickers').style.display = 'none';
+        if (currentData) renderAll(currentData, 'career');
+    });
+    document.getElementById('btnSeason').addEventListener('click', () => {
+        currentMode = 'season';
+        document.getElementById('btnSeason').classList.add('active');
+        document.getElementById('btnCareer').classList.remove('active');
+        document.getElementById('seasonPickers').style.display = '';
+        if (currentData) renderAll(currentData, 'season');
+    });
+    ['seasonF1', 'seasonF2'].forEach(id => {
+        document.getElementById(id).addEventListener('change', () => {
+            if (currentMode === 'season' && currentData) renderAll(currentData, 'season');
+        });
+    });
+});
+
 // ── Scoreboard ────────────────────────────────────────────────
-function renderScoreboard(d) {
+function renderScoreboard(d, seasonOpts) {
     const f1 = d.fighter1, f2 = d.fighter2;
     document.getElementById('sbImg1').src = `/static/assets/fighters/${f1.image}`;
     document.getElementById('sbImg2').src = `/static/assets/fighters/${f2.image}`;
     document.getElementById('sbName1').textContent = f1.name;
     document.getElementById('sbName2').textContent = f2.name;
-    document.getElementById('sbScore1').textContent = f1.h2h_wins;
-    document.getElementById('sbScore2').textContent = f2.h2h_wins;
 
-    const total = (f1.h2h_wins + f2.h2h_wins) || 1;
-    const f1pct = Math.round(f1.h2h_wins / total * 100);
+    let w1, w2, label;
+    if (seasonOpts) {
+        if (String(seasonOpts.f1Season) !== String(seasonOpts.f2Season)) {
+            w1 = 0; w2 = 0;
+            label = `Seasons don't match — no shared H2H`;
+        } else {
+            const s = String(seasonOpts.f1Season);
+            const seasonFights = (d.fights_between || []).filter(r => String(r.Season) === s);
+            const f1name = f1.name.toLowerCase();
+            w1 = seasonFights.filter(r => r.Fighter_Name?.toLowerCase() === f1name && r.Decision?.toLowerCase() === 'w').length;
+            w2 = seasonFights.filter(r => r.Fighter_Name?.toLowerCase() === f2.name.toLowerCase() && r.Decision?.toLowerCase() === 'w').length;
+            const totalFights = w1 + w2;
+            label = `${totalFights} fight${totalFights !== 1 ? 's' : ''} on record (S${s})`;
+        }
+    } else {
+        w1 = f1.h2h_wins; w2 = f2.h2h_wins;
+        label = (w1 + w2) + ' total fights on record';
+    }
+
+    document.getElementById('sbScore1').textContent = w1;
+    document.getElementById('sbScore2').textContent = w2;
+    const total = (w1 + w2) || 1;
+    const f1pct = Math.round(w1 / total * 100);
     setTimeout(() => {
         document.getElementById('sbBarF1').style.width = f1pct + '%';
         document.getElementById('sbBarF2').style.width = (100 - f1pct) + '%';
     }, 120);
-    document.getElementById('sbLabel').textContent = (f1.h2h_wins + f2.h2h_wins) + ' fights on record';
+    document.getElementById('sbLabel').textContent = label;
 
     // Winner glow
-    document.getElementById('f1Frame').classList.toggle('winner-glow', f1.h2h_wins > f2.h2h_wins);
-    document.getElementById('f2Frame').classList.toggle('winner-glow', f2.h2h_wins > f1.h2h_wins);
-    document.getElementById('f1Frame').classList.toggle('loser-dim', f1.h2h_wins < f2.h2h_wins);
-    document.getElementById('f2Frame').classList.toggle('loser-dim', f2.h2h_wins < f1.h2h_wins);
+    document.getElementById('f1Frame').classList.toggle('winner-glow', w1 > w2);
+    document.getElementById('f2Frame').classList.toggle('winner-glow', w2 > w1);
+    document.getElementById('f1Frame').classList.toggle('loser-dim', w1 < w2);
+    document.getElementById('f2Frame').classList.toggle('loser-dim', w2 < w1);
 }
 
 // ── Stats Grid ────────────────────────────────────────────────
-function renderStatsGrid(d) {
+function renderStatsGrid(d, isSeason) {
     const f1 = d.fighter1, f2 = d.fighter2;
+    const h2h = d.h2h || d;  // career h2h data passed separately in season mode
 
     // Compute derived values
     const f1TotalMajor = f1.holistic.reduce((s, r) => s + (parseInt(r.Months_With_Major)||0), 0);
@@ -239,14 +355,24 @@ function renderStatsGrid(d) {
     const f2TotalTitle = f2.holistic.reduce((s, r) => s + (parseInt(r.Months_With_Title)||0), 0);
     const evWon = (hol) => { const s = new Set(); hol.forEach(r => EVENT_COLS.forEach(c => { if (r[c] != null && r[c] !== '') s.add(c); })); return s.size; };
 
+    const wrLabel      = isSeason ? 'Season Win Rate'   : 'Career Win Rate';
+    const recordLabel  = isSeason ? 'Season Record'     : 'Career Record';
+
     const rows = [
-        ['Career Win Rate',    f1.career.win_pct,                        f2.career.win_pct,                        'pct'],
-        ['Career Record',      `${f1.career.wins}W – ${f1.career.losses}L`, `${f2.career.wins}W – ${f2.career.losses}L`, 'wins'],
-        ['H2H Record',         `${f1.h2h_wins}W – ${f1.h2h_losses}L`,    `${f2.h2h_wins}W – ${f2.h2h_losses}L`,    'wins'],
-        ['Champ Match Record', `${f1.champ_stats.wins}W – ${f1.champ_stats.losses}L`, `${f2.champ_stats.wins}W – ${f2.champ_stats.losses}L`, 'wins'],
+        [wrLabel,          f1.career.win_pct,                        f2.career.win_pct,                        'pct'],
+        [recordLabel,      `${f1.career.wins}W – ${f1.career.losses}L`, `${f2.career.wins}W – ${f2.career.losses}L`, 'wins'],
+        ...(!isSeason ? [
+            ['H2H Record',  `${h2h.fighter1.h2h_wins}W – ${h2h.fighter1.h2h_losses}L`, `${h2h.fighter2.h2h_wins}W – ${h2h.fighter2.h2h_losses}L`, 'wins'],
+            ['Champ Match Record', `${h2h.fighter1.champ_stats.wins}W – ${h2h.fighter1.champ_stats.losses}L`, `${h2h.fighter2.champ_stats.wins}W – ${h2h.fighter2.champ_stats.losses}L`, 'wins'],
+        ] : []),
         ['Major Title Reign',  f1TotalMajor + ' month' + (f1TotalMajor !== 1 ? 's' : ''), f2TotalMajor + ' month' + (f2TotalMajor !== 1 ? 's' : ''), 'num', f1TotalMajor, f2TotalMajor],
         ['Title Reign',        f1TotalTitle + ' month' + (f1TotalTitle !== 1 ? 's' : ''), f2TotalTitle + ' month' + (f2TotalTitle !== 1 ? 's' : ''), 'num', f1TotalTitle, f2TotalTitle],
         ['Unique Titles Held', f1.unique_champs,                          f2.unique_champs,                          'num', f1.unique_champs, f2.unique_champs],
+        ...(isSeason ? (() => {
+            const f1aw = (f1.awards || []).map(a => '🏅 ' + a.name).join(', ') || '—';
+            const f2aw = (f2.awards || []).map(a => '🏅 ' + a.name).join(', ') || '—';
+            return [['Awards', f1aw, f2aw, 'num', (f1.awards||[]).length, (f2.awards||[]).length]];
+        })() : []),
         ['Event Wins',         evWon(f1.holistic) + '/6',                 evWon(f2.holistic) + '/6',                 'num', evWon(f1.holistic), evWon(f2.holistic)],
     ];
 
@@ -348,8 +474,13 @@ function renderRadar(d) {
 }
 
 // ── Win Rate Momentum ─────────────────────────────────────────
-function renderMomentum(d) {
-    const parse = arr => arr.map((r, i) => ({x: i+1, y: parseFloat(String(r.career_win_pct).replace('%','')) || 0}));
+function renderMomentum(d, isSeason) {
+    const parseCareer = arr => arr.map((r, i) => ({x: i+1, y: parseFloat(String(r.career_win_pct).replace('%','')) || 0}));
+    const parseSeason = arr => {
+        let wins = 0, total = 0;
+        return arr.map((r, i) => { total++; if (r.decision === 'w') wins++; return {x: i+1, y: (wins/total)*100}; });
+    };
+    const parse = arr => isSeason ? parseSeason(arr) : parseCareer(arr);
     const f1pts = parse(d.fighter1.running);
     const f2pts = parse(d.fighter2.running);
     const maxFights = Math.max(f1pts.length, f2pts.length, 1);

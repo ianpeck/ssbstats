@@ -68,6 +68,32 @@
     </div>
 </section>
 
+<!-- Compare Against -->
+<section class="compare-against-section">
+    <div class="compare-against-card glass-card">
+        <div class="ca-header">
+            <span class="ca-icon">⚔</span>
+            <span class="ca-title">Compare Against</span>
+        </div>
+        <div class="ca-body">
+            <div class="ca-fighter">
+                <img class="ca-portrait" src="{{ url_for('static', filename='assets/fighters/' + filename + '.png') }}" alt="{{ fighter_name }}" onerror="this.style.opacity='0.3'">
+                <span class="ca-name">{{ fighter_name }}</span>
+            </div>
+            <div class="ca-vs">VS</div>
+            <div class="ca-fighter">
+                <img class="ca-portrait" id="caOpponentPortrait" src="" alt="" style="opacity:0.15;">
+                <span class="ca-name ca-opponent-name" id="caOpponentName">?</span>
+            </div>
+            <div class="autocomplete-wrapper ca-search-wrap">
+                <input type="text" id="caInput" class="ca-input fighter-input" placeholder="Search fighter…" data-category="fighters" autocomplete="off">
+                <div class="autocomplete-dropdown" id="caDropdown"></div>
+            </div>
+            <button class="btn btn-primary ca-btn" id="caBtn">Compare →</button>
+        </div>
+    </div>
+</section>
+
 <!-- Advanced Analytics (unique per-fighter, always open, lazy-loaded) -->
 <section class="fighter-advanced-analytics">
     <div class="stats-table-wrapper glass-card fight-history-card">
@@ -198,6 +224,44 @@
 
 {% block scripts %}
 <script>
+// ── Compare Against ────────────────────────────────────────────
+(function() {
+    const currentFighter = {{ fighter_name | tojson }};
+    const PLACEHOLDER_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Crect fill='%2312122a' width='60' height='60'/%3E%3Ctext fill='%23607cff' x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-size='28'%3E%3F%3C/text%3E%3C/svg%3E";
+    const caInput    = document.getElementById('caInput');
+    const caPortrait = document.getElementById('caOpponentPortrait');
+    const caNameEl   = document.getElementById('caOpponentName');
+    const caBtn      = document.getElementById('caBtn');
+
+    caPortrait.src = PLACEHOLDER_SRC;
+
+    function updateOpponent() {
+        const val = caInput.value.trim();
+        if (!val) {
+            caPortrait.src = PLACEHOLDER_SRC;
+            caPortrait.style.opacity = '0.15';
+            caNameEl.textContent = '?';
+            return;
+        }
+        caPortrait.onerror = () => { caPortrait.onerror = null; caPortrait.src = PLACEHOLDER_SRC; caPortrait.style.opacity = '0.15'; };
+        caPortrait.src = `/static/assets/fighters/${fighterToFilename(val)}.png`;
+        caPortrait.style.opacity = '1';
+        caNameEl.textContent = val;
+    }
+
+    function goCompare() {
+        const opponent = caInput.value.trim();
+        if (!opponent) { caInput.focus(); return; }
+        window.location.href = `/head2head?f1=${encodeURIComponent(currentFighter)}&f2=${encodeURIComponent(opponent)}`;
+    }
+
+    setupAutocomplete(caInput, 'fighters');
+    caInput.addEventListener('change', updateOpponent);
+    caInput.addEventListener('input', updateOpponent);
+    caBtn.addEventListener('click', goCompare);
+    caInput.addEventListener('keydown', e => { if (e.key === 'Enter') goCompare(); });
+})();
+
 document.addEventListener('DOMContentLoaded', function() {
     const name = {{ fighter_name | tojson }};
 
@@ -480,7 +544,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
                 },
                 scales: {
                     y: { min: 0, max: 100, grid: { color: 'rgba(96,124,255,0.08)' }, ticks: { callback: v => v+'%', color: '#b0b8d1' }, title: { display: true, text: 'Win Rate', color: '#a8aab8', font: { size: 11 } } },
-                    x: { grid: { color: 'rgba(96,124,255,0.05)' }, ticks: { color: '#607cff', font: { size: 11, weight: 'bold' }, maxRotation: 0, autoSkip: false }, title: { display: true, text: 'Fight #', color: '#a8aab8', font: { size: 11 } } },
+                    x: { grid: { color: 'rgba(96,124,255,0.05)' }, ticks: { color: 'rgba(251,191,36,0.85)', font: { size: 11, weight: 'bold' }, maxRotation: 0, autoSkip: false }, title: { display: true, text: 'Fight #', color: '#a8aab8', font: { size: 11 } } },
                 },
                 animation: { duration: 800 }
             }

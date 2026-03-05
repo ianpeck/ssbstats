@@ -534,6 +534,8 @@ def get_comparison_data(f1, f2):
         'f2_champs':      ("SELECT COUNT(DISTINCT Championship_Name) AS total FROM ChampionshipHistory WHERE Fighter_Name = %s", (f2,)),
         'f1_champ_stats': ("SELECT * FROM champfightstats WHERE Fighter_Name = %s", (f1,)),
         'f2_champ_stats': ("SELECT * FROM champfightstats WHERE Fighter_Name = %s", (f2,)),
+        'f1_awards':      ("SELECT ah.Season_ID, a.Award_Name FROM AwardHistory ah JOIN Award a ON ah.Award_ID = a.Award_ID WHERE ah.Fighter_Name = %s ORDER BY ah.Season_ID", (f1,)),
+        'f2_awards':      ("SELECT ah.Season_ID, a.Award_Name FROM AwardHistory ah JOIN Award a ON ah.Award_ID = a.Award_ID WHERE ah.Fighter_Name = %s ORDER BY ah.Season_ID", (f2,)),
         'fights': ("""
             SELECT fl.Season, fl.Month, fl.Week, fl.Fight_ID, fl.Fighter_Name, fl.Decision,
                    fl.Championship_Name, fl.Description, fl.PPV_Name, fl.Location_Name
@@ -575,9 +577,26 @@ def get_comparison_data(f1, f2):
             SELECT MAX(cnt) AS max_tc
             FROM (SELECT COUNT(DISTINCT Championship_Name) AS cnt FROM ChampionshipHistory GROUP BY Fighter_Name) t
         """, ()),
+        # Single-season-best maxes for season-mode radar normalization
+        'season_roster_max_holistic': ("""
+            SELECT
+                MAX(CAST(REPLACE(Win_Percentage, '%', '') AS DECIMAL(5,2))) AS max_wr,
+                MAX(COALESCE(Months_With_Major, 0))  AS max_major,
+                MAX(COALESCE(Months_With_Title, 0))  AS max_title,
+                MAX(COALESCE(Title_Count, 0))        AS max_tc,
+                MAX(
+                    (CASE WHEN Won_Tournament        IS NOT NULL AND Won_Tournament        != '' THEN 1 ELSE 0 END) +
+                    (CASE WHEN Won_Royal_Rumble      IS NOT NULL AND Won_Royal_Rumble      != '' THEN 1 ELSE 0 END) +
+                    (CASE WHEN Won_Scramble          IS NOT NULL AND Won_Scramble          != '' THEN 1 ELSE 0 END) +
+                    (CASE WHEN Won_Smash_Series      IS NOT NULL AND Won_Smash_Series      != '' THEN 1 ELSE 0 END) +
+                    (CASE WHEN Won_Money_In_The_Bank IS NOT NULL AND Won_Money_In_The_Bank != '' THEN 1 ELSE 0 END) +
+                    (CASE WHEN Won_Smash_Bros        IS NOT NULL AND Won_Smash_Bros        != '' THEN 1 ELSE 0 END)
+                ) AS max_ev
+            FROM holistic_view
+        """, ()),
     }
 
-    with ThreadPoolExecutor(max_workers=17) as pool:
+    with ThreadPoolExecutor(max_workers=20) as pool:
         view_futures = {key: pool.submit(select_view_dicts, q, p) for key, (q, p) in queries.items()}
         h2h_fut = pool.submit(h2h_query_sql, "CALL SmashBros.headtohead(%s, %s)", (f1, f2))
 
