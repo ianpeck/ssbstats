@@ -308,13 +308,9 @@ function careerRadarData(raw, maxWR, maxMajor, maxTitle, maxEv, maxTc) {
 function renderRadar(d) {
     const raw1 = careerRawValues(d.fighter1);
     const raw2 = careerRawValues(d.fighter2);
-    const maxWR    = Math.max(raw1.wr,         raw2.wr);
-    const maxMajor = Math.max(raw1.totalMajor, raw2.totalMajor);
-    const maxTitle = Math.max(raw1.totalTitle, raw2.totalTitle);
-    const maxEv    = Math.max(raw1.ev,         raw2.ev);
-    const maxTc    = Math.max(raw1.tc,         raw2.tc);
-    const r1 = careerRadarData(raw1, maxWR, maxMajor, maxTitle, maxEv, maxTc);
-    const r2 = careerRadarData(raw2, maxWR, maxMajor, maxTitle, maxEv, maxTc);
+    const m = d.roster_maxes;
+    const r1 = careerRadarData(raw1, m.max_wr, m.max_major, m.max_title, m.max_ev, m.max_champs);
+    const r2 = careerRadarData(raw2, m.max_wr, m.max_major, m.max_title, m.max_ev, m.max_champs);
 
     if (charts.radar) charts.radar.destroy();
     charts.radar = new Chart(document.getElementById('compareRadar').getContext('2d'), {

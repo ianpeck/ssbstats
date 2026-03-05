@@ -545,9 +545,39 @@ def get_comparison_data(f1, f2):
             AND fl.Fighter_Name IN (%s, %s)
             ORDER BY fl.Season DESC, fl.Month DESC, COALESCE(fl.Week, 99) DESC, fl.Fight_ID DESC
         """, (f1, f2, f1, f2)),
+        # Roster-wide maxes for radar normalization
+        'roster_max_months': ("""
+            SELECT MAX(total_major) AS max_major, MAX(total_title) AS max_title
+            FROM (
+                SELECT Fighter_Name,
+                    SUM(COALESCE(Months_With_Major, 0)) AS total_major,
+                    SUM(COALESCE(Months_With_Title, 0)) AS total_title
+                FROM holistic_view GROUP BY Fighter_Name
+            ) t
+        """, ()),
+        'roster_max_wr': ("""
+            SELECT MAX(CAST(REPLACE(`Win Percentage`, '%', '') AS DECIMAL(5,2))) AS max_wr
+            FROM careerstats
+        """, ()),
+        'roster_max_ev': ("""
+            SELECT MAX(ev_count) AS max_ev FROM (
+                SELECT Fighter_Name,
+                    MAX(CASE WHEN Won_Tournament        IS NOT NULL AND Won_Tournament        != '' THEN 1 ELSE 0 END) +
+                    MAX(CASE WHEN Won_Royal_Rumble      IS NOT NULL AND Won_Royal_Rumble      != '' THEN 1 ELSE 0 END) +
+                    MAX(CASE WHEN Won_Scramble          IS NOT NULL AND Won_Scramble          != '' THEN 1 ELSE 0 END) +
+                    MAX(CASE WHEN Won_Smash_Series      IS NOT NULL AND Won_Smash_Series      != '' THEN 1 ELSE 0 END) +
+                    MAX(CASE WHEN Won_Money_In_The_Bank IS NOT NULL AND Won_Money_In_The_Bank != '' THEN 1 ELSE 0 END) +
+                    MAX(CASE WHEN Won_Smash_Bros        IS NOT NULL AND Won_Smash_Bros        != '' THEN 1 ELSE 0 END) AS ev_count
+                FROM holistic_view GROUP BY Fighter_Name
+            ) t
+        """, ()),
+        'roster_max_champs': ("""
+            SELECT MAX(cnt) AS max_tc
+            FROM (SELECT COUNT(DISTINCT Championship_Name) AS cnt FROM ChampionshipHistory GROUP BY Fighter_Name) t
+        """, ()),
     }
 
-    with ThreadPoolExecutor(max_workers=13) as pool:
+    with ThreadPoolExecutor(max_workers=17) as pool:
         view_futures = {key: pool.submit(select_view_dicts, q, p) for key, (q, p) in queries.items()}
         h2h_fut = pool.submit(h2h_query_sql, "CALL SmashBros.headtohead(%s, %s)", (f1, f2))
 

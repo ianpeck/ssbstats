@@ -510,10 +510,24 @@ def api_compare():
                 'h2h_losses': int(h2h[0 if prefix == 'f1' else 1].get('Losses', 0)) if len(h2h) > 1 else 0,
             }
 
+        def roster_maxes():
+            months = (raw.get('roster_max_months') or [{}])[0]
+            wr_row = (raw.get('roster_max_wr') or [{}])[0]
+            ev_row = (raw.get('roster_max_ev') or [{}])[0]
+            tc_row = (raw.get('roster_max_champs') or [{}])[0]
+            return {
+                'max_wr':     float(_serialize(wr_row.get('max_wr'))  or 100),
+                'max_major':  float(_serialize(months.get('max_major')) or 1),
+                'max_title':  float(_serialize(months.get('max_title')) or 1),
+                'max_ev':     int(_serialize(ev_row.get('max_ev'))   or 1),
+                'max_champs': int(_serialize(tc_row.get('max_tc'))   or 1),
+            }
+
         return jsonify({
             'fighter1': fighter_payload(f1, 'f1'),
             'fighter2': fighter_payload(f2, 'f2'),
             'fights_between': fights,
+            'roster_maxes': roster_maxes(),
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
