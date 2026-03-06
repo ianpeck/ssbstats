@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<script src="https://unpkg.com/lucide@latest"></script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,15 +20,51 @@
                 <span class="logo-text">SSB Stats</span>
             </a>
             <div class="nav-links">
-                <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Roster</a>
-                <a href="/head2head" class="nav-link {% if request.path == '/head2head' %}active{% endif %}">Head to Head</a>
-                <a href="/leaderboard" class="nav-link {% if request.path == '/leaderboard' %}active{% endif %}">Power Rankings</a>
-                <a href="/seasons" class="nav-link {% if request.path.startswith('/seasons') %}active{% endif %}">Seasons</a>
-                <a href="/championships" class="nav-link {% if request.path == '/championships' %}active{% endif %}">Championships</a>
-                <a href="/events" class="nav-link {% if request.path == '/events' %}active{% endif %}">Events (PPVs)</a>
-                <a href="/fights" class="nav-link {% if request.path.startswith('/fights') %}active{% endif %}">Fight Logs</a>
-                <a href="/chat" class="nav-link {% if request.path == '/chat' %}active{% endif %}">Ask AI</a>
-                <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">About</a>
+                <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                    <i data-lucide="users"></i>
+                    <span>Roster</span>
+                </a>
+
+                <a href="/head2head" class="nav-link {% if request.path == '/head2head' %}active{% endif %}">
+                    <i data-lucide="swords"></i>
+                    <span>Head to Head</span>
+                </a>
+
+                <a href="/leaderboard" class="nav-link {% if request.path == '/leaderboard' %}active{% endif %}">
+                    <i data-lucide="trophy"></i>
+                    <span>Power Rankings</span>
+                </a>
+
+                <a href="/seasons" class="nav-link {% if request.path.startswith('/seasons') %}active{% endif %}">
+                    <i data-lucide="calendar"></i>
+                    <span>Seasons</span>
+                </a>
+
+                <a href="/championships" class="nav-link {% if request.path == '/championships' %}active{% endif %}">
+                    <i data-lucide="crown"></i>
+                    <span>Championships</span>
+                </a>
+
+                <a href="/events" class="nav-link {% if request.path == '/events' %}active{% endif %}">
+                    <i data-lucide="tv"></i>
+                    <span>Events (PPVs)</span>
+                </a>
+
+                <a href="/fights" class="nav-link {% if request.path.startswith('/fights') %}active{% endif %}">
+                    <i data-lucide="notebook"></i>
+                    <span>Fight Logs</span>
+                </a>
+
+                <a href="/chat" class="nav-link {% if request.path == '/chat' %}active{% endif %}">
+                    <i data-lucide="bot"></i>
+                    <span>Ask AI</span>
+                </a>
+
+                <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">
+                    <i data-lucide="info"></i>
+                    <span>About</span>
+                </a>
+
             </div>
             <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
                 <span></span><span></span><span></span>
@@ -203,5 +240,12 @@
         return h;
     }
     </script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+});
+</script>
 </body>
 </html>
