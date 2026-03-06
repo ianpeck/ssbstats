@@ -163,12 +163,12 @@ function renderHistory(rows) {
             if (lastSeason !== null && season !== lastSeason) {
                 const divider = document.createElement('div');
                 divider.className = 'champ-season-divider';
-                divider.textContent = `S${season}`;
+                divider.textContent = `Season ${season}`;
                 bar.appendChild(divider);
             } else if (lastSeason === null) {
                 const divider = document.createElement('div');
                 divider.className = 'champ-season-divider champ-season-divider-first';
-                divider.textContent = `S${season}`;
+                divider.textContent = `Season ${season}`;
                 bar.appendChild(divider);
             }
             lastSeason = season;
