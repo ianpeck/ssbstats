@@ -639,6 +639,7 @@ KEY RULES:
   FROM AwardHistory ah JOIN Award a ON ah.Award_ID = a.Award_ID
   WHERE a.Award_Name LIKE '%Superstar%'
 - Only generate SELECT queries. Never generate INSERT, UPDATE, DELETE, DROP, or any DDL.
+- If someone asks about a Championship like the Brawl Championship, that corresponds to Championship_Name = 'Brawl' in the database. Do not assume the name in the question matches the DB exactly — use your judgment to match it to the correct DB value. Query the Championship table if needed for the championship names
 
 SQL QUALITY RULES (critical):
 - ALWAYS include the numeric/metric columns that answer the question in your SELECT — never select only Fighter_Name.
@@ -694,6 +695,15 @@ To filter FightLog to only fights that occurred during a fighter's streak, use a
     AND f2.Fighter_Name != 'Kirby'
   GROUP BY f2.Fighter_Name ORDER BY fights DESC LIMIT 5
 NEVER just filter by WHERE Fighter_Name = 'X' AND Decision = 'W' without the streak date range — that counts all wins, not streak wins.
+
+CRITICAL PATTERN — querying how many times a fighter defended a title:
+For "how many times has a fighter successfully defended a title", you must use the FightLog view. 
+  The condition for a successful defense is: 
+  WHERE Fighter_Name = 'ExactName' 
+    AND Championship_Name = 'TitleName' 
+    AND DefendingIndicator = 'Y' 
+    AND Decision = 'W' to get wins, and Decision = 'L' to get losses.
+  Use COUNT(DISTINCT Fight_ID) to get the total count.
 
 RESPONSE FORMAT:
 Return ONLY a JSON object with exactly these keys:
