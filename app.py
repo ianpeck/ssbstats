@@ -661,6 +661,15 @@ SQL QUALITY RULES (critical):
          (SELECT COUNT(*) FROM careerstats) AS total_fighters
   FROM careerstats cs1 WHERE cs1.Fighter_Name = 'Captain Falcon'
 
+LOOKUP PROTOCOL (CRITICAL):
+- When a user asks about a specific entity (Fighter, Championship, Brand, PPV, or Location) and you are unsure of the exact spelling or formatting in the database:
+  1. DO NOT guess the name. 
+  2. First, generate a query to search the base tables to find the match:
+     Example: "SELECT Championship_Name FROM Championship WHERE Championship_Name LIKE '%Brawl%'"
+  3. If you find a match, use that exact string in your subsequent query.
+  4. If the user's input is ambiguous, ask the user to clarify (return an answer, not a query).
+- If your generated SQL fails because of an "Unknown column" or "Invalid value" error, treat this as a signal that you failed to verify the entity name or schema. Perform a DESCRIBE [table_name] or SELECT from the base table to re-verify your knowledge before correcting the query.
+
 CRITICAL PATTERN — checking if two fighters faced each other:
 NEVER use WHERE Fighter_Name IN ('A', 'B') — that finds fights where EITHER appeared, not fights where they faced EACH OTHER.
 ALWAYS use a self-join on Fight_ID:
