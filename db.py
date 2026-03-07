@@ -202,7 +202,7 @@ _EVENT_COLS_LB = [
 
 def get_leaderboard():
     """Get all fighters with career stats plus extended accolade metrics."""
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=5) as pool:
         f_career  = pool.submit(select_view_row, "SELECT * FROM careerstats ORDER BY Fighter_Name")
         f_hol     = pool.submit(
             select_view_dicts,
@@ -216,6 +216,7 @@ def get_leaderboard():
             "FROM ChampionshipHistory GROUP BY Fighter_Name"
         )
         f_tc      = pool.submit(select_view_dicts, "SELECT * FROM triplecrown")
+        f_elo     = pool.submit(get_elo_for_leaderboard)
 
         career_rows  = f_career.result()
         try:
@@ -235,6 +236,10 @@ def get_leaderboard():
             tc_rows = f_tc.result()
         except Exception:
             tc_rows = []
+        try:
+            elo_by_fighter = f_elo.result()
+        except Exception:
+            elo_by_fighter = {}
 
     # Build holistic lookup: {name: [rows]}
     hol_by_fighter = {}
@@ -261,6 +266,7 @@ def get_leaderboard():
                 if r.get(col) not in (None, '', 'None'):
                     event_set.add(col)
 
+        elo = elo_by_fighter.get(name, {})
         fighters.append({
             'name':          name,
             'wins':          wins,
@@ -272,6 +278,9 @@ def get_leaderboard():
             'event_wins':    len(event_set),
             'unique_titles': titles_by_fighter.get(name, 0),
             'triple_crown':  1 if name in tc_fighters else 0,
+            'current_elo':   float(elo['current_elo']) if elo.get('current_elo') is not None else None,
+            'avg_elo':       float(elo['avg_elo'])     if elo.get('avg_elo')     is not None else None,
+            'peak_elo':      float(elo['peak_elo'])    if elo.get('peak_elo')    is not None else None,
         })
 
     def parse_pct(pct):
@@ -292,7 +301,7 @@ def get_all_seasons():
 
 def get_leaderboard_by_season(season):
     """Get fighters with season stats plus holistic accolades for that season."""
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         f_season = pool.submit(
             select_view_dicts,
             "SELECT * FROM CareerStatsBySeason WHERE Season = %s ORDER BY Fighter_Name",
@@ -313,6 +322,7 @@ def get_leaderboard_by_season(season):
             "GROUP BY Fighter_Name",
             (season, season)
         )
+        f_elo = pool.submit(get_elo_for_leaderboard_by_season, season)
 
         season_rows = f_season.result()
         try:
@@ -328,6 +338,11 @@ def get_leaderboard_by_season(season):
             except Exception:
                 holistic_all = []
         titles_rows = f_titles.result()
+
+    try:
+        elo_by_fighter = f_elo.result()
+    except Exception:
+        elo_by_fighter = {}
 
     hol_by_fighter = {}
     for r in holistic_all:
@@ -350,17 +365,21 @@ def get_leaderboard_by_season(season):
                 if r.get(col) not in (None, '', 'None'):
                     event_set.add(col)
 
+        elo = elo_by_fighter.get(name, {})
         fighters.append({
-            'name':          name,
-            'wins':          wins,
-            'losses':        losses,
-            'win_pct':       win_pct,
-            'total_fights':  wins + losses,
-            'champ_months':  champ_months,
-            'major_months':  major_months,
-            'event_wins':    len(event_set),
-            'unique_titles': titles_by_fighter.get(name, 0),
-            'triple_crown':  0,
+            'name':             name,
+            'wins':             wins,
+            'losses':           losses,
+            'win_pct':          win_pct,
+            'total_fights':     wins + losses,
+            'champ_months':     champ_months,
+            'major_months':     major_months,
+            'event_wins':       len(event_set),
+            'unique_titles':    titles_by_fighter.get(name, 0),
+            'triple_crown':     0,
+            'peak_season_elo':  float(elo['peak_season_elo']) if elo.get('peak_season_elo') is not None else None,
+            'avg_elo':          float(elo['avg_elo'])          if elo.get('avg_elo')          is not None else None,
+            'season_end_elo':   float(elo['season_end_elo'])  if elo.get('season_end_elo')  is not None else None,
         })
 
     def parse_pct(pct):
@@ -504,6 +523,14 @@ def get_advanced_analytics(name):
             "ORDER BY Season_Started, Month_Started, Week_Started",
             (name,)
         ),
+        'elo_history': (
+            "SELECT e.result_id, e.fight_id, f.Season_ID AS season, f.Month AS month, f.Week AS week, "
+            "ROUND(e.elo_before, 2) AS elo_before, ROUND(e.elo_after, 2) AS elo_after, "
+            "ROUND(e.elo_after - e.elo_before, 2) AS elo_change "
+            "FROM Elo e JOIN Fight f ON e.fight_id = f.Fight_ID "
+            "WHERE e.fighter_name = %s ORDER BY f.Season_ID, f.Month, f.Week, f.Fight_ID",
+            (name,)
+        ),
     }
 
     def run_query(key_query):
@@ -530,6 +557,20 @@ def get_comparison_data(f1, f2):
         'f2_holistic':    ("SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season", (f2,)),
         'f1_running':     ("SELECT Season, Month, Week, Fight_ID, Decision, Career_Running_Win_Pct FROM CareerRunningStats WHERE Fighter_Name = %s ORDER BY Season, Month, Week, Fight_ID", (f1,)),
         'f2_running':     ("SELECT Season, Month, Week, Fight_ID, Decision, Career_Running_Win_Pct FROM CareerRunningStats WHERE Fighter_Name = %s ORDER BY Season, Month, Week, Fight_ID", (f2,)),
+        'f1_elo_history': (
+            "SELECT e.fight_id, f.Season_ID AS season, f.Month AS month, f.Week AS week, "
+            "ROUND(e.elo_before, 2) AS elo_before, ROUND(e.elo_after, 2) AS elo_after "
+            "FROM Elo e JOIN Fight f ON e.fight_id = f.Fight_ID "
+            "WHERE e.fighter_name = %s ORDER BY f.Season_ID, f.Month, f.Week, f.Fight_ID",
+            (f1,)
+        ),
+        'f2_elo_history': (
+            "SELECT e.fight_id, f.Season_ID AS season, f.Month AS month, f.Week AS week, "
+            "ROUND(e.elo_before, 2) AS elo_before, ROUND(e.elo_after, 2) AS elo_after "
+            "FROM Elo e JOIN Fight f ON e.fight_id = f.Fight_ID "
+            "WHERE e.fighter_name = %s ORDER BY f.Season_ID, f.Month, f.Week, f.Fight_ID",
+            (f2,)
+        ),
         'f1_champs':      ("SELECT COUNT(DISTINCT Championship_Name) AS total FROM ChampionshipHistory WHERE Fighter_Name = %s", (f1,)),
         'f2_champs':      ("SELECT COUNT(DISTINCT Championship_Name) AS total FROM ChampionshipHistory WHERE Fighter_Name = %s", (f2,)),
         'f1_champ_stats': ("SELECT * FROM champfightstats WHERE Fighter_Name = %s", (f1,)),
@@ -639,6 +680,46 @@ def get_elo_leaderboard():
         GROUP BY e.fighter_name, e.elo_after
         ORDER BY e.elo_after DESC
     """)
+
+
+def get_elo_for_leaderboard():
+    """Return {fighter_name: {current_elo, avg_elo, peak_elo}} for merging into leaderboard."""
+    rows = select_view_dicts("""
+        SELECT
+            fighter_name,
+            ROUND(MAX(CASE WHEN fight_id = last_fight THEN elo_after END), 1) AS current_elo,
+            ROUND(AVG(elo_after), 1)                                           AS avg_elo,
+            ROUND(MAX(elo_after), 1)                                           AS peak_elo
+        FROM (
+            SELECT e.*, MAX(e.fight_id) OVER (PARTITION BY e.fighter_name) AS last_fight
+            FROM Elo e
+        ) t
+        GROUP BY fighter_name
+    """)
+    return {r['fighter_name']: r for r in rows}
+
+
+def get_elo_for_leaderboard_by_season(season):
+    """Return {fighter_name: {peak_season_elo, avg_elo, season_end_elo}} for a specific season."""
+    rows = select_view_dicts("""
+        SELECT
+            e.fighter_name,
+            ROUND(MAX(e.elo_after), 1) AS peak_season_elo,
+            ROUND(AVG(e.elo_after), 1) AS avg_elo,
+            ROUND(MAX(CASE WHEN e.fight_id = last_fight.max_fight_id THEN e.elo_after END), 1) AS season_end_elo
+        FROM Elo e
+        JOIN Fight f ON e.fight_id = f.Fight_ID
+        JOIN (
+            SELECT e2.fighter_name, MAX(e2.fight_id) AS max_fight_id
+            FROM Elo e2
+            JOIN Fight f2 ON e2.fight_id = f2.Fight_ID
+            WHERE f2.Season_ID = %s
+            GROUP BY e2.fighter_name
+        ) last_fight ON e.fighter_name = last_fight.fighter_name
+        WHERE f.Season_ID = %s
+        GROUP BY e.fighter_name
+    """, (season, season))
+    return {r['fighter_name']: r for r in rows}
 
 
 def get_elo_alltime_ranking(min_fights=50):

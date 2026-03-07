@@ -2507,9 +2507,50 @@ img {
     .rivals-section { grid-template-columns: 1fr; }
 }
 
-/* Fighter page — location stats (full-width) */
-.fighter-location-stats {
-    margin-top: 2rem;
+/* Fighter page — sticky page TOC nav */
+.fighter-page-nav {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.6rem 0;
+    margin: 0.75rem 0 1.5rem;
+    overflow-x: auto;
+    position: sticky;
+    top: 64px;
+    z-index: 50;
+    background: rgba(10, 10, 26, 0.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(96, 124, 255, 0.1);
+    scrollbar-width: none;
+}
+.fighter-page-nav::-webkit-scrollbar { display: none; }
+
+.page-nav-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(96, 124, 255, 0.2);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    font-family: var(--font-heading);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    background: transparent;
+    flex-shrink: 0;
+}
+.page-nav-pill:hover {
+    border-color: rgba(96, 124, 255, 0.5);
+    color: var(--text-primary);
+}
+.page-nav-pill.active {
+    background: rgba(96, 124, 255, 0.15);
+    border-color: #607cff;
+    color: #607cff;
 }
 
 /* ============================================

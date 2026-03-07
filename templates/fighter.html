@@ -68,6 +68,13 @@
     </div>
 </section>
 
+<!-- Page Navigation -->
+<nav class="fighter-page-nav" id="fighterPageNav">
+    <a class="page-nav-pill" data-section="section-analytics" href="#section-analytics">📊 Analytics</a>
+    <a class="page-nav-pill" data-section="section-stats" href="#section-stats">📈 Stats</a>
+    <a class="page-nav-pill" data-section="section-history" href="#section-history">📋 Fight History</a>
+</nav>
+
 <!-- Compare Against -->
 <section class="compare-against-section">
     <div class="compare-against-card glass-card">
@@ -95,7 +102,7 @@
 </section>
 
 <!-- Advanced Analytics (unique per-fighter, always open, lazy-loaded) -->
-<section class="fighter-advanced-analytics">
+<section class="fighter-advanced-analytics" id="section-analytics">
     <div class="stats-table-wrapper glass-card fight-history-card">
         <div class="fight-history-header">
             <span class="fight-history-label">
@@ -121,7 +128,20 @@
 
                 <div class="analytics-divider"></div>
 
-                <!-- 2. Rivals -->
+                <!-- 2. ELO Rating History -->
+                <div class="analytics-chart-wrapper">
+                    <h3 class="analytics-chart-title">ELO Rating History</h3>
+                    <p class="analytics-chart-subtitle">Rating after each fight — accounts for opponent strength, not just win/loss. Dots are green (W) or red (L). Dashed gray = 1500 baseline.</p>
+                    <div class="analytics-chart-scroll">
+                        <div class="analytics-chart-container" id="eloChartContainer">
+                            <canvas id="eloChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-divider"></div>
+
+                <!-- 3. Rivals -->
                 <div class="analytics-chart-wrapper">
                     <h3 class="analytics-chart-title">Rivals &mdash; Victims &amp; Nemeses</h3>
                     <p class="analytics-chart-subtitle">Top 5 each side sorted by total wins or losses &mdash; volume counts more than rate.</p>
@@ -130,7 +150,7 @@
 
                 <div class="analytics-divider"></div>
 
-                <!-- 3. Streak History -->
+                <!-- 4. Streak History -->
                 <div class="analytics-chart-wrapper">
                     <h3 class="analytics-chart-title">Streak History</h3>
                     <p class="analytics-chart-subtitle">Win streaks above zero (green), losing streaks below (red). Brighter bar = currently active streak.</p>
@@ -141,7 +161,7 @@
 
                 <div class="analytics-divider"></div>
 
-                <!-- 4. Season Radar -->
+                <!-- 5. Season Radar -->
                 <div class="analytics-chart-wrapper">
                     <h3 class="analytics-chart-title">Season Profile Radar</h3>
                     <p class="analytics-chart-subtitle">Multi-dimensional season grades normalized to 100. Each colored shape = one season.</p>
@@ -155,52 +175,56 @@
 </section>
 
 <!-- Stats Breakdown -->
-<section class="fighter-stats-section">
+<section class="fighter-stats-section" id="section-stats">
     <div class="fighter-stats-grid" id="statsGrid" style="display:none;">
 
-        <!-- By Season — bar chart -->
+        <!-- By Season -->
         <div class="stats-table-wrapper glass-card">
-            <h3 class="chart-section-title">Season Stats</h3>
+            <h3 class="analytics-chart-title">Season Stats</h3>
+            <p class="analytics-chart-subtitle">Wins and losses by season</p>
             <div style="height:240px;"><canvas id="seasonChart"></canvas></div>
         </div>
 
-        <!-- By Match Type — horizontal bar chart -->
+        <!-- By Match Type -->
         <div class="stats-table-wrapper glass-card">
-            <h3 class="chart-section-title">Match Type Stats</h3>
+            <h3 class="analytics-chart-title">Match Type Stats</h3>
+            <p class="analytics-chart-subtitle">Performance across fight formats</p>
             <div id="fightTypeChartWrap"><canvas id="fightTypeChart"></canvas></div>
         </div>
 
-        <!-- By Brand — horizontal bar chart -->
+        <!-- By Brand -->
         <div class="stats-table-wrapper glass-card">
-            <h3 class="chart-section-title">Brand Stats</h3>
-            <div style="height:160px;"><canvas id="brandChart"></canvas></div>
+            <h3 class="analytics-chart-title">Brand Stats</h3>
+            <p class="analytics-chart-subtitle">Record by brand</p>
+            <div id="brandChartWrap"><canvas id="brandChart"></canvas></div>
         </div>
 
-        <!-- Championship Stats — half-width scrollable chart -->
+        <!-- Championship Stats -->
         <div class="stats-table-wrapper glass-card">
-            <h3 class="chart-section-title">Championship Stats by Title</h3>
+            <h3 class="analytics-chart-title">Championship Stats</h3>
+            <p class="analytics-chart-subtitle">Record in title fights by championship</p>
             <div class="analytics-chart-scroll"><canvas id="champByChampChart"></canvas></div>
         </div>
 
-        <!-- By PPV — full-width scrollable chart -->
+        <!-- PPV Stats — full width -->
         <div class="stats-table-wrapper glass-card stats-card-full">
-            <h3 class="chart-section-title">PPV Stats</h3>
+            <h3 class="analytics-chart-title">PPV Stats</h3>
+            <p class="analytics-chart-subtitle">Record at each pay-per-view event</p>
             <div class="analytics-chart-scroll"><canvas id="ppvChart"></canvas></div>
         </div>
 
-    </div>
-</section>
+        <!-- Location Stats — full width -->
+        <div class="stats-table-wrapper glass-card stats-card-full">
+            <h3 class="analytics-chart-title">Location Stats</h3>
+            <p class="analytics-chart-subtitle">Record by arena and venue</p>
+            <div class="analytics-chart-scroll"><canvas id="locationChart"></canvas></div>
+        </div>
 
-<!-- Location Stats (full-width) -->
-<section class="fighter-location-stats">
-    <div class="stats-table-wrapper glass-card">
-        <h3 class="chart-section-title">Location Stats</h3>
-        <div class="analytics-chart-scroll"><canvas id="locationChart"></canvas></div>
     </div>
 </section>
 
 <!-- Fight History (collapsible, lazy-loaded) -->
-<section class="fighter-fight-history">
+<section class="fighter-fight-history" id="section-history">
     <div class="stats-table-wrapper glass-card fight-history-card">
         <button class="fight-history-header" id="fightHistoryToggle" aria-expanded="false">
             <span class="fight-history-label">
@@ -494,6 +518,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
             .then(d => {
                 loading.style.display = 'none';
                 renderRunningWinRate(d.running_stats   || []);
+                renderEloChart(      d.elo_history     || []);
                 renderRivals(        d.by_opponent     || []);
                 renderStreakTimeline(d.all_win_streaks  || [], d.all_loss_streaks || []);
                 renderSeasonRadar(window.fighterHolistic || []);
@@ -551,7 +576,56 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
         });
     }
 
-    // ── 2. Rivals (Victims & Nemeses) ──────────────────────────────────────
+    // ── 2. ELO Rating History ──────────────────────────────────────────────
+    function renderEloChart(data) {
+        if (!data.length) return;
+        const xLabels = [], eloValues = [], ptColors = [], ptBorders = [];
+        let prevSeason = null;
+        data.forEach(d => {
+            xLabels.push(d.season !== prevSeason ? (prevSeason = d.season, `S${d.season}`) : '');
+            eloValues.push(parseFloat(d.elo_after));
+            const isWin = parseFloat(d.elo_change) > 0;
+            ptColors.push( isWin ? '#4ade80' : '#f87171');
+            ptBorders.push(isWin ? '#22c55e' : '#ef4444');
+        });
+
+        const W = Math.max(900, data.length * 10);
+        const container = document.getElementById('eloChartContainer');
+        container.style.width = W + 'px';
+        const canvas = document.getElementById('eloChart');
+        canvas.width = W; canvas.height = 400;
+
+        if (charts.elo) charts.elo.destroy();
+        charts.elo = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: { labels: xLabels, datasets: [
+                { label: 'ELO Rating', data: eloValues, borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.07)', borderWidth: 2, pointRadius: 4, pointHoverRadius: 7, pointBackgroundColor: ptColors, pointBorderColor: ptBorders, pointBorderWidth: 1.5, tension: 0.25, fill: true },
+                { label: '1500 Baseline', data: new Array(data.length).fill(1500), borderColor: 'rgba(176,184,209,0.22)', borderWidth: 1, borderDash: [6,4], pointRadius: 0, fill: false },
+            ]},
+            options: {
+                responsive: false, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 16, font: { size: 12, family: 'Inter' }, filter: i => i.text !== '1500 Baseline' } },
+                    tooltip: { backgroundColor: 'rgba(18,18,42,0.95)', titleFont: { family: 'Inter' }, bodyFont: { family: 'Inter' }, borderColor: '#fbbf24', borderWidth: 1,
+                        callbacks: {
+                            title:      (its) => { const d = data[its[0].dataIndex]; const chg = parseFloat(d.elo_change); return `Fight #${its[0].dataIndex+1}  —  ${chg > 0 ? 'Win ✓' : 'Loss ✗'}`; },
+                            beforeBody: (its) => { const d = data[its[0].dataIndex]; return `Season ${d.season}, Month ${d.month}, Week ${d.week}`; },
+                            label:      (it)  => it.dataset.label === '1500 Baseline' ? null : `  ELO: ${it.raw.toFixed(1)}`,
+                            afterBody:  (its) => { const d = data[its[0].dataIndex]; const chg = parseFloat(d.elo_change); return `  Change: ${chg >= 0 ? '+' : ''}${chg.toFixed(1)}  (${parseFloat(d.elo_before).toFixed(1)} → ${parseFloat(d.elo_after).toFixed(1)})`; },
+                        }
+                    }
+                },
+                scales: {
+                    y: { grid: { color: 'rgba(96,124,255,0.08)' }, ticks: { color: '#b0b8d1' }, title: { display: true, text: 'ELO Rating', color: '#a8aab8', font: { size: 11 } } },
+                    x: { grid: { color: 'rgba(96,124,255,0.05)' }, ticks: { color: 'rgba(251,191,36,0.85)', font: { size: 11, weight: 'bold' }, maxRotation: 0, autoSkip: false }, title: { display: true, text: 'Fight #', color: '#a8aab8', font: { size: 11 } } },
+                },
+                animation: { duration: 800 }
+            }
+        });
+    }
+
+    // ── 3. Rivals (Victims & Nemeses) ──────────────────────────────────────
     function ftf(name) {
         const ov = { 'banjo & kazooie': 'banjoandkazooie', 'banjo and kazooie': 'banjoandkazooie' };
         const l = name.toLowerCase();
@@ -769,6 +843,37 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
     }
 })();
 
+// ── Page Nav (TOC) ────────────────────────────────────────────
+(function() {
+    const SECTION_IDS = ['section-analytics', 'section-stats', 'section-history'];
+    const pills = document.querySelectorAll('.page-nav-pill[data-section]');
+
+    const obs = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const id = entry.target.id;
+                pills.forEach(p => p.classList.toggle('active', p.dataset.section === id));
+            }
+        });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+
+    SECTION_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) obs.observe(el);
+    });
+
+    pills.forEach(pill => {
+        pill.addEventListener('click', e => {
+            e.preventDefault();
+            const el = document.getElementById(pill.dataset.section);
+            if (!el) return;
+            const offset = 64 + 50; // navbar + page-nav height
+            const top = el.getBoundingClientRect().top + window.scrollY - offset;
+            window.scrollTo({ top, behavior: 'smooth' });
+        });
+    });
+})();
+
 // ── Stats Charts ──────────────────────────────────────────────
 function renderSeasonChart(data) {
     if (!data.length) return;
@@ -779,8 +884,8 @@ function renderSeasonChart(data) {
     new Chart(document.getElementById('seasonChart').getContext('2d'), {
         type: 'bar',
         data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 4 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 4 },
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 4 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
         ]},
         options: {
             responsive: true, maintainAspectRatio: false,
@@ -810,8 +915,8 @@ function renderFightTypeChart(data) {
     new Chart(document.getElementById('fightTypeChart').getContext('2d'), {
         type: 'bar',
         data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 3 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 3 },
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 3 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 3 },
         ]},
         options: {
             indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -836,11 +941,13 @@ function renderBrandChart(data) {
     const wins   = data.map(r => parseInt(r.wins)   || 0);
     const losses = data.map(r => parseInt(r.losses)  || 0);
     const pcts   = data.map(r => parseFloat(String(r.win_pct).replace('%','')) || 0);
+    const h = Math.max(200, labels.length * 34);
+    document.getElementById('brandChartWrap').style.height = h + 'px';
     new Chart(document.getElementById('brandChart').getContext('2d'), {
         type: 'bar',
         data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 4 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 4 },
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 4 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
         ]},
         options: {
             indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -871,8 +978,8 @@ function renderPPVChart(data) {
     new Chart(canvas.getContext('2d'), {
         type: 'bar',
         data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 4 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 4 },
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 4 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
         ]},
         options: {
             responsive: false, maintainAspectRatio: false,
@@ -903,8 +1010,8 @@ function renderLocationChart(data) {
     new Chart(canvas.getContext('2d'), {
         type: 'bar',
         data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 4 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 4 },
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 4 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
         ]},
         options: {
             responsive: false, maintainAspectRatio: false,
@@ -935,8 +1042,8 @@ function renderChampionshipChart(data) {
     new Chart(canvas.getContext('2d'), {
         type: 'bar',
         data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(96,124,255,0.8)',  borderRadius: 4 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 4 },
+            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 4 },
+            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
         ]},
         options: {
             responsive: false, maintainAspectRatio: false,

@@ -44,6 +44,9 @@
                     <th class="sortable" data-sort="champ_months">Champ Months</th>
                     <th class="sortable" data-sort="event_wins">Event Wins</th>
                     <th class="sortable" data-sort="unique_titles">Titles Held</th>
+                    <th class="sortable elo-col" data-sort="current_elo" id="eloCol1Th">Current ELO</th>
+                    <th class="sortable elo-col" data-sort="avg_elo" id="eloCol2Th">Career ELO</th>
+                    <th class="sortable elo-col" data-sort="peak_elo" id="eloCol3Th">Peak ELO</th>
                 </tr>
             </thead>
             <tbody id="leaderboardTbody"></tbody>
@@ -99,6 +102,7 @@ function loadRankings(season) {
             document.getElementById('loadingOverlay').style.display = 'none';
             document.getElementById('leaderboardWrapper').style.display = 'block';
             leaderboardData = data;
+            updateEloHeaders();
             currentSort = { key: 'win_pct', dir: 'desc' };
             document.querySelectorAll('.sortable').forEach(s => s.classList.remove('active', 'asc'));
             document.querySelector('.sortable[data-sort="win_pct"]').classList.add('active');
@@ -156,9 +160,32 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+function updateEloHeaders() {
+    const isSeason = !!currentSeason;
+    const th1 = document.getElementById('eloCol1Th');
+    const th2 = document.getElementById('eloCol2Th');
+    const th3 = document.getElementById('eloCol3Th');
+    if (isSeason) {
+        th1.textContent = 'Peak Season ELO';
+        th1.dataset.sort = 'peak_season_elo';
+        th2.textContent = 'Season Avg ELO';
+        th3.textContent = 'End of Season ELO';
+        th3.dataset.sort = 'season_end_elo';
+    } else {
+        th1.textContent = 'Current ELO';
+        th1.dataset.sort = 'current_elo';
+        th2.textContent = 'Career ELO';
+        th3.textContent = 'Peak ELO';
+        th3.dataset.sort = 'peak_elo';
+    }
+}
+
 function renderLeaderboard(data) {
     const tbody = document.getElementById('leaderboardTbody');
     tbody.innerHTML = '';
+    const isSeason = !!currentSeason;
+    const eloKey1 = isSeason ? 'peak_season_elo' : 'current_elo';
+    const eloKey3 = isSeason ? 'season_end_elo'  : 'peak_elo';
 
     data.forEach((fighter, i) => {
         const pct = parseFloat(String(fighter.win_pct).replace('%', '')) || 0;
@@ -167,12 +194,17 @@ function renderLeaderboard(data) {
         const filename = fighterToFilename(fighter.name);
         const titleBadges = (fighter.titles || [])
             .map(t => `<span class="lb-champ-tag">👑 ${t}</span>`).join('');
+        const fmtElo = v => v != null ? v.toFixed(1) : '--';
+        const eloClass = v => v == null ? '' : v >= 1600 ? 'pct-high' : v < 1400 ? 'pct-low' : '';
         const extraCells = `
             <td class="stat-cell">${fighter.total_fights ?? ''}</td>
             <td class="stat-cell">${fighter.major_months ?? 0}</td>
             <td class="stat-cell">${fighter.champ_months ?? 0}</td>
             <td class="stat-cell">${fighter.event_wins != null ? fighter.event_wins + '/6' : ''}</td>
-            <td class="stat-cell">${fighter.unique_titles ?? 0}</td>`;
+            <td class="stat-cell">${fighter.unique_titles ?? 0}</td>
+            <td class="stat-cell elo-col ${eloClass(fighter[eloKey1])}">${fmtElo(fighter[eloKey1])}</td>
+            <td class="stat-cell elo-col ${eloClass(fighter.avg_elo)}">${fmtElo(fighter.avg_elo)}</td>
+            <td class="stat-cell elo-col ${eloClass(fighter[eloKey3])}">${fmtElo(fighter[eloKey3])}</td>`;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `

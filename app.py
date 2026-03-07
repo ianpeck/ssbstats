@@ -443,11 +443,14 @@ def api_fighter_advanced(name):
         win_streaks  = [{k: _serialize(v) for k, v in r.items()} for r in raw.get('all_win_streaks', [])]
         loss_streaks = [{k: _serialize(v) for k, v in r.items()} for r in raw.get('all_loss_streaks', [])]
 
+        elo_history = [{k: _serialize(v) for k, v in r.items()} for r in raw.get('elo_history', [])]
+
         return jsonify({
             'running_stats':    running,
             'by_opponent':      opponents,
             'all_win_streaks':  win_streaks,
             'all_loss_streaks': loss_streaks,
+            'elo_history':      elo_history,
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -499,6 +502,11 @@ def api_compare():
         def awards(rows):
             return [{'season': int(r.get('Season_ID', 0)), 'name': str(r.get('Award_Name', ''))} for r in rows]
 
+        def elo_history(rows):
+            return [{'fight_id': int(r.get('fight_id', 0)), 'season': int(r.get('season', 0)),
+                     'month': int(r.get('month', 0)), 'week': r.get('week'),
+                     'elo_before': float(r.get('elo_before', 0)), 'elo_after': float(r.get('elo_after', 0))} for r in rows]
+
         def fighter_payload(name, prefix):
             return {
                 'name': name,
@@ -510,6 +518,7 @@ def api_compare():
                 'unique_champs': unique_champs(raw.get(f'{prefix}_champs', [])),
                 'champ_stats': champ_stats(raw.get(f'{prefix}_champ_stats', [])),
                 'awards': awards(raw.get(f'{prefix}_awards', [])),
+                'elo_history': elo_history(raw.get(f'{prefix}_elo_history', [])),
                 'h2h_wins': int(h2h[0 if prefix == 'f1' else 1].get('Wins', 0)) if len(h2h) > 1 else 0,
                 'h2h_losses': int(h2h[0 if prefix == 'f1' else 1].get('Losses', 0)) if len(h2h) > 1 else 0,
             }

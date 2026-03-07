@@ -105,6 +105,15 @@
             </div>
         </div>
 
+        <!-- ELO Rating History -->
+        <div id="eloSection" class="glass-card compare-card">
+            <h3 class="analytics-chart-title">ELO Rating History</h3>
+            <p class="analytics-chart-subtitle">Career ELO trajectory over time — each point is a fight</p>
+            <div class="analytics-chart-scroll">
+                <canvas id="compareElo"></canvas>
+            </div>
+        </div>
+
         <!-- Season by Season -->
         <div id="seasonsSection" class="glass-card compare-card">
             <h3 class="analytics-chart-title">Season by Season</h3>
@@ -269,9 +278,11 @@ function renderAll(d, mode) {
     renderStatsGrid({ fighter1: d1, fighter2: d2, h2h: d }, isSeason);
     renderRadar({ fighter1: d1, fighter2: d2, roster_maxes: maxes });
     renderMomentum({ fighter1: d1, fighter2: d2 }, isSeason);
+    document.getElementById('eloSection').style.display     = isSeason ? 'none' : '';
     document.getElementById('seasonsSection').style.display = isSeason ? 'none' : '';
     document.getElementById('fightsSection').style.display  = isSeason ? 'none' : '';
     if (!isSeason) {
+        renderEloComparison(d);
         renderSeasons(d);
         renderFights(d);
     }
@@ -511,6 +522,106 @@ function renderMomentum(d, isSeason) {
                 }
             },
             animation: { duration: 800 }
+        }
+    });
+}
+
+// ── ELO Rating History ────────────────────────────────────────
+function renderEloComparison(d) {
+    const f1hist = d.fighter1.elo_history || [];
+    const f2hist = d.fighter2.elo_history || [];
+
+    const toPoints = arr => arr.map(r => ({ x: r.fight_id, y: r.elo_after, season: r.season, month: r.month }));
+    const f1pts = toPoints(f1hist);
+    const f2pts = toPoints(f2hist);
+
+    const allFightIds = [...f1pts.map(p => p.x), ...f2pts.map(p => p.x)];
+    if (!allFightIds.length) return;
+
+    const minX = Math.min(...allFightIds);
+    const maxX = Math.max(...allFightIds);
+    const w    = Math.max(900, (maxX - minX) * 0.4);
+
+    const canvas = document.getElementById('compareElo');
+    canvas.width = w; canvas.height = 280;
+
+    if (charts.elo) charts.elo.destroy();
+    charts.elo = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: { datasets: [
+            {
+                label: d.fighter1.name,
+                data: f1pts,
+                borderColor: F1_COLOR,
+                backgroundColor: 'rgba(96,124,255,0.08)',
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 6,
+                pointBackgroundColor: F1_COLOR,
+                tension: 0.25,
+                fill: false,
+            },
+            {
+                label: d.fighter2.name,
+                data: f2pts,
+                borderColor: F2_COLOR,
+                backgroundColor: 'rgba(251,146,60,0.08)',
+                borderWidth: 2,
+                pointRadius: 2,
+                pointHoverRadius: 6,
+                pointBackgroundColor: F2_COLOR,
+                tension: 0.25,
+                fill: false,
+            },
+            {
+                label: 'Baseline (1500)',
+                data: [{ x: minX, y: 1500 }, { x: maxX, y: 1500 }],
+                borderColor: 'rgba(176,184,209,0.25)',
+                borderWidth: 1,
+                borderDash: [6, 4],
+                pointRadius: 0,
+                fill: false,
+            },
+        ]},
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            parsing: false,
+            scales: {
+                x: {
+                    type: 'linear',
+                    min: minX,
+                    grid: { color: 'rgba(96,124,255,0.05)' },
+                    ticks: { display: false },
+                    title: { display: true, text: 'Fight (chronological)', color: '#a8aab8', font: { size: 11 } },
+                },
+                y: {
+                    grid: { color: 'rgba(96,124,255,0.08)' },
+                    ticks: { color: '#b0b8d1', callback: v => v.toFixed(0) },
+                    title: { display: true, text: 'ELO', color: '#a8aab8', font: { size: 11 } },
+                },
+            },
+            plugins: {
+                legend: { position: 'top', labels: { padding: 14, font: { size: 12, family: 'Inter' }, color: '#b0b8d1' } },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(18,18,42,0.95)',
+                    titleFont: { family: 'Inter' },
+                    bodyFont: { family: 'Inter' },
+                    borderColor: '#607cff',
+                    borderWidth: 1,
+                    callbacks: {
+                        title: items => {
+                            const p = items[0]?.raw;
+                            return p ? `S${p.season} M${p.month} · Fight #${p.x}` : '';
+                        },
+                        label: it => it.dataset.label === 'Baseline (1500)' ? null
+                            : `  ${it.dataset.label}: ${it.parsed.y.toFixed(1)}`,
+                    }
+                },
+            },
+            animation: { duration: 800 },
         }
     });
 }
