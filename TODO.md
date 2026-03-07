@@ -55,3 +55,6 @@
   - make them easy to see and hover over to see by season stats as an example, lolcaion one may be tricky to get them all on a page though
   - others should be super simple to change
 - [ ] **20. Strength of Schedule woudl be cool**
+- [ ] **21. Season Page should have brand filter too and sort**
+  - additonally would be nice to be able to sort championships in descending importance or brand sections
+  - MIB winners should show Brand they won
