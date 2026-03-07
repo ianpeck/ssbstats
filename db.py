@@ -616,6 +616,67 @@ def get_comparison_data(f1, f2):
     return result
 
 
+# ---------- ELO ----------
+
+def get_elo_leaderboard():
+    """Current ELO ranking — each fighter's rating after their most recent Elo fight."""
+    return select_view_dicts("""
+        SELECT
+            e.fighter_name,
+            e.elo_after                                              AS current_elo,
+            ROUND(e.elo_after - 1500, 1)                            AS elo_vs_start,
+            COUNT(*)                                                 AS fights_counted,
+            SUM(e.elo_after > e.elo_before)                         AS elo_wins,
+            SUM(e.elo_after < e.elo_before)                         AS elo_losses,
+            RANK() OVER (ORDER BY e.elo_after DESC)                  AS elo_rank
+        FROM Elo e
+        INNER JOIN (
+            SELECT fighter_name, MAX(fight_id) AS last_fight_id
+            FROM Elo
+            GROUP BY fighter_name
+        ) latest ON e.fighter_name = latest.fighter_name
+               AND e.fight_id     = latest.last_fight_id
+        GROUP BY e.fighter_name, e.elo_after
+        ORDER BY e.elo_after DESC
+    """)
+
+
+def get_elo_alltime_ranking(min_fights=50):
+    """All-time ELO ranking by average ELO across all fights (rewards sustained dominance)."""
+    return select_view_dicts("""
+        SELECT
+            fighter_name,
+            ROUND(AVG(elo_after), 1)                            AS avg_elo,
+            ROUND(MAX(elo_after), 1)                            AS peak_elo,
+            ROUND(MIN(elo_after), 1)                            AS floor_elo,
+            COUNT(*)                                            AS fights_counted,
+            RANK() OVER (ORDER BY AVG(elo_after) DESC)          AS alltime_rank
+        FROM Elo
+        GROUP BY fighter_name
+        HAVING fights_counted >= %s
+        ORDER BY avg_elo DESC
+    """, (min_fights,))
+
+
+def get_fighter_elo_history(name):
+    """Fight-by-fight ELO timeline for a single fighter, ordered chronologically."""
+    return select_view_dicts("""
+        SELECT
+            e.result_id,
+            e.fight_id,
+            f.Season_ID                              AS season,
+            f.Month                                  AS month,
+            f.Week                                   AS week,
+            ROUND(e.elo_before, 2)                   AS elo_before,
+            ROUND(e.elo_after,  2)                   AS elo_after,
+            ROUND(e.elo_after - e.elo_before, 2)     AS elo_change
+        FROM Elo e
+        JOIN Fight f ON e.fight_id = f.Fight_ID
+        WHERE e.fighter_name = %s
+        ORDER BY f.Season_ID, f.Month, f.Week, f.Fight_ID
+    """, (name,))
+
+
 def get_championship_history_alltime():
     """Full championship history across all seasons, ordered chronologically."""
     return select_view_dicts(
