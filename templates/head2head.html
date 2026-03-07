@@ -114,6 +114,13 @@
             </div>
         </div>
 
+        <!-- Season Power Score Comparison -->
+        <div id="powerScoreSection" class="glass-card compare-card">
+            <h3 class="analytics-chart-title">Season Power Score</h3>
+            <p class="analytics-chart-subtitle">End-of-season composite score and rank by season</p>
+            <div id="powerScoreCompareWrap"></div>
+        </div>
+
         <!-- Season by Season -->
         <div id="seasonsSection" class="glass-card compare-card">
             <h3 class="analytics-chart-title">Season by Season</h3>
@@ -278,11 +285,13 @@ function renderAll(d, mode) {
     renderStatsGrid({ fighter1: d1, fighter2: d2, h2h: d }, isSeason);
     renderRadar({ fighter1: d1, fighter2: d2, roster_maxes: maxes });
     renderMomentum({ fighter1: d1, fighter2: d2 }, isSeason);
-    document.getElementById('eloSection').style.display     = isSeason ? 'none' : '';
-    document.getElementById('seasonsSection').style.display = isSeason ? 'none' : '';
-    document.getElementById('fightsSection').style.display  = isSeason ? 'none' : '';
+    document.getElementById('eloSection').style.display        = isSeason ? 'none' : '';
+    document.getElementById('powerScoreSection').style.display = isSeason ? 'none' : '';
+    document.getElementById('seasonsSection').style.display    = isSeason ? 'none' : '';
+    document.getElementById('fightsSection').style.display     = isSeason ? 'none' : '';
     if (!isSeason) {
         renderEloComparison(d);
+        renderPowerScoreCompare(d);
         renderSeasons(d);
         renderFights(d);
     }
@@ -624,6 +633,42 @@ function renderEloComparison(d) {
             animation: { duration: 800 },
         }
     });
+}
+
+// ── Season Power Score Comparison ─────────────────────────────
+function renderPowerScoreCompare(d) {
+    const wrap = document.getElementById('powerScoreCompareWrap');
+    const ps1  = d.fighter1.power_scores_by_season || {};
+    const ps2  = d.fighter2.power_scores_by_season || {};
+    const seasons = [...new Set([...Object.keys(ps1), ...Object.keys(ps2)])].map(Number).sort((a,b) => a - b);
+    if (!seasons.length) { wrap.innerHTML = ''; return; }
+
+    const f1Name = d.fighter1.name, f2Name = d.fighter2.name;
+    const tierCls = s => s == null ? '' : s >= 75 ? 'ps-tier-high' : s >= 50 ? 'ps-tier-mid' : 'ps-tier-low';
+
+    const rows = seasons.map(s => {
+        const v1 = ps1[s], v2 = ps2[s];
+        const s1 = v1 ? v1.power_score : null, s2 = v2 ? v2.power_score : null;
+        const r1 = v1 ? `#${v1.power_rank}` : '--', r2 = v2 ? `#${v2.power_rank}` : '--';
+        const win1 = s1 != null && s2 != null && s1 > s2;
+        const win2 = s1 != null && s2 != null && s2 > s1;
+        return `<tr>
+            <td class="${tierCls(s1)} ps-score-cell ${win1 ? 'ps-winner' : ''}">${s1 != null ? s1.toFixed(1) : '--'}</td>
+            <td class="ps-rank-cell">${r1}</td>
+            <td class="ps-season-label">S${s}</td>
+            <td class="ps-rank-cell" style="text-align:right">${r2}</td>
+            <td class="${tierCls(s2)} ps-score-cell ps-right ${win2 ? 'ps-winner' : ''}">${s2 != null ? s2.toFixed(1) : '--'}</td>
+        </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `<table class="ps-compare-table">
+        <thead><tr>
+            <th colspan="2" style="text-align:left">${f1Name}</th>
+            <th style="text-align:center">Season</th>
+            <th colspan="2" style="text-align:right">${f2Name}</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+    </table>`;
 }
 
 // ── Season by Season ──────────────────────────────────────────

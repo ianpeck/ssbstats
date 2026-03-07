@@ -231,12 +231,16 @@ def _serialize(val):
 @app.route('/api/fighter/<name>')
 def api_fighter(name):
     try:
-        # Run career stats and accolades queries in parallel
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            career_future = pool.submit(db.get_fighter_career_stats, name)
+        # Run career stats, accolades, and power scores in parallel
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            career_future   = pool.submit(db.get_fighter_career_stats, name)
             accolades_future = pool.submit(db.get_fighter_accolades, name)
-            stats = career_future.result()
+            ps_season_future = pool.submit(db.get_all_season_power_scores)
+            ps_career_future = pool.submit(db.get_career_power_scores)
+            stats        = career_future.result()
             accolades_raw = accolades_future.result()
+            ps_all        = ps_season_future.result()
+            ps_career     = ps_career_future.result()
 
         # Format for JSON
         result = {'name': name, 'image': fighter_to_filename(name) + '.png'}
@@ -325,6 +329,14 @@ def api_fighter(name):
         for row in result['accolades'].get('holistic', []):
             if row.get('Titles_Held'):
                 row['Titles_Held'] = normalize_champ_name(row['Titles_Held'])
+
+        # Power scores
+        result['career_power_score'] = ps_career.get(name, {})
+        result['power_scores_by_season'] = {
+            str(s): ps_all[s][name]
+            for s in sorted(ps_all.keys())
+            if name in ps_all[s]
+        }
 
         return jsonify(result)
     except Exception as e:
@@ -464,7 +476,11 @@ def api_compare():
     if not f1 or not f2:
         return jsonify({'error': 'Both fighters required'}), 400
     try:
-        raw = db.get_comparison_data(f1, f2)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            raw_future = pool.submit(db.get_comparison_data, f1, f2)
+            ps_future  = pool.submit(db.get_all_season_power_scores)
+            raw    = raw_future.result()
+            ps_all = ps_future.result()
 
         def career(rows):
             if not rows:
@@ -521,6 +537,11 @@ def api_compare():
                 'elo_history': elo_history(raw.get(f'{prefix}_elo_history', [])),
                 'h2h_wins': int(h2h[0 if prefix == 'f1' else 1].get('Wins', 0)) if len(h2h) > 1 else 0,
                 'h2h_losses': int(h2h[0 if prefix == 'f1' else 1].get('Losses', 0)) if len(h2h) > 1 else 0,
+                'power_scores_by_season': {
+                    str(s): ps_all[s][name]
+                    for s in sorted(ps_all.keys())
+                    if name in ps_all[s]
+                },
             }
 
         def roster_maxes():

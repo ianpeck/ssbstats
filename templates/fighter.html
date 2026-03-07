@@ -40,6 +40,11 @@
                     <div class="stat-card-value" id="winPct">--</div>
                     <div class="stat-card-label">Win Rate</div>
                 </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-card-value" id="careerPowerScore">--</div>
+                    <div class="stat-card-label">Power Score</div>
+                    <div class="stat-card-sub" id="careerPowerRank"></div>
+                </div>
                 <div class="stat-card-subtle streak-win-card">
                     <div class="subtle-value" id="winStreakVal">--</div>
                     <div class="subtle-label">Longest Win Streak</div>
@@ -178,6 +183,13 @@
 <section class="fighter-stats-section" id="section-stats">
     <div class="fighter-stats-grid" id="statsGrid" style="display:none;">
 
+        <!-- Power Score by Season -->
+        <div class="stats-table-wrapper glass-card">
+            <h3 class="analytics-chart-title">Season Power Rankings</h3>
+            <p class="analytics-chart-subtitle">End-of-season composite score vs. rest of roster</p>
+            <div id="powerScoreTableWrap"></div>
+        </div>
+
         <!-- By Season -->
         <div class="stats-table-wrapper glass-card">
             <h3 class="analytics-chart-title">Season Stats</h3>
@@ -301,6 +313,15 @@ document.addEventListener('DOMContentLoaded', function() {
             animateCounter('totalLosses', 0, parseInt(data.career.losses) || 0, 800);
             document.getElementById('winPct').textContent = data.career.win_pct;
 
+            // Career power score badge
+            const cps = data.career_power_score || {};
+            if (cps.power_score != null) {
+                document.getElementById('careerPowerScore').textContent = cps.power_score.toFixed(1);
+                document.getElementById('careerPowerRank').textContent =
+                    `#${cps.power_rank} of ${cps.total_fighters}`;
+            }
+
+            renderPowerScoreTable(data.power_scores_by_season || {});
             renderSeasonChart(data.by_season || []);
             renderFightTypeChart(data.by_fight_type || []);
             renderBrandChart(data.by_brand || []);
@@ -873,6 +894,29 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
         });
     });
 })();
+
+// ── Power Score Table ──────────────────────────────────────────
+function renderPowerScoreTable(bySeasonMap) {
+    const wrap = document.getElementById('powerScoreTableWrap');
+    const entries = Object.entries(bySeasonMap)
+        .map(([s, v]) => ({ season: parseInt(s), score: v.power_score, rank: v.power_rank }))
+        .sort((a, b) => a.season - b.season);
+    if (!entries.length) { wrap.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">No data</p>'; return; }
+
+    const rows = entries.map(e => {
+        const cls = e.score >= 75 ? 'ps-tier-high' : e.score >= 50 ? 'ps-tier-mid' : 'ps-tier-low';
+        return `<tr>
+            <td>S${e.season}</td>
+            <td class="${cls} ps-score-cell">${e.score.toFixed(1)}</td>
+            <td class="ps-rank-cell">#${e.rank}</td>
+        </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `<table class="ps-season-table">
+        <thead><tr><th>Season</th><th>Score</th><th>Rank</th></tr></thead>
+        <tbody>${rows}</tbody>
+    </table>`;
+}
 
 // ── Stats Charts ──────────────────────────────────────────────
 function renderSeasonChart(data) {

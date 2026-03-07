@@ -10,7 +10,7 @@
   - ssbstats.app most likely
 - [X] **4. Possibly a better theme everywhere**
   - current is fine just could look even sleeker with more black and less dark blue
-- [ ] **5. HOF stats tab with holistic view feeding it**
+- [X] **5. HOF stats tab with holistic view feeding it**
   - holistic view could def be used somewhere maybe here
 - [X] **6. YAML file with blurb about each fighter**
   - include video game ther are from too which would be cool
@@ -58,3 +58,8 @@
 - [ ] **21. Season Page should have brand filter too and sort**
   - additonally would be nice to be able to sort championships in descending importance or brand sections
   - MIB winners should show Brand they won
+- [ ] **22. Fix Power Score Comparison on H2h (ugly)**
+  - add just the power score numbers side by side between 2 seasons if season mode chosen
+- [ ] **23. Seasons tab should hav badge for awards that season**
+- [ ] **24. Add Power Score to Seasons tab**
+  - also update groq chat with power score and elo info
