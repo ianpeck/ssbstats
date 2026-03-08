@@ -36,6 +36,7 @@
                 <tr>
                     <th class="rank-col">#</th>
                     <th class="fighter-col">Fighter</th>
+                    <th class="sortable active power-col" data-sort="power_score">Power Score</th>
                     <th class="sortable" data-sort="wins">Wins</th>
                     <th class="sortable" data-sort="losses">Losses</th>
                     <th class="sortable" data-sort="win_pct">Win %</th>
@@ -47,7 +48,6 @@
                     <th class="sortable elo-col" data-sort="current_elo" id="eloCol1Th">Current ELO</th>
                     <th class="sortable elo-col" data-sort="avg_elo" id="eloCol2Th">Career ELO</th>
                     <th class="sortable elo-col" data-sort="peak_elo" id="eloCol3Th">Peak ELO</th>
-                    <th class="sortable active power-col" data-sort="power_score">Power Score</th>
                 </tr>
             </thead>
             <tbody id="leaderboardTbody"></tbody>
@@ -195,6 +195,9 @@ function renderLeaderboard(data) {
         const filename = fighterToFilename(fighter.name);
         const titleBadges = (fighter.titles || [])
             .map(t => `<span class="lb-champ-tag">👑 ${t}</span>`).join('');
+        const awardBadges = isSeason
+            ? (fighter.season_awards || []).map(a => `<span class="lb-award-tag">🏅 ${a}</span>`).join('')
+            : '';
         const fmtElo = v => v != null ? v.toFixed(1) : '--';
         const eloClass = v => v == null ? '' : v >= 1600 ? 'pct-high' : v < 1400 ? 'pct-low' : '';
         const ps = fighter.power_score;
@@ -207,8 +210,7 @@ function renderLeaderboard(data) {
             <td class="stat-cell">${fighter.unique_titles ?? 0}</td>
             <td class="stat-cell elo-col ${eloClass(fighter[eloKey1])}">${fmtElo(fighter[eloKey1])}</td>
             <td class="stat-cell elo-col ${eloClass(fighter.avg_elo)}">${fmtElo(fighter.avg_elo)}</td>
-            <td class="stat-cell elo-col ${eloClass(fighter[eloKey3])}">${fmtElo(fighter[eloKey3])}</td>
-            <td class="stat-cell power-col ${psClass}">${ps != null ? ps.toFixed(1) : '--'}</td>`;
+            <td class="stat-cell elo-col ${eloClass(fighter[eloKey3])}">${fmtElo(fighter[eloKey3])}</td>`;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -218,9 +220,10 @@ function renderLeaderboard(data) {
                      class="leaderboard-portrait" onerror="this.style.display='none'">
                 <div class="fighter-cell-inner">
                     <a href="/fighter/${encodeURIComponent(fighter.name)}" class="fighter-link">${fighter.name}</a>
-                    ${titleBadges}
+                    ${titleBadges}${awardBadges}
                 </div>
             </td>
+            <td class="stat-cell power-col ${psClass}">${ps != null ? `<span class="ps-dot"></span>${ps.toFixed(1)}` : '--'}</td>
             <td class="stat-cell">${fighter.wins}</td>
             <td class="stat-cell">${fighter.losses}</td>
             <td class="stat-cell ${pctClass}">${fighter.win_pct}</td>

@@ -286,7 +286,6 @@ function renderAll(d, mode) {
     renderRadar({ fighter1: d1, fighter2: d2, roster_maxes: maxes });
     renderMomentum({ fighter1: d1, fighter2: d2 }, isSeason);
     document.getElementById('eloSection').style.display        = isSeason ? 'none' : '';
-    document.getElementById('powerScoreSection').style.display = isSeason ? 'none' : '';
     document.getElementById('seasonsSection').style.display    = isSeason ? 'none' : '';
     document.getElementById('fightsSection').style.display     = isSeason ? 'none' : '';
     if (!isSeason) {
@@ -294,6 +293,8 @@ function renderAll(d, mode) {
         renderPowerScoreCompare(d);
         renderSeasons(d);
         renderFights(d);
+    } else {
+        renderPowerScoreSeasonMode(d, f1Season, f2Season);
     }
 }
 
@@ -662,13 +663,62 @@ function renderPowerScoreCompare(d) {
     }).join('');
 
     wrap.innerHTML = `<table class="ps-compare-table">
-        <thead><tr>
-            <th colspan="2" style="text-align:left">${f1Name}</th>
-            <th style="text-align:center">Season</th>
-            <th colspan="2" style="text-align:right">${f2Name}</th>
-        </tr></thead>
+        <thead>
+            <tr class="ps-name-row">
+                <th colspan="2" class="ps-fighter-name ps-fighter-left">${f1Name}</th>
+                <th></th>
+                <th colspan="2" class="ps-fighter-name ps-fighter-right">${f2Name}</th>
+            </tr>
+            <tr class="ps-subheader-row">
+                <th class="ps-col-label">Power Score</th>
+                <th class="ps-col-label">Season Rank</th>
+                <th class="ps-season-label-th">Season</th>
+                <th class="ps-col-label">Season Rank</th>
+                <th class="ps-col-label">Power Score</th>
+            </tr>
+        </thead>
         <tbody>${rows}</tbody>
     </table>`;
+}
+
+// ── Season Mode Power Score (simple side-by-side) ─────────────
+function renderPowerScoreSeasonMode(d, s1, s2) {
+    const wrap = document.getElementById('powerScoreCompareWrap');
+    const section = document.getElementById('powerScoreSection');
+    const ps1map = d.fighter1.power_scores_by_season || {};
+    const ps2map = d.fighter2.power_scores_by_season || {};
+    const v1 = ps1map[s1], v2 = ps2map[s2];
+    if (!v1 && !v2) { section.style.display = 'none'; return; }
+    section.style.display = '';
+
+    const f1Name = d.fighter1.name, f2Name = d.fighter2.name;
+    const tierCls = s => s == null ? '' : s >= 75 ? 'ps-tier-high' : s >= 50 ? 'ps-tier-mid' : 'ps-tier-low';
+
+    const sc1 = v1 ? v1.power_score : null, sc2 = v2 ? v2.power_score : null;
+    const r1  = v1 ? `#${v1.power_rank}` : '--', r2 = v2 ? `#${v2.power_rank}` : '--';
+    const win1 = sc1 != null && sc2 != null && sc1 > sc2;
+    const win2 = sc1 != null && sc2 != null && sc2 > sc1;
+    const sameSeason = String(s1) === String(s2);
+
+    wrap.innerHTML = `<div class="ps-season-sidebyside">
+        <div class="ps-sb-card ${win1 ? 'ps-winner' : ''}">
+            <div class="ps-sb-fighter">${f1Name}</div>
+            <div class="ps-sb-season">Season ${s1}</div>
+            <div class="ps-sb-label">Power Score</div>
+            <div class="ps-sb-score ${tierCls(sc1)}">${sc1 != null ? sc1.toFixed(1) : '--'}</div>
+            <div class="ps-sb-label">Season Ranking</div>
+            <div class="ps-sb-rank">${r1}</div>
+        </div>
+        ${sameSeason ? '' : '<div class="ps-sb-vs">vs</div>'}
+        <div class="ps-sb-card ${win2 ? 'ps-winner' : ''}">
+            <div class="ps-sb-fighter">${f2Name}</div>
+            <div class="ps-sb-season">Season ${s2}</div>
+            <div class="ps-sb-label">Power Score</div>
+            <div class="ps-sb-score ${tierCls(sc2)}">${sc2 != null ? sc2.toFixed(1) : '--'}</div>
+            <div class="ps-sb-label">Season Ranking</div>
+            <div class="ps-sb-rank">${r2}</div>
+        </div>
+    </div>`;
 }
 
 // ── Season by Season ──────────────────────────────────────────

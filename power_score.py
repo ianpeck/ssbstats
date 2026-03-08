@@ -23,12 +23,27 @@ EVENT_COLS = [
     'Won_Smash_Series', 'Won_Money_In_The_Bank', 'Won_Smash_Bros',
 ]
 
-WEIGHTS = {
+# Season: ELO carries historical baggage so win% matters more within a season
+SEASON_WEIGHTS = {
+    'avg_elo':       0.15,
+    'wtitle_months': 0.45,
+    'event_wins':    0.10,
+    'win_pct':       0.30,
+}
+
+# Career: ELO is a reliable long-term skill indicator; win% can be inflated
+CAREER_WEIGHTS = {
     'avg_elo':       0.35,
     'wtitle_months': 0.40,
-    'event_wins':    0.15,
-    'win_pct':       0.10,
+    'event_wins':    0.10,
+    'win_pct':       0.15,
 }
+
+assert abs(sum(SEASON_WEIGHTS.values()) - 1.0) < 1e-9, f"Season weights must sum to 1.0"
+assert abs(sum(CAREER_WEIGHTS.values()) - 1.0) < 1e-9, f"Career weights must sum to 1.0"
+
+# Set which weights to use for this run
+WEIGHTS = SEASON_WEIGHTS
 
 
 def get_connection():
@@ -142,6 +157,77 @@ def main():
               f"{'WTitle':>6}  {'EvW':>3}  {'Win%':>6}")
         print(f"  {'-'*66}")
         for i, f in enumerate(top5, 1):
+            print(
+                f"  {i:<3} {f['name']:<22} {f['power_score']:>5.1f}   "
+                f"{f['avg_elo']:>7.1f}  "
+                f"{f['wtitle_months']:>6}  "
+                f"{f['event_wins']:>3}  "
+                f"{f['win_pct']:>5.1f}%"
+            )
+
+    # --- career aggregate ---
+    career_rows = q(conn, "SELECT Fighter_Name, `Win Percentage` AS win_pct FROM careerstats")
+
+    ev_expr = ' + '.join(
+        f"SUM(CASE WHEN `{c}` IS NOT NULL AND `{c}` != '' THEN 1 ELSE 0 END)"
+        for c in EVENT_COLS
+    )
+    hol_career = q(conn,
+        "SELECT Fighter_Name, "
+        "SUM(COALESCE(Months_With_Major, 0)) AS major_months, "
+        "SUM(COALESCE(Months_With_Title, 0)) AS champ_months, "
+        f"({ev_expr}) AS event_wins "
+        "FROM holistic_view GROUP BY Fighter_Name")
+    hol_c = {r['Fighter_Name'].lower().strip(): r for r in hol_career}
+
+    elo_career = q(conn,
+        "SELECT fighter_name, ROUND(AVG(elo_after), 1) AS avg_elo FROM Elo GROUP BY fighter_name")
+    elo_c = {r['fighter_name'].lower().strip(): float(r['avg_elo']) for r in elo_career}
+
+    career_fighters = []
+    for row in career_rows:
+        name = row.get('Fighter_Name', '')
+        if not name:
+            continue
+        nk = name.lower().strip()
+        h = hol_c.get(nk, {})
+        major_m = int(h.get('major_months') or 0)
+        total_m = int(h.get('champ_months') or 0)
+        minor_m = total_m - major_m
+        wtitle  = (major_m * 2) + minor_m
+        ev_wins = int(h.get('event_wins') or 0)
+        try:
+            win_pct = float(str(row.get('win_pct') or '0').replace('%', ''))
+        except (ValueError, TypeError):
+            win_pct = 0.0
+        career_fighters.append({
+            'name':          name,
+            'avg_elo':       elo_c.get(nk, 1500.0),
+            'wtitle_months': wtitle,
+            'event_wins':    ev_wins,
+            'win_pct':       win_pct,
+            '_major_m':      major_m,
+            '_total_m':      total_m,
+        })
+
+    if career_fighters:
+        for metric in CAREER_WEIGHTS:
+            vals = [f[metric] for f in career_fighters]
+            for f in career_fighters:
+                f[f'{metric}_pct'] = percentile_rank(vals, f[metric])
+        for f in career_fighters:
+            f['power_score'] = sum(
+                CAREER_WEIGHTS[m] * f[f'{m}_pct'] for m in CAREER_WEIGHTS
+            )
+        career_fighters.sort(key=lambda x: x['power_score'], reverse=True)
+
+        print(f"\n{'='*72}")
+        print(f"  CAREER POWER SCORE  —  ALL TIME")
+        print(f"{'='*72}")
+        print(f"  {'#':<3} {'Fighter':<22} {'Score':>6}  {'Avg ELO':>7}  "
+              f"{'WTitle':>6}  {'EvW':>3}  {'Win%':>6}")
+        print(f"  {'-'*66}")
+        for i, f in enumerate(career_fighters, 1):
             print(
                 f"  {i:<3} {f['name']:<22} {f['power_score']:>5.1f}   "
                 f"{f['avg_elo']:>7.1f}  "

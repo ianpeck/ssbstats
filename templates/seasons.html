@@ -49,14 +49,15 @@
                     <tr>
                         <th class="rank-col">#</th>
                         <th class="fighter-col">Fighter</th>
-                        <th>Wins</th>
-                        <th>Losses</th>
-                        <th>Win %</th>
-                        <th>Fights</th>
-                        <th>Major Mo.</th>
-                        <th>Champ Mo.</th>
-                        <th>Event Wins</th>
-                        <th>Titles</th>
+                        <th class="sr-sortable" data-sr-sort="wins">Wins</th>
+                        <th class="sr-sortable" data-sr-sort="losses">Losses</th>
+                        <th class="sr-sortable sr-active" data-sr-sort="win_pct">Win %</th>
+                        <th class="sr-sortable" data-sr-sort="fights">Fights</th>
+                        <th class="sr-sortable" data-sr-sort="major_months">Major Mo.</th>
+                        <th class="sr-sortable" data-sr-sort="champ_months">Champ Mo.</th>
+                        <th class="sr-sortable" data-sr-sort="event_wins">Event Wins</th>
+                        <th class="sr-sortable" data-sr-sort="titles">Titles</th>
+                        <th class="sr-sortable power-col" data-sr-sort="power_score">Power Score</th>
                     </tr>
                 </thead>
                 <tbody id="seasonRankingsTbody"></tbody>
@@ -81,6 +82,8 @@ const eventMap = [
 ];
 
 let currentSeason = null;
+let _srData       = [];   // cached enriched rows for sort
+let _srSort       = { key: 'win_pct', dir: 'desc' };
 
 document.addEventListener('DOMContentLoaded', function() {
     const pills = document.querySelectorAll('.season-pill');
@@ -95,11 +98,27 @@ document.addEventListener('DOMContentLoaded', function() {
     if (pills.length) {
         loadSeason(parseInt(pills[0].dataset.season));
     }
+
+    document.querySelectorAll('.sr-sortable').forEach(th => {
+        th.addEventListener('click', function() {
+            const key = this.dataset.srSort;
+            _srSort.dir = (_srSort.key === key && _srSort.dir === 'desc') ? 'asc' : 'desc';
+            _srSort.key = key;
+            document.querySelectorAll('.sr-sortable').forEach(h => h.classList.remove('sr-active', 'sr-asc'));
+            this.classList.add('sr-active');
+            if (_srSort.dir === 'asc') this.classList.add('sr-asc');
+            _renderSortedRankings();
+        });
+    });
 });
 
 function loadSeason(season) {
     if (currentSeason === season) return;
     currentSeason = season;
+    _srSort = { key: 'win_pct', dir: 'desc' };
+    document.querySelectorAll('.sr-sortable').forEach(h => h.classList.remove('sr-active', 'sr-asc'));
+    const defTh = document.querySelector('.sr-sortable[data-sr-sort="win_pct"]');
+    if (defTh) defTh.classList.add('sr-active');
     document.getElementById('loadingOverlay').style.display = 'flex';
     document.getElementById('seasonContent').style.display = 'none';
 
@@ -112,7 +131,7 @@ function loadSeason(season) {
             renderEvents(data.holistic || []);
             renderAwards(data.awards || []);
             renderChampTimeline(data.champ_history || []);
-            renderRankings(data.rankings || [], data.holistic || [], data.champ_history || []);
+            renderRankings(data.rankings || [], data.holistic || [], data.champ_history || [], data.awards || []);
         })
         .catch(() => {
             document.getElementById('loadingOverlay').innerHTML = '<p>Error loading season data.</p>';
@@ -123,7 +142,7 @@ function renderEvents(rows) {
     const container = document.getElementById('eventsList');
     container.innerHTML = '';
 
-    // Collect winners per event type
+    // Collect winners per event type — store {name, extra} objects for dedup
     const events = {};
     rows.forEach(row => {
         eventMap.forEach(({ col, label, icon }) => {
@@ -131,9 +150,10 @@ function renderEvents(rows) {
             if (val == null) return;
             if (!events[col]) events[col] = { label, icon, entries: [] };
             const isFlag = (String(val).toUpperCase() === 'Y');
-            const entry = isFlag ? row.Fighter_Name : `${row.Fighter_Name} (${val})`;
-            if (!events[col].entries.includes(entry)) {
-                events[col].entries.push(entry);
+            const name = row.Fighter_Name;
+            const extra = isFlag ? '' : ` (${val})`;
+            if (!events[col].entries.some(e => e.name === name && e.extra === extra)) {
+                events[col].entries.push({ name, extra });
             }
         });
     });
@@ -146,12 +166,15 @@ function renderEvents(rows) {
     eventMap.forEach(({ col, label, icon }) => {
         if (!events[col]) return;
         const { entries } = events[col];
+        const html = entries.map(e =>
+            `<a href="/fighter/${encodeURIComponent(e.name)}" class="fighter-link">${e.name}</a>${e.extra}`
+        ).join(', ');
         const div = document.createElement('div');
         div.className = 'season-highlight-row';
         div.innerHTML = `
             <span class="highlight-icon">${icon}</span>
             <span class="highlight-label">${label}</span>
-            <span class="highlight-value">${entries.join(', ')}</span>
+            <span class="highlight-value">${html}</span>
         `;
         container.appendChild(div);
     });
@@ -308,11 +331,8 @@ function renderChampTimeline(rows) {
 
 const _SR_EVENT_COLS = ['Won_Tournament','Won_Royal_Rumble','Won_Scramble','Won_Smash_Series','Won_Money_In_The_Bank','Won_Smash_Bros'];
 
-function renderRankings(rows, holistic, champHistory) {
-    const tbody = document.getElementById('seasonRankingsTbody');
-    tbody.innerHTML = '';
-
-    // Build holistic stats map: fighter → {champ_months, major_months, event_wins}
+function renderRankings(rows, holistic, champHistory, awards) {
+    // Build holistic stats map
     const holisticMap = {};
     (holistic || []).forEach(row => {
         const name = row.Fighter_Name || row.fighter_name || '';
@@ -326,7 +346,7 @@ function renderRankings(rows, holistic, champHistory) {
         });
     });
 
-    // Build titles held map: fighter → count of distinct titles
+    // Build titles held map
     const titlesMap = {};
     (champHistory || []).forEach(row => {
         const name = row.Fighter_Name || row.fighter_name || '';
@@ -334,38 +354,81 @@ function renderRankings(rows, holistic, champHistory) {
         if (row.Championship_Name) titlesMap[name].add(row.Championship_Name);
     });
 
-    rows.forEach((row, i) => {
+    // Build awards map: fighter → [award_name, ...] (lowercase keys for case-insensitive lookup)
+    const awardsMap = {};
+    (awards || []).forEach(row => {
+        const name = (row.Fighter_Name || '').toLowerCase();
+        if (!awardsMap[name]) awardsMap[name] = [];
+        if (row.Award_Name && !awardsMap[name].includes(row.Award_Name))
+            awardsMap[name].push(row.Award_Name);
+    });
+
+    // Build enriched data rows for sorting
+    _srData = rows.map(row => {
         const name = row.Fighter_Name || row.fighter_name || '';
-        const wins = row.Wins || row.wins || 0;
-        const losses = row.Losses || row.losses || 0;
+        const wins = parseInt(row.Wins || row.wins || 0);
+        const losses = parseInt(row.Losses || row.losses || 0);
         const pct = row['Win Percentage'] || row.Win_Pct || row.win_pct || row['W/L %'] || '0.00%';
         const pctVal = parseFloat(String(pct).replace('%', '')) || 0;
-        const pctClass = pctVal >= 60 ? 'pct-high' : pctVal < 40 ? 'pct-low' : 'pct-mid';
-        const rankClass = i < 3 ? `rank-${i + 1}` : '';
-        const filename = fighterToFilename(name);
-
         const hol = holisticMap[name] || { champ_months: 0, major_months: 0, event_wins: new Set() };
-        const eventWins = hol.event_wins.size;
-        const uniqueTitles = titlesMap[name] ? titlesMap[name].size : 0;
+        const ps = row.power_score != null ? parseFloat(row.power_score) : null;
+        return {
+            name, wins, losses, pct, pctVal,
+            fights: wins + losses,
+            major_months: hol.major_months,
+            champ_months: hol.champ_months,
+            event_wins: hol.event_wins.size,
+            titles: titlesMap[name] ? titlesMap[name].size : 0,
+            season_awards: awardsMap[name.toLowerCase()] || [],
+            power_score: ps,
+            power_rank: row.power_rank != null ? parseInt(row.power_rank) : null,
+        };
+    });
+
+    _renderSortedRankings();
+}
+
+function _renderSortedRankings() {
+    const key = _srSort.key;
+    const dir = _srSort.dir;
+    const sorted = [..._srData].sort((a, b) => {
+        let av = a[key], bv = b[key];
+        if (key === 'pct' || key === 'win_pct') { av = a.pctVal; bv = b.pctVal; }
+        av = av ?? -Infinity;
+        bv = bv ?? -Infinity;
+        return dir === 'desc' ? bv - av : av - bv;
+    });
+
+    const tbody = document.getElementById('seasonRankingsTbody');
+    tbody.innerHTML = '';
+    sorted.forEach((f, i) => {
+        const pctClass = f.pctVal >= 60 ? 'pct-high' : f.pctVal < 40 ? 'pct-low' : 'pct-mid';
+        const rankClass = i < 3 ? `rank-${i + 1}` : '';
+        const filename = fighterToFilename(f.name);
+        const ps = f.power_score;
+        const psClass = ps == null ? '' : ps >= 75 ? 'pct-high' : ps < 40 ? 'pct-low' : 'pct-mid';
+        const awardBadges = f.season_awards.map(a => `<span class="lb-award-tag">🏅 ${a}</span>`).join('');
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="rank-cell ${rankClass}">${i + 1}</td>
             <td class="fighter-cell">
-                <img src="/static/assets/fighters/${filename}.png" alt="${name}" class="leaderboard-portrait"
+                <img src="/static/assets/fighters/${filename}.png" alt="${f.name}" class="leaderboard-portrait"
                      onerror="this.style.display='none'">
                 <div class="fighter-cell-inner">
-                    <a href="/fighter/${encodeURIComponent(name)}" class="fighter-link">${name}</a>
+                    <a href="/fighter/${encodeURIComponent(f.name)}" class="fighter-link">${f.name}</a>
+                    ${awardBadges}
                 </div>
             </td>
-            <td class="stat-cell">${wins}</td>
-            <td class="stat-cell">${losses}</td>
-            <td class="stat-cell ${pctClass}">${pct}</td>
-            <td class="stat-cell">${parseInt(wins) + parseInt(losses)}</td>
-            <td class="stat-cell">${hol.major_months}</td>
-            <td class="stat-cell">${hol.champ_months}</td>
-            <td class="stat-cell">${eventWins > 0 ? eventWins + '/6' : '—'}</td>
-            <td class="stat-cell">${uniqueTitles || '—'}</td>
+            <td class="stat-cell">${f.wins}</td>
+            <td class="stat-cell">${f.losses}</td>
+            <td class="stat-cell ${pctClass}">${f.pct}</td>
+            <td class="stat-cell">${f.fights}</td>
+            <td class="stat-cell">${f.major_months}</td>
+            <td class="stat-cell">${f.champ_months}</td>
+            <td class="stat-cell">${f.event_wins > 0 ? f.event_wins + '/6' : '—'}</td>
+            <td class="stat-cell">${f.titles || '—'}</td>
+            <td class="stat-cell power-col ${psClass}">${ps != null ? ps.toFixed(1) : '--'}</td>
         `;
         tr.style.opacity = '0';
         tr.style.transform = 'translateY(8px)';

@@ -21,11 +21,6 @@
   - add streaks from longestwinstreaks view and longestlosingstreaks view into fighter page
   - Championship stats also broken down by which championship on top of all champonship matches (champfightstatsbychampionship view)
   - holisticview to show fighters accoldaes by season (have this as a separte section as well)
-- [ ] **8. Head to Head supporting more than 2 fighters, toggle to add more fighters (tag team or tripe threat)**
-  - ensure h2h stats do not count losses against each other if they are in a triple threat and they both lose to the thrid guy
-  - separate stat to show matches that are not Tag Team but also have 3 or 4 fighters and fight type is 3 stock (triple threat and fatal 4 way matches)
-- [ ] **9. Head to Head uses ML model to predictively guess who would win based on certain data points with a confidence %**
-- [ ] **10 Graphs in general needs work**
 - [X] **11. Season Tab Creation**
   - Season tab that shows each season and best fighters, fighters of the years, holisticview incorporated
 - [X] **12. Fight Log bugs**
@@ -47,23 +42,24 @@
   - would only have their matches
   - Big Green W if they won for easy viewing in Fighter PAge but red L on far left if lost or maybe something even nicer looking. That makes sense htough
 - [X] **16. About page to explain what this data is and how the actual code works at a high level with tools used**
-- [ ] **17. Gantt chart should move major title reign to bottom left**
 - [X] **18. Fighter Compare Page**
   - There are Fights even when they are on the same team here...if its a tag match and they have the same decision it should not be in here
   - If they particpate in a match like a 4 way match and neither of them win, lets just not include that (or we can put No Winner)
 - [X] **19. Fighter Page should just have graphs and nothing collapsed at all**
   - make them easy to see and hover over to see by season stats as an example, lolcaion one may be tricky to get them all on a page though
   - others should be super simple to change
-- [ ] **20. Strength of Schedule woudl be cool**
+- [ ] **20. Strength of Schedule would be cool**
 - [ ] **21. Season Page should have brand filter too and sort**
   - additonally would be nice to be able to sort championships in descending importance or brand sections
   - MIB winners should show Brand they won
-- [ ] **22. Fix Power Score Comparison on H2h (ugly)**
+- [X] **22. Fix Power Score Comparison on H2h (ugly)**
   - add just the power score numbers side by side between 2 seasons if season mode chosen
-- [ ] **23. Seasons tab should hav badge for awards that season**
-- [ ] **24. Add Power Score to Seasons tab**
+- [X] **23. Power Rankings season filter tab should have badge for awards that season**
+- [X] **24. Add Power Score to Seasons tab**
   - also update groq chat with power score and elo info
 - [ ] **25. Best weight for Power Score**
   - Season power score might need different weight. Career would not really take win pct into account at all but for a seson it should and not be as heavily ELO rated since ELO is based on past seasons. so someone bad who became good would be punished for season power score
   - weigh events differently like indivudally
   - SOS maybe needed?
+- [ ] **26. move Power score to far left next to wins**
+

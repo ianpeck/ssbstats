@@ -109,7 +109,7 @@ def index():
         {
             'name': f,
             'filename': fighter_to_filename(f),
-            'titles': [normalize_champ_name(t) for t in current_champs.get(f, [])]
+            'titles': [normalize_champ_name(t) for t in current_champs.get(f.lower(), [])]
         }
         for f in fighters
     ]
@@ -330,12 +330,13 @@ def api_fighter(name):
             if row.get('Titles_Held'):
                 row['Titles_Held'] = normalize_champ_name(row['Titles_Held'])
 
-        # Power scores
-        result['career_power_score'] = ps_career.get(name, {})
+        # Power scores (dicts are lowercase-keyed via _nk)
+        nk = name.lower()
+        result['career_power_score'] = ps_career.get(nk, {})
         result['power_scores_by_season'] = {
-            str(s): ps_all[s][name]
+            str(s): ps_all[s][nk]
             for s in sorted(ps_all.keys())
-            if name in ps_all[s]
+            if nk in ps_all[s]
         }
 
         return jsonify(result)
@@ -348,12 +349,20 @@ def api_leaderboard():
     season = request.args.get('season', '')
     try:
         if season:
-            fighters = db.get_leaderboard_by_season(int(season))
+            season_int = int(season)
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                lb_fut = pool.submit(db.get_leaderboard_by_season, season_int)
+                aw_fut = pool.submit(db.get_season_awards, season_int)
+                fighters = lb_fut.result()
+                awards   = aw_fut.result()
+            # awards dict is already lowercase-keyed from db.get_season_awards()
+            for f in fighters:
+                f['season_awards'] = awards.get((f.get('name') or '').lower(), [])
         else:
             fighters = db.get_leaderboard()
-        current_champs = db.get_current_champions()
+        current_champs = db.get_current_champions()  # already lowercase-keyed
         for f in fighters:
-            f['titles'] = [normalize_champ_name(t) for t in current_champs.get(f['name'], [])]
+            f['titles'] = [normalize_champ_name(t) for t in current_champs.get((f.get('name') or '').lower(), [])]
         return jsonify(fighters)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -370,9 +379,15 @@ def api_seasons():
 @app.route('/api/season/<int:season_id>')
 def api_season(season_id):
     try:
-        data = db.get_season_summary(season_id)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            summary_fut = pool.submit(db.get_season_summary, season_id)
+            ps_fut      = pool.submit(db.get_season_power_scores, season_id)
+            data   = summary_fut.result()
+            ps_map = ps_fut.result()
+
         # Sort rankings by win_pct descending
         rankings = data.get('rankings', [])
+        canonical_map = db.get_canonical_name_map()
         def parse_pct(row):
             val = next((row[k] for k in row if 'pct' in k.lower() or '%' in k.lower() or 'percentage' in k.lower()), 0)
             try:
@@ -380,6 +395,14 @@ def api_season(season_id):
             except (ValueError, TypeError):
                 return 0.0
         rankings.sort(key=parse_pct, reverse=True)
+        # Normalize Fighter_Name to canonical casing from Fighter table, then merge power scores
+        for row in rankings:
+            name = row.get('Fighter_Name') or row.get('fighter_name') or ''
+            row['Fighter_Name'] = canonical_map.get(name.lower(), name)
+            name = row['Fighter_Name']
+            ps = ps_map.get(name.lower(), {})
+            row['power_score'] = ps.get('power_score')
+            row['power_rank']  = ps.get('power_rank')
         data['rankings'] = rankings
         # Normalize championship names in holistic and champ_history
         for row in data.get('holistic', []):
@@ -524,6 +547,7 @@ def api_compare():
                      'elo_before': float(r.get('elo_before', 0)), 'elo_after': float(r.get('elo_after', 0))} for r in rows]
 
         def fighter_payload(name, prefix):
+            nk = name.lower()  # ps_all dicts are lowercase-keyed
             return {
                 'name': name,
                 'image': fighter_to_filename(name) + '.png',
@@ -538,9 +562,9 @@ def api_compare():
                 'h2h_wins': int(h2h[0 if prefix == 'f1' else 1].get('Wins', 0)) if len(h2h) > 1 else 0,
                 'h2h_losses': int(h2h[0 if prefix == 'f1' else 1].get('Losses', 0)) if len(h2h) > 1 else 0,
                 'power_scores_by_season': {
-                    str(s): ps_all[s][name]
+                    str(s): ps_all[s][nk]
                     for s in sorted(ps_all.keys())
-                    if name in ps_all[s]
+                    if nk in ps_all[s]
                 },
             }
 
@@ -637,6 +661,11 @@ IMPORTANT: The win percentage column is named "Win Percentage" (with a space —
 - FightLog: Fight_ID, Result_ID, Fighter_Name, Decision (W/L), Match_Result, Seed, DefendingIndicator, Location_Name, Brand_Name, PPV_Name, Championship_Name, Description (fight type), Contender_Indicator, Season, Month, Week
 - holistic_view: Fighter_Name, Season, Months_With_Title, Months_With_Major, Won_Tournament, Won_Royal_Rumble, Won_Scramble, Won_Smash_Series, Won_Money_In_The_Bank, Won_Smash_Bros, Successful_Cash_In
   * The Won_* and Successful_Cash_In columns: a non-null, non-empty value means the fighter achieved it that season. Filter with: WHERE Won_Tournament IS NOT NULL AND Won_Tournament != ''
+- Elo: result_id, fight_id, fighter_name, elo_before (float), elo_after (float)
+  * ELO rating starts at 1500. Higher = better. Peak is the highest elo_after ever reached.
+  * To get a fighter's current ELO: SELECT elo_after FROM Elo WHERE fighter_name = 'Name' ORDER BY fight_id DESC LIMIT 1
+  * To get average season ELO: JOIN Elo e JOIN Fight f ON e.fight_id = f.Fight_ID, GROUP BY f.Season_ID, AVG(e.elo_after)
+  * To get all-time average ELO: SELECT AVG(elo_after) FROM Elo WHERE fighter_name = 'Name'
 - triplecrown: Fighter_Name (fighters who have held all 3 major titles)
 - majorwinner: Fighter_Name (+ columns for each major title won)
 
@@ -649,6 +678,20 @@ BASE TABLES (for lookups):
 - Brand: Brand_Name
 - Award: Award_ID, Award_Name
 - AwardHistory: Season_ID, Fighter_Name, Award_ID
+
+POWER SCORE (computed metric — NOT stored in the database):
+Power Score is a 0–100 composite ranking computed by the website, not stored in the DB. It combines:
+  - Avg Season ELO (35%): computed from Elo JOIN Fight, grouped by season
+  - Weighted title months (40%): 2 × Months_With_Major + 1 × (Months_With_Title - Months_With_Major) from holistic_view
+  - Event wins (15%): count of non-null Won_* columns in holistic_view (max 6)
+  - Win % (10%): from CareerStatsBySeason or careerstats
+Each metric is percentile-ranked among fighters in that season, then weighted.
+When someone asks "who is the best fighter" or "who is the GOAT", use a combination of:
+  - SUM(months_held) FROM ChampionshipHistory (total championship time)
+  - AVG(elo_after) FROM Elo (career average ELO)
+  - `Win Percentage` FROM careerstats
+  - COUNT of event wins from holistic_view
+Do NOT claim to query Power Score directly — instead explain it's a composite metric and provide the underlying stats.
 
 KEY RULES:
 - In ChampionshipHistory, Season_Lost = NULL and Month_Lost = NULL means the fighter is the CURRENT champion.

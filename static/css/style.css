@@ -219,7 +219,7 @@ img {
    MAIN CONTENT
    ============================================ */
 .main-content {
-    max-width: 1400px;
+    max-width: 1600px;
     margin: 0 auto;
     padding: 2rem;
     min-height: calc(100vh - 64px - 60px);
@@ -525,6 +525,16 @@ img {
     background: rgba(251, 191, 36, 0.15);
     border: 1px solid rgba(251, 191, 36, 0.4);
     color: #fbbf24;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.lb-award-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: rgba(129, 140, 248, 0.15);
+    border: 1px solid rgba(129, 140, 248, 0.4);
+    color: #a5b4fc;
     padding: 2px 8px;
     border-radius: 999px;
     white-space: nowrap;
@@ -1067,6 +1077,20 @@ img {
 
 /* Leaderboard power score column */
 .power-col { font-weight: 700; }
+.ps-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent), 0 0 12px rgba(96, 124, 255, 0.4);
+    flex-shrink: 0;
+}
+.pct-high .ps-dot { background: #4ade80; box-shadow: 0 0 6px #4ade80, 0 0 12px rgba(74,222,128,0.4); }
+.pct-mid  .ps-dot { background: #facc15; box-shadow: 0 0 6px #facc15, 0 0 12px rgba(250,204,21,0.4); }
+.pct-low  .ps-dot { background: #f87171; box-shadow: 0 0 6px #f87171, 0 0 12px rgba(248,113,113,0.4); }
 
 /* H2H power score compare table */
 .ps-compare-table {
@@ -1091,6 +1115,87 @@ img {
 .ps-season-label { text-align: center; color: var(--text-secondary); font-weight: 600; }
 .ps-right { text-align: right; }
 .ps-winner { text-shadow: 0 0 8px currentColor; }
+
+/* Career power score table header rows */
+.ps-name-row th { border-bottom: none; padding-bottom: 2px; }
+.ps-fighter-name {
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+}
+.ps-fighter-left  { text-align: left; }
+.ps-fighter-right { text-align: right; }
+.ps-subheader-row th {
+    padding-top: 2px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+.ps-col-label:first-child, .ps-col-label:nth-child(2) { text-align: left; }
+.ps-col-label:nth-child(4), .ps-col-label:last-child  { text-align: right; }
+.ps-season-label-th { text-align: center; }
+
+/* H2H power score season mode side-by-side */
+.ps-season-sidebyside {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 16px 0 8px;
+    flex-wrap: wrap;
+}
+.ps-sb-card {
+    flex: 1;
+    min-width: 140px;
+    max-width: 220px;
+    text-align: center;
+    padding: 16px 12px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: border-color 0.2s;
+}
+.ps-sb-card.ps-winner {
+    border-color: rgba(251,191,36,0.4);
+    box-shadow: 0 0 16px rgba(251,191,36,0.12);
+}
+.ps-sb-fighter {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+.ps-sb-season {
+    font-size: 0.72rem;
+    color: var(--text-muted, #6b7280);
+    margin-bottom: 12px;
+}
+.ps-sb-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+.ps-sb-score {
+    font-size: 2.4rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 10px;
+}
+.ps-sb-rank {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    font-weight: 700;
+}
+.ps-sb-vs {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-muted, #6b7280);
+}
 
 /* ---- Accolades Section ---- */
 .accolades-section {
@@ -1215,9 +1320,9 @@ img {
 }
 
 .leaderboard-table thead th {
-    padding: 14px 16px;
+    padding: 12px 10px;
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1249,6 +1354,22 @@ img {
     content: ' \25B2';
 }
 
+/* Season archive table sortable headers */
+.leaderboard-table thead th.sr-sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--transition);
+}
+.leaderboard-table thead th.sr-sortable:hover { color: var(--accent-light); }
+.leaderboard-table thead th.sr-sortable.sr-active { color: var(--accent); }
+.leaderboard-table thead th.sr-sortable::after {
+    content: ' \25BC';
+    font-size: 0.65rem;
+    opacity: 0.3;
+}
+.leaderboard-table thead th.sr-sortable.sr-active::after { opacity: 1; }
+.leaderboard-table thead th.sr-sortable.sr-active.sr-asc::after { content: ' \25B2'; }
+
 .leaderboard-table thead th.rank-col {
     width: 60px;
 }
@@ -1264,9 +1385,9 @@ img {
 }
 
 .leaderboard-table tbody td {
-    padding: 12px 16px;
+    padding: 10px 10px;
     border-bottom: 1px solid var(--border);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .rank-cell {
@@ -2631,23 +2752,52 @@ img {
 
 .event-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 16px;
 }
 
 .event-card {
-    padding: 1.2rem 1.3rem;
+    padding: 0;
     cursor: pointer;
     transition: transform var(--transition), border-color var(--transition);
     border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0;
+    overflow: hidden;
 }
 
 .event-card:hover {
     transform: translateY(-2px);
     border-color: var(--accent);
+}
+
+.event-card-stage-wrap {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+
+.event-card-stage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.event-card:hover .event-card-stage {
+    transform: scale(1.04);
+}
+
+.event-card-body {
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1;
 }
 
 .event-card-name {
