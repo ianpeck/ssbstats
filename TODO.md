@@ -48,7 +48,7 @@
 - [X] **19. Fighter Page should just have graphs and nothing collapsed at all**
   - make them easy to see and hover over to see by season stats as an example, lolcaion one may be tricky to get them all on a page though
   - others should be super simple to change
-- [ ] **20. Strength of Schedule would be cool**
+- [X] **20. Strength of Schedule would be cool**
 - [ ] **21. Season Page should have brand filter too and sort**
   - additonally would be nice to be able to sort championships in descending importance or brand sections
   - MIB winners should show Brand they won
@@ -57,9 +57,9 @@
 - [X] **23. Power Rankings season filter tab should have badge for awards that season**
 - [X] **24. Add Power Score to Seasons tab**
   - also update groq chat with power score and elo info
-- [ ] **25. Best weight for Power Score**
+- [X] **25. Best weight for Power Score**
   - Season power score might need different weight. Career would not really take win pct into account at all but for a seson it should and not be as heavily ELO rated since ELO is based on past seasons. so someone bad who became good would be punished for season power score
   - weigh events differently like indivudally
   - SOS maybe needed?
-- [ ] **26. move Power score to far left next to wins**
+- [X] **26. move Power score to far left next to wins**
 
