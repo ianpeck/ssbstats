@@ -38,7 +38,7 @@
                     <th class="fighter-col">Fighter</th>
                     <th class="sortable" data-sort="wins">Wins</th>
                     <th class="sortable" data-sort="losses">Losses</th>
-                    <th class="sortable active" data-sort="win_pct">Win %</th>
+                    <th class="sortable" data-sort="win_pct">Win %</th>
                     <th class="sortable" data-sort="total_fights">Fights</th>
                     <th class="sortable" data-sort="major_months">Major Months</th>
                     <th class="sortable" data-sort="champ_months">Champ Months</th>
@@ -47,7 +47,7 @@
                     <th class="sortable elo-col" data-sort="current_elo" id="eloCol1Th">Current ELO</th>
                     <th class="sortable elo-col" data-sort="avg_elo" id="eloCol2Th">Career ELO</th>
                     <th class="sortable elo-col" data-sort="peak_elo" id="eloCol3Th">Peak ELO</th>
-                    <th class="sortable power-col" data-sort="power_score">Power Score</th>
+                    <th class="sortable active power-col" data-sort="power_score">Power Score</th>
                 </tr>
             </thead>
             <tbody id="leaderboardTbody"></tbody>
@@ -59,7 +59,7 @@
 {% block scripts %}
 <script>
 let leaderboardData = [];
-let currentSort    = { key: 'win_pct', dir: 'desc' };
+let currentSort    = { key: 'power_score', dir: 'desc' };
 let currentSeason  = '';
 let minFights      = 0;
 
@@ -75,7 +75,7 @@ function applySort(data) {
     const key = currentSort.key;
     return [...data].sort((a, b) => {
         let av = a[key], bv = b[key];
-        if (key === 'win_pct') {
+        if (key === 'power_score') {
             av = parseFloat(String(av).replace('%', '')) || 0;
             bv = parseFloat(String(bv).replace('%', '')) || 0;
         } else {
@@ -104,9 +104,9 @@ function loadRankings(season) {
             document.getElementById('leaderboardWrapper').style.display = 'block';
             leaderboardData = data;
             updateEloHeaders();
-            currentSort = { key: 'win_pct', dir: 'desc' };
+            currentSort = { key: 'power_score', dir: 'desc' };
             document.querySelectorAll('.sortable').forEach(s => s.classList.remove('active', 'asc'));
-            document.querySelector('.sortable[data-sort="win_pct"]').classList.add('active');
+            document.querySelector('.sortable[data-sort="power_score"]').classList.add('active');
             refresh();
         })
         .catch(() => {

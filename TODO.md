@@ -63,3 +63,5 @@
 - [ ] **23. Seasons tab should hav badge for awards that season**
 - [ ] **24. Add Power Score to Seasons tab**
   - also update groq chat with power score and elo info
+- [ ] **25. Best weight for Power Score**
+  - Season power score might need different weight. Career would not really take win pct into account at all but for a seson it should and not be as heavily ELO rated since ELO is based on past seasons. so someone bad who became good would be punished for season power score
