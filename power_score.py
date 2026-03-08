@@ -2,10 +2,11 @@
 """Power Score: composite fighter ranking by season.
 
 Metrics & weights:
-  35% — Avg Season ELO
-  30% — Weighted title months  (major month = 2pts, minor month = 1pt)
-  20% — Event wins             (tournament/rumble/series/etc wins that season)
-  15% — Win %
+  Titles  — Weighted title months  (major month = 2pts, minor month = 1pt)
+  Win%    — Season/career win percentage
+  ELO     — Avg ELO (season avg or career avg)
+  Events  — Tournament/rumble/series/etc wins
+  SOS     — Avg ELO of opponents beaten (strength of schedule)
 
 Each metric is percentile-ranked among all fighters in that season,
 then multiplied by its weight to produce the 0–100 composite score.
@@ -23,27 +24,26 @@ EVENT_COLS = [
     'Won_Smash_Series', 'Won_Money_In_The_Bank', 'Won_Smash_Bros',
 ]
 
-# Season: ELO carries historical baggage so win% matters more within a season
+# Season: ELO carries historical baggage — win%, titles, and SOS cover in-season performance better
 SEASON_WEIGHTS = {
-    'avg_elo':       0.15,
+    'avg_elo':       0.00,
     'wtitle_months': 0.45,
     'event_wins':    0.10,
     'win_pct':       0.30,
+    'sos':           0.15,
 }
 
-# Career: ELO is a reliable long-term skill indicator; win% can be inflated
+# Career: ELO + SOS cover quality/skill; win% is redundant with ELO over large samples
 CAREER_WEIGHTS = {
-    'avg_elo':       0.35,
+    'avg_elo':       0.40,
     'wtitle_months': 0.40,
     'event_wins':    0.10,
-    'win_pct':       0.15,
+    'win_pct':       0.00,
+    'sos':           0.10,
 }
 
-assert abs(sum(SEASON_WEIGHTS.values()) - 1.0) < 1e-9, f"Season weights must sum to 1.0"
-assert abs(sum(CAREER_WEIGHTS.values()) - 1.0) < 1e-9, f"Career weights must sum to 1.0"
-
-# Set which weights to use for this run
-WEIGHTS = SEASON_WEIGHTS
+assert abs(sum(v for v in SEASON_WEIGHTS.values()) - 1.0) < 1e-9, "Season weights must sum to 1.0"
+assert abs(sum(CAREER_WEIGHTS.values()) - 1.0) < 1e-9, "Career weights must sum to 1.0"
 
 
 def get_connection():
@@ -72,6 +72,39 @@ def percentile_rank(vals, v):
     return (below / (n - 1)) * 100.0
 
 
+def apply_power_scores(fighters, weights):
+    for metric in weights:
+        vals = [f[metric] for f in fighters]
+        for f in fighters:
+            f[f'{metric}_pct'] = percentile_rank(vals, f[metric])
+    for f in fighters:
+        f['power_score'] = sum(weights[m] * f[f'{m}_pct'] for m in weights)
+
+
+def print_ranking(fighters, title, weights, top_n=None):
+    ranked = sorted(fighters, key=lambda x: x['power_score'], reverse=True)
+    if top_n:
+        ranked = ranked[:top_n]
+    w = weights
+    print(f"\n{'='*80}")
+    print(f"  {title}")
+    print(f"  weights — ELO:{w['avg_elo']:.0%}  Titles:{w['wtitle_months']:.0%}  "
+          f"EvW:{w['event_wins']:.0%}  Win%:{w['win_pct']:.0%}  SOS:{w['sos']:.0%}")
+    print(f"{'='*80}")
+    print(f"  {'#':<3} {'Fighter':<22} {'Score':>6}  {'Avg ELO':>7}  "
+          f"{'WTitle':>6}  {'EvW':>3}  {'Win%':>6}  {'SOS':>7}")
+    print(f"  {'-'*74}")
+    for i, f in enumerate(ranked, 1):
+        print(
+            f"  {i:<3} {f['name']:<22} {f['power_score']:>5.1f}   "
+            f"{f['avg_elo']:>7.1f}  "
+            f"{f['wtitle_months']:>6}  "
+            f"{f['event_wins']:>3}  "
+            f"{f['win_pct']:>5.1f}%  "
+            f"{f['sos']:>7.1f}"
+        )
+
+
 def main():
     conn = get_connection()
 
@@ -98,6 +131,21 @@ def main():
         """, (season,))
         elo = {r['fighter_name']: float(r['avg_elo']) for r in elo_rows}
 
+        # SOS: avg ELO of opponents beaten this season
+        sos_rows = q(conn, """
+            SELECT r_win.Fighter_Name, AVG(e_loss.elo_before) AS avg_beaten_elo
+            FROM Results r_win
+            JOIN Results r_loss ON r_win.Fight_ID = r_loss.Fight_ID
+                                AND r_loss.Decision = 'l'
+            JOIN Elo e_loss ON r_loss.Fight_ID = e_loss.fight_id
+                           AND r_loss.Fighter_Name = e_loss.fighter_name
+            JOIN Fight f ON r_win.Fight_ID = f.Fight_ID
+            WHERE r_win.Decision = 'w'
+              AND f.Season_ID = %s
+            GROUP BY r_win.Fighter_Name
+        """, (season,))
+        sos = {r['Fighter_Name']: float(r['avg_beaten_elo']) for r in sos_rows}
+
         # --- build fighter records ---
         fighters = []
         for row in season_rows:
@@ -114,7 +162,6 @@ def main():
             major_m = int(h.get('Months_With_Major') or 0)
             total_m = int(h.get('Months_With_Title') or 0)
             minor_m = total_m - major_m
-            # major=2pts, minor=1pt  →  2*major + 1*minor = major + total
             wtitle  = (major_m * 2) + minor_m
 
             ev_wins = sum(
@@ -128,42 +175,14 @@ def main():
                 'wtitle_months': wtitle,
                 'event_wins':    ev_wins,
                 'win_pct':       win_pct,
-                # keep raw for display
-                '_major_m':      major_m,
-                '_total_m':      total_m,
+                'sos':           sos.get(name, 1500.0),
             })
 
         if not fighters:
             continue
 
-        # --- percentile rank each metric ---
-        for metric in WEIGHTS:
-            vals = [f[metric] for f in fighters]
-            for f in fighters:
-                f[f'{metric}_pct'] = percentile_rank(vals, f[metric])
-
-        # --- composite power score ---
-        for f in fighters:
-            f['power_score'] = sum(
-                WEIGHTS[m] * f[f'{m}_pct'] for m in WEIGHTS
-            )
-
-        top5 = sorted(fighters, key=lambda x: x['power_score'], reverse=True)[:5]
-
-        print(f"\n{'='*72}")
-        print(f"  SEASON {season}  —  TOP 5 POWER SCORE")
-        print(f"{'='*72}")
-        print(f"  {'#':<3} {'Fighter':<22} {'Score':>6}  {'Avg ELO':>7}  "
-              f"{'WTitle':>6}  {'EvW':>3}  {'Win%':>6}")
-        print(f"  {'-'*66}")
-        for i, f in enumerate(top5, 1):
-            print(
-                f"  {i:<3} {f['name']:<22} {f['power_score']:>5.1f}   "
-                f"{f['avg_elo']:>7.1f}  "
-                f"{f['wtitle_months']:>6}  "
-                f"{f['event_wins']:>3}  "
-                f"{f['win_pct']:>5.1f}%"
-            )
+        apply_power_scores(fighters, SEASON_WEIGHTS)
+        print_ranking(fighters, f"SEASON {season}  —  TOP 5", SEASON_WEIGHTS, top_n=5)
 
     # --- career aggregate ---
     career_rows = q(conn, "SELECT Fighter_Name, `Win Percentage` AS win_pct FROM careerstats")
@@ -183,6 +202,19 @@ def main():
     elo_career = q(conn,
         "SELECT fighter_name, ROUND(AVG(elo_after), 1) AS avg_elo FROM Elo GROUP BY fighter_name")
     elo_c = {r['fighter_name'].lower().strip(): float(r['avg_elo']) for r in elo_career}
+
+    # Career SOS: avg ELO of all opponents ever beaten
+    sos_career_rows = q(conn, """
+        SELECT r_win.Fighter_Name, AVG(e_loss.elo_before) AS avg_beaten_elo
+        FROM Results r_win
+        JOIN Results r_loss ON r_win.Fight_ID = r_loss.Fight_ID
+                            AND r_loss.Decision = 'l'
+        JOIN Elo e_loss ON r_loss.Fight_ID = e_loss.fight_id
+                       AND r_loss.Fighter_Name = e_loss.fighter_name
+        WHERE r_win.Decision = 'w'
+        GROUP BY r_win.Fighter_Name
+    """)
+    sos_c = {r['Fighter_Name'].lower().strip(): float(r['avg_beaten_elo']) for r in sos_career_rows}
 
     career_fighters = []
     for row in career_rows:
@@ -206,35 +238,12 @@ def main():
             'wtitle_months': wtitle,
             'event_wins':    ev_wins,
             'win_pct':       win_pct,
-            '_major_m':      major_m,
-            '_total_m':      total_m,
+            'sos':           sos_c.get(nk, 1500.0),
         })
 
     if career_fighters:
-        for metric in CAREER_WEIGHTS:
-            vals = [f[metric] for f in career_fighters]
-            for f in career_fighters:
-                f[f'{metric}_pct'] = percentile_rank(vals, f[metric])
-        for f in career_fighters:
-            f['power_score'] = sum(
-                CAREER_WEIGHTS[m] * f[f'{m}_pct'] for m in CAREER_WEIGHTS
-            )
-        career_fighters.sort(key=lambda x: x['power_score'], reverse=True)
-
-        print(f"\n{'='*72}")
-        print(f"  CAREER POWER SCORE  —  ALL TIME")
-        print(f"{'='*72}")
-        print(f"  {'#':<3} {'Fighter':<22} {'Score':>6}  {'Avg ELO':>7}  "
-              f"{'WTitle':>6}  {'EvW':>3}  {'Win%':>6}")
-        print(f"  {'-'*66}")
-        for i, f in enumerate(career_fighters, 1):
-            print(
-                f"  {i:<3} {f['name']:<22} {f['power_score']:>5.1f}   "
-                f"{f['avg_elo']:>7.1f}  "
-                f"{f['wtitle_months']:>6}  "
-                f"{f['event_wins']:>3}  "
-                f"{f['win_pct']:>5.1f}%"
-            )
+        apply_power_scores(career_fighters, CAREER_WEIGHTS)
+        print_ranking(career_fighters, "CAREER POWER SCORE  —  ALL TIME", CAREER_WEIGHTS)
 
     conn.close()
     print()

@@ -217,9 +217,42 @@ _EVENT_COLS_LB = [
     'Won_Smash_Series', 'Won_Money_In_The_Bank', 'Won_Smash_Bros',
 ]
 
+_SOS_CAREER_SQL = """
+    SELECT r_win.Fighter_Name, AVG(e_loss.elo_before) AS sos
+    FROM Results r_win
+    JOIN Results r_loss ON r_win.Fight_ID = r_loss.Fight_ID AND r_loss.Decision = 'l'
+    JOIN Elo e_loss ON r_loss.Fight_ID = e_loss.fight_id
+                   AND r_loss.Fighter_Name = e_loss.fighter_name
+    WHERE r_win.Decision = 'w'
+    GROUP BY r_win.Fighter_Name
+"""
+
+_SOS_SEASON_SQL = """
+    SELECT r_win.Fighter_Name, AVG(e_loss.elo_before) AS sos
+    FROM Results r_win
+    JOIN Results r_loss ON r_win.Fight_ID = r_loss.Fight_ID AND r_loss.Decision = 'l'
+    JOIN Elo e_loss ON r_loss.Fight_ID = e_loss.fight_id
+                   AND r_loss.Fighter_Name = e_loss.fighter_name
+    JOIN Fight f ON r_win.Fight_ID = f.Fight_ID
+    WHERE r_win.Decision = 'w' AND f.Season_ID = %s
+    GROUP BY r_win.Fighter_Name
+"""
+
+_SOS_ALL_SEASONS_SQL = """
+    SELECT r_win.Fighter_Name, f.Season_ID AS season, AVG(e_loss.elo_before) AS sos
+    FROM Results r_win
+    JOIN Results r_loss ON r_win.Fight_ID = r_loss.Fight_ID AND r_loss.Decision = 'l'
+    JOIN Elo e_loss ON r_loss.Fight_ID = e_loss.fight_id
+                   AND r_loss.Fighter_Name = e_loss.fighter_name
+    JOIN Fight f ON r_win.Fight_ID = f.Fight_ID
+    WHERE r_win.Decision = 'w'
+    GROUP BY r_win.Fighter_Name, f.Season_ID
+"""
+
+
 def get_leaderboard():
     """Get all fighters with career stats plus extended accolade metrics."""
-    with ThreadPoolExecutor(max_workers=5) as pool:
+    with ThreadPoolExecutor(max_workers=6) as pool:
         f_career  = pool.submit(select_view_row, "SELECT * FROM careerstats ORDER BY Fighter_Name")
         f_hol     = pool.submit(
             select_view_dicts,
@@ -234,6 +267,7 @@ def get_leaderboard():
         )
         f_tc      = pool.submit(select_view_dicts, "SELECT * FROM triplecrown")
         f_elo     = pool.submit(get_elo_for_leaderboard)
+        f_sos     = pool.submit(select_view_dicts, _SOS_CAREER_SQL)
 
         career_rows  = f_career.result()
         try:
@@ -257,6 +291,12 @@ def get_leaderboard():
             elo_by_fighter = f_elo.result()
         except Exception:
             elo_by_fighter = {}
+        try:
+            sos_rows = f_sos.result()
+        except Exception:
+            sos_rows = []
+
+    sos_by_fighter = {_nk(r['Fighter_Name']): float(r['sos']) for r in sos_rows}
 
     # Build holistic lookup: {lower_name: [rows]}
     hol_by_fighter = {}
@@ -298,6 +338,7 @@ def get_leaderboard():
             'current_elo':   float(elo['current_elo']) if elo.get('current_elo') is not None else None,
             'avg_elo':       float(elo['avg_elo'])     if elo.get('avg_elo')     is not None else None,
             'peak_elo':      float(elo['peak_elo'])    if elo.get('peak_elo')    is not None else None,
+            'sos':           sos_by_fighter.get(_nk(name), 1500.0),
         })
 
     def parse_pct(pct):
@@ -319,7 +360,7 @@ def get_all_seasons():
 
 def get_leaderboard_by_season(season):
     """Get fighters with season stats plus holistic accolades for that season."""
-    with ThreadPoolExecutor(max_workers=5) as pool:
+    with ThreadPoolExecutor(max_workers=6) as pool:
         f_season = pool.submit(
             select_view_dicts,
             "SELECT * FROM CareerStatsBySeason WHERE Season = %s ORDER BY Fighter_Name",
@@ -342,6 +383,7 @@ def get_leaderboard_by_season(season):
         )
         f_elo = pool.submit(get_elo_for_leaderboard_by_season, season)
         f_canonical = pool.submit(get_canonical_name_map)
+        f_sos = pool.submit(select_view_dicts, _SOS_SEASON_SQL, (season,))
 
         season_rows = f_season.result()
         canonical_map = f_canonical.result()
@@ -363,6 +405,12 @@ def get_leaderboard_by_season(season):
         elo_by_fighter = f_elo.result()
     except Exception:
         elo_by_fighter = {}
+    try:
+        sos_rows = f_sos.result()
+    except Exception:
+        sos_rows = []
+
+    sos_by_fighter = {_nk(r['Fighter_Name']): float(r['sos']) for r in sos_rows}
 
     hol_by_fighter = {}
     for r in holistic_all:
@@ -401,6 +449,7 @@ def get_leaderboard_by_season(season):
             'peak_season_elo':  float(elo['peak_season_elo']) if elo.get('peak_season_elo') is not None else None,
             'avg_elo':          float(elo['avg_elo'])          if elo.get('avg_elo')          is not None else None,
             'season_end_elo':   float(elo['season_end_elo'])  if elo.get('season_end_elo')  is not None else None,
+            'sos':              sos_by_fighter.get(_nk(name), 1500.0),
         })
 
     def parse_pct(pct):
@@ -693,20 +742,22 @@ def get_comparison_data(f1, f2):
 
 # ---------- Power Score ----------
 
-# Season: ELO carries historical baggage so win% matters more within a season
+# Season: no ELO (carries prior-season baggage); win%/titles/SOS cover in-season performance
 _SEASON_POWER_WEIGHTS = {
-    'avg_elo':       0.15,
+    'avg_elo':       0.00,
     'wtitle_months': 0.45,
     'event_wins':    0.10,
     'win_pct':       0.30,
+    'sos':           0.15,
 }
 
-# Career: ELO is a reliable long-term skill indicator; win% can be inflated
+# Career: ELO+SOS cover quality/skill over time; win% is redundant with ELO at large sample
 _CAREER_POWER_WEIGHTS = {
-    'avg_elo':       0.35,
+    'avg_elo':       0.40,
     'wtitle_months': 0.40,
     'event_wins':    0.10,
-    'win_pct':       0.15,
+    'win_pct':       0.00,
+    'sos':           0.10,
 }
 
 _POWER_EVENT_COLS = [
@@ -744,10 +795,11 @@ def _apply_power_scores(fighters, weights):
         f['_ps_wtm'] = maj + tot          # major + total = weighted title months
         f['_ps_ev']  = int(f.get('event_wins') or 0)
         f['_ps_wp']  = to_float(f.get('win_pct', '0'))
+        f['_ps_sos'] = float(f.get('sos') or 1500)
 
-    ps_cols = ['_ps_elo', '_ps_wtm', '_ps_ev', '_ps_wp']
+    ps_cols = ['_ps_elo', '_ps_wtm', '_ps_ev', '_ps_wp', '_ps_sos']
     ws = [weights['avg_elo'], weights['wtitle_months'],
-          weights['event_wins'], weights['win_pct']]
+          weights['event_wins'], weights['win_pct'], weights['sos']]
 
     for col in ps_cols:
         vals = [f[col] for f in fighters]
@@ -756,7 +808,7 @@ def _apply_power_scores(fighters, weights):
 
     for f in fighters:
         f['power_score'] = round(
-            sum(ws[i] * f[ps_cols[i] + '_pct'] for i in range(4)), 1
+            sum(ws[i] * f[ps_cols[i] + '_pct'] for i in range(len(ps_cols))), 1
         )
         for col in ps_cols:
             del f[col]
@@ -771,7 +823,7 @@ def get_all_season_power_scores():
     """Compute power scores for all fighters across all seasons.
     Returns {season_int: {fighter_name: {power_score, power_rank}}}
     """
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         f_s = pool.submit(select_view_dicts,
             "SELECT Fighter_Name, Season, `Win Percentage` AS win_pct "
             "FROM CareerStatsBySeason")
@@ -787,9 +839,11 @@ def get_all_season_power_scores():
             FROM Elo e JOIN Fight f ON e.fight_id = f.Fight_ID
             GROUP BY e.fighter_name, f.Season_ID
         """)
+        f_sos = pool.submit(select_view_dicts, _SOS_ALL_SEASONS_SQL)
         season_rows = f_s.result()
         hol_rows    = f_h.result()
         elo_rows    = f_e.result()
+        sos_rows    = f_sos.result()
 
     hol = {}
     for r in hol_rows:
@@ -798,6 +852,10 @@ def get_all_season_power_scores():
     elo = {}
     for r in elo_rows:
         elo[(int(r.get('season') or 0), _nk(r.get('fighter_name', '')))] = float(r.get('avg_elo') or 1500)
+
+    sos = {}
+    for r in sos_rows:
+        sos[(int(r.get('season') or 0), _nk(r.get('Fighter_Name', '')))] = float(r.get('sos') or 1500)
 
     by_s = {}
     for row in season_rows:
@@ -819,6 +877,7 @@ def get_all_season_power_scores():
                 'major_months': int(h.get('major_months') or 0),
                 'event_wins':   ev,
                 'win_pct':      str(row.get('win_pct') or '0'),
+                'sos':          sos.get((season, _nk(name)), 1500.0),
             })
         _apply_power_scores(fighters, _SEASON_POWER_WEIGHTS)
         result[season] = {
@@ -832,7 +891,7 @@ def get_season_power_scores(season):
     """Compute power scores for a single season.
     Returns {fighter_name: {power_score, power_rank}}
     """
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         f_s = pool.submit(select_view_dicts,
             "SELECT Fighter_Name, `Win Percentage` AS win_pct "
             "FROM CareerStatsBySeason WHERE Season = %s", (season,))
@@ -848,12 +907,15 @@ def get_season_power_scores(season):
             WHERE f.Season_ID = %s
             GROUP BY e.fighter_name
         """, (season,))
+        f_sos = pool.submit(select_view_dicts, _SOS_SEASON_SQL, (season,))
         season_rows = f_s.result()
         hol_rows    = f_h.result()
         elo_rows    = f_e.result()
+        sos_rows    = f_sos.result()
 
     hol = {_nk(r['Fighter_Name']): r for r in hol_rows}
     elo = {_nk(r['fighter_name']): float(r['avg_elo']) for r in elo_rows}
+    sos = {_nk(r['Fighter_Name']): float(r['sos']) for r in sos_rows}
 
     fighters = []
     for row in season_rows:
@@ -869,6 +931,7 @@ def get_season_power_scores(season):
             'major_months': int(h.get('major_months') or 0),
             'event_wins':   ev,
             'win_pct':      str(row.get('win_pct') or '0'),
+            'sos':          sos.get(_nk(name), 1500.0),
         })
     _apply_power_scores(fighters, _SEASON_POWER_WEIGHTS)
     return {
@@ -885,7 +948,7 @@ def get_career_power_scores():
         f"SUM(CASE WHEN `{c}` IS NOT NULL AND `{c}` != '' THEN 1 ELSE 0 END)"
         for c in _POWER_EVENT_COLS
     )
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         f_c = pool.submit(select_view_dicts,
             "SELECT Fighter_Name, `Win Percentage` AS win_pct FROM careerstats")
         f_h = pool.submit(select_view_dicts,
@@ -897,12 +960,15 @@ def get_career_power_scores():
         f_e = pool.submit(select_view_dicts,
             "SELECT fighter_name, ROUND(AVG(elo_after), 1) AS avg_elo "
             "FROM Elo GROUP BY fighter_name")
+        f_sos = pool.submit(select_view_dicts, _SOS_CAREER_SQL)
         career_rows = f_c.result()
         hol_rows    = f_h.result()
         elo_rows    = f_e.result()
+        sos_rows    = f_sos.result()
 
     hol_lkp = {_nk(r['Fighter_Name']): r for r in hol_rows}
     elo_lkp = {_nk(r['fighter_name']): float(r['avg_elo']) for r in elo_rows}
+    sos_lkp = {_nk(r['Fighter_Name']): float(r['sos']) for r in sos_rows}
 
     fighters = []
     for row in career_rows:
@@ -917,6 +983,7 @@ def get_career_power_scores():
             'major_months': int(h.get('major_months') or 0),
             'event_wins':   int(h.get('event_wins') or 0),
             'win_pct':      str(row.get('win_pct') or '0'),
+            'sos':          sos_lkp.get(_nk(name), 1500.0),
         })
     _apply_power_scores(fighters, _CAREER_POWER_WEIGHTS)
     n = len(fighters)
