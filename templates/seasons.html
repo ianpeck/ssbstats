@@ -85,6 +85,15 @@ let currentSeason = null;
 let _srData       = [];   // cached enriched rows for sort
 let _srSort       = { key: 'win_pct', dir: 'desc' };
 
+function updateSeasonURL() {
+    const params = new URLSearchParams();
+    if (currentSeason) params.set('season', currentSeason);
+    if (_srSort.key !== 'win_pct') params.set('sort', _srSort.key);
+    if (_srSort.dir !== 'desc') params.set('dir', _srSort.dir);
+    const qs = params.toString();
+    history.replaceState(null, '', '/seasons' + (qs ? '?' + qs : ''));
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const pills = document.querySelectorAll('.season-pill');
     pills.forEach(pill => {
@@ -95,8 +104,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    if (pills.length) {
-        loadSeason(parseInt(pills[0].dataset.season));
+    // Restore from URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlSeason = urlParams.get('season');
+    const urlSort = urlParams.get('sort');
+    const urlDir = urlParams.get('dir');
+    if (urlSort) _srSort.key = urlSort;
+    if (urlDir) _srSort.dir = urlDir;
+
+    let startPill = pills[0];
+    if (urlSeason) {
+        const match = Array.from(pills).find(p => p.dataset.season === urlSeason);
+        if (match) startPill = match;
+    }
+    if (startPill) {
+        pills.forEach(p => p.classList.remove('active'));
+        startPill.classList.add('active');
+        loadSeason(parseInt(startPill.dataset.season));
     }
 
     document.querySelectorAll('.sr-sortable').forEach(th => {
@@ -107,6 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.sr-sortable').forEach(h => h.classList.remove('sr-active', 'sr-asc'));
             this.classList.add('sr-active');
             if (_srSort.dir === 'asc') this.classList.add('sr-asc');
+            updateSeasonURL();
             _renderSortedRankings();
         });
     });
@@ -115,7 +140,12 @@ document.addEventListener('DOMContentLoaded', function() {
 function loadSeason(season) {
     if (currentSeason === season) return;
     currentSeason = season;
-    _srSort = { key: 'win_pct', dir: 'desc' };
+    if (!window._srSortRestored) {
+        window._srSortRestored = true;
+    } else {
+        _srSort = { key: 'win_pct', dir: 'desc' };
+    }
+    updateSeasonURL();
     document.querySelectorAll('.sr-sortable').forEach(h => h.classList.remove('sr-active', 'sr-asc'));
     const defTh = document.querySelector('.sr-sortable[data-sr-sort="win_pct"]');
     if (defTh) defTh.classList.add('sr-active');

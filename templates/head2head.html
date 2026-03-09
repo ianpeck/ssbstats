@@ -158,11 +158,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-run comparison from URL params (shareable links)
     const p = new URLSearchParams(window.location.search);
     const pf1 = p.get('f1'), pf2 = p.get('f2');
+    const pMode = p.get('mode'), pS1 = p.get('s1'), pS2 = p.get('s2');
     if (pf1 && pf2) {
         document.getElementById('f1Input').value = pf1;
         document.getElementById('f2Input').value = pf2;
         updatePortrait('f1');
         updatePortrait('f2');
+        if (pMode === 'season') {
+            // Store season selections to apply after data loads
+            window._pendingSeasonMode = { s1: pS1, s2: pS2 };
+        }
         doCompare();
     }
 });
@@ -195,7 +200,7 @@ function doCompare() {
     if (!f1 || !f2) { err.textContent = 'Enter both fighters.'; return; }
     if (f1.toLowerCase() === f2.toLowerCase()) { err.textContent = 'Pick two different fighters.'; return; }
     err.textContent = '';
-    history.pushState(null, '', `/head2head?f1=${encodeURIComponent(f1)}&f2=${encodeURIComponent(f2)}`);
+    updateH2HURL(f1, f2);
 
     document.getElementById('f1Img').src = `/static/assets/fighters/${fighterToFilename(f1)}.png`;
     document.getElementById('f2Img').src = `/static/assets/fighters/${fighterToFilename(f2)}.png`;
@@ -215,12 +220,24 @@ function doCompare() {
         document.getElementById('compareBtn').disabled = false;
         if (data.error) { document.getElementById('compareError').textContent = data.error; return; }
         currentData = data;
-        currentMode = 'career';
-        document.getElementById('btnCareer').classList.add('active');
-        document.getElementById('btnSeason').classList.remove('active');
-        document.getElementById('seasonPickers').style.display = 'none';
         populateSeasonPickers(data);
-        renderAll(data, 'career');
+        if (window._pendingSeasonMode) {
+            const { s1, s2 } = window._pendingSeasonMode;
+            delete window._pendingSeasonMode;
+            currentMode = 'season';
+            document.getElementById('btnSeason').classList.add('active');
+            document.getElementById('btnCareer').classList.remove('active');
+            document.getElementById('seasonPickers').style.display = '';
+            if (s1) document.getElementById('seasonF1').value = s1;
+            if (s2) document.getElementById('seasonF2').value = s2;
+            renderAll(data, 'season');
+        } else {
+            currentMode = 'career';
+            document.getElementById('btnCareer').classList.add('active');
+            document.getElementById('btnSeason').classList.remove('active');
+            document.getElementById('seasonPickers').style.display = 'none';
+            renderAll(data, 'career');
+        }
         document.getElementById('compareResults').style.display = 'block';
         document.getElementById('compareResults').scrollIntoView({behavior: 'smooth', block: 'start'});
     })
@@ -233,6 +250,20 @@ function doCompare() {
 
 let currentData = null;
 let currentMode = 'career';
+
+function updateH2HURL(f1, f2) {
+    const params = new URLSearchParams();
+    if (f1) params.set('f1', f1);
+    if (f2) params.set('f2', f2);
+    if (currentMode === 'season') {
+        params.set('mode', 'season');
+        const s1 = document.getElementById('seasonF1')?.value;
+        const s2 = document.getElementById('seasonF2')?.value;
+        if (s1) params.set('s1', s1);
+        if (s2) params.set('s2', s2);
+    }
+    history.replaceState(null, '', `/head2head?${params}`);
+}
 
 function populateSeasonPickers(d) {
     document.getElementById('seasonF1Name').textContent = d.fighter1.name;
@@ -304,18 +335,27 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('btnCareer').classList.add('active');
         document.getElementById('btnSeason').classList.remove('active');
         document.getElementById('seasonPickers').style.display = 'none';
-        if (currentData) renderAll(currentData, 'career');
+        if (currentData) {
+            renderAll(currentData, 'career');
+            updateH2HURL(document.getElementById('f1Input').value.trim(), document.getElementById('f2Input').value.trim());
+        }
     });
     document.getElementById('btnSeason').addEventListener('click', () => {
         currentMode = 'season';
         document.getElementById('btnSeason').classList.add('active');
         document.getElementById('btnCareer').classList.remove('active');
         document.getElementById('seasonPickers').style.display = '';
-        if (currentData) renderAll(currentData, 'season');
+        if (currentData) {
+            renderAll(currentData, 'season');
+            updateH2HURL(document.getElementById('f1Input').value.trim(), document.getElementById('f2Input').value.trim());
+        }
     });
     ['seasonF1', 'seasonF2'].forEach(id => {
         document.getElementById(id).addEventListener('change', () => {
-            if (currentMode === 'season' && currentData) renderAll(currentData, 'season');
+            if (currentMode === 'season' && currentData) {
+                renderAll(currentData, 'season');
+                updateH2HURL(document.getElementById('f1Input').value.trim(), document.getElementById('f2Input').value.trim());
+            }
         });
     });
 });

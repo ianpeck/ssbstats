@@ -128,6 +128,13 @@ function buildQuery(page) {
     return `/api/fights?${params}`;
 }
 
+function updateFightLogURL() {
+    const params = new URLSearchParams();
+    Object.entries(currentFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
+    const qs = params.toString();
+    history.replaceState(null, '', '/fights' + (qs ? '?' + qs : ''));
+}
+
 function showLoading() {
     document.getElementById('loadingOverlay').style.display = 'flex';
     document.getElementById('fightList').style.display = 'none';
@@ -187,6 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dropdownIds.forEach(id => {
         document.getElementById(id).addEventListener('change', () => {
             currentFilters = getFilters();
+            updateFightLogURL();
             loadFights(true);
         });
     });
@@ -196,11 +204,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const debouncedLoad = debounce(() => {
         currentFilters = getFilters();
+        updateFightLogURL();
         loadFights(true);
     }, 350);
     fighterInput.addEventListener('input', debouncedLoad);
     fighterInput.addEventListener('change', () => {
         currentFilters = getFilters();
+        updateFightLogURL();
         loadFights(true);
     });
 
@@ -208,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dropdownIds.forEach(id => { document.getElementById(id).selectedIndex = 0; });
         fighterInput.value = '';
         currentFilters = {};
+        updateFightLogURL();
         loadFights(true);
     });
 
@@ -216,10 +227,17 @@ document.addEventListener('DOMContentLoaded', () => {
         loadFights(false);
     });
 
-    // Apply URL params on load (e.g. from comparison page fight links)
+    // Apply URL params on load (shareable links)
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('fighter')) document.getElementById('filterFighter').value = urlParams.get('fighter');
-    if (urlParams.get('season'))  document.getElementById('filterSeason').value  = urlParams.get('season');
+    const filterMap = {
+        fighter: 'filterFighter', decision: 'filterDecision', season: 'filterSeason',
+        month: 'filterMonth', fight_type: 'filterFightType', location: 'filterLocation',
+        ppv: 'filterPPV', championship: 'filterChampionship', brand: 'filterBrand',
+    };
+    Object.entries(filterMap).forEach(([param, elId]) => {
+        const val = urlParams.get(param);
+        if (val) document.getElementById(elId).value = val;
+    });
     currentFilters = getFilters();
     if (urlParams.get('fight_id')) currentFilters.fight_id = urlParams.get('fight_id');
 

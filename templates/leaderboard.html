@@ -86,7 +86,22 @@ function applySort(data) {
     });
 }
 
-function refresh() { renderLeaderboard(applySort(getFiltered())); }
+function refresh() {
+    renderLeaderboard(applySort(getFiltered()));
+    updateLeaderboardURL();
+}
+
+function updateLeaderboardURL() {
+    const params = new URLSearchParams();
+    if (currentSeason) params.set('season', currentSeason);
+    if (minFights) params.set('min_fights', minFights);
+    const search = document.getElementById('leaderboardSearch').value.trim();
+    if (search) params.set('search', search);
+    if (currentSort.key !== 'power_score') params.set('sort', currentSort.key);
+    if (currentSort.dir !== 'desc') params.set('dir', currentSort.dir);
+    const qs = params.toString();
+    history.replaceState(null, '', '/leaderboard' + (qs ? '?' + qs : ''));
+}
 
 function loadRankings(season) {
     currentSeason = season;
@@ -104,9 +119,18 @@ function loadRankings(season) {
             document.getElementById('leaderboardWrapper').style.display = 'block';
             leaderboardData = data;
             updateEloHeaders();
-            currentSort = { key: 'power_score', dir: 'desc' };
+            // Preserve URL-specified sort on first load, otherwise reset to default
+            if (!window._lbSortRestored) {
+                window._lbSortRestored = true;
+            } else {
+                currentSort = { key: 'power_score', dir: 'desc' };
+            }
             document.querySelectorAll('.sortable').forEach(s => s.classList.remove('active', 'asc'));
-            document.querySelector('.sortable[data-sort="power_score"]').classList.add('active');
+            const activeTh = document.querySelector(`.sortable[data-sort="${currentSort.key}"]`);
+            if (activeTh) {
+                activeTh.classList.add('active');
+                if (currentSort.dir === 'asc') activeTh.classList.add('asc');
+            }
             refresh();
         })
         .catch(() => {
@@ -132,10 +156,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.classList.add('active');
                     loadRankings(this.dataset.season);
                 });
+                // Activate pill if it matches URL season
+                if (window._pendingLBSeason && pill.dataset.season === window._pendingLBSeason) {
+                    pill.classList.add('active');
+                }
             });
+            delete window._pendingLBSeason;
         });
 
-    loadRankings('');
+    // Restore state from URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlSeason = urlParams.get('season') || '';
+    const urlMinFights = parseInt(urlParams.get('min_fights')) || 0;
+    const urlSearch = urlParams.get('search') || '';
+    const urlSort = urlParams.get('sort') || 'power_score';
+    const urlDir = urlParams.get('dir') || 'desc';
+
+    if (urlMinFights) {
+        minFights = urlMinFights;
+        document.querySelectorAll('.lb-min-pill').forEach(b => {
+            b.classList.toggle('active', (parseInt(b.dataset.min) || 0) === urlMinFights);
+        });
+    }
+    if (urlSearch) document.getElementById('leaderboardSearch').value = urlSearch;
+    currentSort = { key: urlSort, dir: urlDir };
+
+    // Activate season pill if specified; loadRankings will call refresh which applies sort/filters
+    if (urlSeason) {
+        window._pendingLBSeason = urlSeason;
+    }
+    loadRankings(urlSeason);
 
     document.getElementById('leaderboardSearch').addEventListener('input', refresh);
 
