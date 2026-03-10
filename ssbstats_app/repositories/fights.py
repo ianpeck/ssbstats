@@ -1,10 +1,12 @@
 from ssbstats_app.repositories.base import select_view_dicts
+from ssbstats_app.repositories.lookups import get_canonical_name_map
 
 
 def get_fight_log(filters, page=1, per_page=100):
     """Return paginated fight-log entries grouped by fight and filtered by criteria."""
     conditions = []
     params = []
+    canonical_names = get_canonical_name_map()
     mapping = [
         ("season", "Season", False),
         ("month", "Month", False),
@@ -21,8 +23,13 @@ def get_fight_log(filters, page=1, per_page=100):
         val = filters.get(key, "")
         if val:
             if use_like:
-                conditions.append(f"{col} LIKE %s")
-                params.append(f"%{val}%")
+                canonical = canonical_names.get(str(val).strip().lower())
+                if canonical:
+                    conditions.append(f"{col} = %s")
+                    params.append(canonical)
+                else:
+                    conditions.append(f"{col} LIKE %s")
+                    params.append(f"%{val}%")
             else:
                 conditions.append(f"{col} = %s")
                 params.append(val)
