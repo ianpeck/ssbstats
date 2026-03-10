@@ -33,6 +33,7 @@ Match type handling:
                losers don't fight each other (no outcome data between them)
     Tag Team — team rating = avg(member ELOs); one team matchup; ELO change
                split evenly among team members; half the swing of a solo match
+    Handicap — computed like FFA, then downweighted to 14% of normal impact
     nc       — skipped entirely
 """
 
@@ -52,6 +53,7 @@ load_dotenv(dotenv_path=ROOT_DIR / 'secrets.env')
 STARTING_ELO = 1500.0
 K            = 24.0
 S            = 300.0
+HANDICAP_WEIGHT = 0.14
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS Elo (
@@ -139,6 +141,11 @@ def compute_elo(rows):
         One team-vs-team matchup with full K.
         ELO change is split equally among team members.
         This gives each player ~half the swing of a 1v1, reflecting shared credit.
+
+    Handicap  (fight_type == 'Handicap'):
+        Use the same winner-vs-loser pairwise structure as FFA, but scale the
+        full fight to 14% of normal Elo impact so asymmetric gimmick matches
+        do not overwhelm the main rating.
     """
     # Group rows by fight_id, preserving insertion (chronological) order
     fights = OrderedDict()
@@ -167,6 +174,7 @@ def compute_elo(rows):
         # Snapshot ELO before this fight for all participants
         before = {p['fighter_name']: ratings[p['fighter_name']] for p in participants}
         delta  = {p['fighter_name']: 0.0 for p in participants}
+        match_weight = HANDICAP_WEIGHT if fight_type == 'Handicap' else 1.0
 
         if fight_type == 'Tag Team' and winners and losers:
             # ── Tag Team: one team matchup, split among members ──────────────
@@ -177,8 +185,8 @@ def compute_elo(rows):
             team_b_rating = sum(before[p['fighter_name']] for p in losers)  / n_l
 
             e_a          = _expected(team_a_rating, team_b_rating)
-            team_a_gain  = K * (1.0 - e_a)          # positive
-            team_b_gain  = K * (0.0 - (1.0 - e_a))  # negative (mirror, zero-sum)
+            team_a_gain  = K * match_weight * (1.0 - e_a)          # positive
+            team_b_gain  = K * match_weight * (0.0 - (1.0 - e_a))  # negative (mirror, zero-sum)
 
             for p in winners:
                 delta[p['fighter_name']] += team_a_gain / n_w
@@ -187,9 +195,10 @@ def compute_elo(rows):
 
         else:
             # ── 1v1 or FFA: winner vs each loser, scaled pairwise ────────────
-            # weight = 1/n_losers so winner's total gain ≈ one normal win
+            # weight = 1/n_losers so winner's total gain ≈ one normal win.
+            # Handicap fights are scaled down further via match_weight.
             n_l    = len(losers)
-            weight = 1.0 / n_l
+            weight = match_weight / n_l
 
             for winner in winners:
                 w_name = winner['fighter_name']
