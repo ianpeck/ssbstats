@@ -22,12 +22,56 @@
 
         <div class="fight-filter-grid">
             <div class="fight-filter-group fight-filter-group-featured">
-                <label>Fighter</label>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="filterFighter" class="fight-filter-input"
-                           placeholder="Type a fighter name..." autocomplete="off">
-                    <div class="autocomplete-dropdown"></div>
+                <div class="fight-fighter-filter-head">
+                    <label>Fighters</label>
+                    <button id="addFighterFilter" type="button" class="fight-add-filter-btn">+ Add Fighter</button>
                 </div>
+                <div class="fight-fighter-builder">
+                    <div class="fight-fighter-row" data-row="1">
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="filterFighter" class="fight-filter-input"
+                                   placeholder="Type a fighter name..." autocomplete="off">
+                            <div class="autocomplete-dropdown"></div>
+                        </div>
+                    </div>
+                    <div class="fight-fighter-row is-hidden" data-row="2">
+                        <select id="filterFighterOp2" class="fight-filter-input fight-filter-operator">
+                            <option value="or">OR</option>
+                            <option value="and">AND</option>
+                        </select>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="filterFighter2" class="fight-filter-input"
+                                   placeholder="Add another fighter..." autocomplete="off">
+                            <div class="autocomplete-dropdown"></div>
+                        </div>
+                        <button type="button" class="fight-remove-filter-btn" data-remove-row="2">Remove</button>
+                    </div>
+                    <div class="fight-fighter-row is-hidden" data-row="3">
+                        <select id="filterFighterOp3" class="fight-filter-input fight-filter-operator">
+                            <option value="or">OR</option>
+                            <option value="and">AND</option>
+                        </select>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="filterFighter3" class="fight-filter-input"
+                                   placeholder="Add another fighter..." autocomplete="off">
+                            <div class="autocomplete-dropdown"></div>
+                        </div>
+                        <button type="button" class="fight-remove-filter-btn" data-remove-row="3">Remove</button>
+                    </div>
+                    <div class="fight-fighter-row is-hidden" data-row="4">
+                        <select id="filterFighterOp4" class="fight-filter-input fight-filter-operator">
+                            <option value="or">OR</option>
+                            <option value="and">AND</option>
+                        </select>
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="filterFighter4" class="fight-filter-input"
+                                   placeholder="Add another fighter..." autocomplete="off">
+                            <div class="autocomplete-dropdown"></div>
+                        </div>
+                        <button type="button" class="fight-remove-filter-btn" data-remove-row="4">Remove</button>
+                    </div>
+                </div>
+                <p class="fight-filter-microcopy">Chain fighters with <strong>OR</strong> to widen the search, or <strong>AND</strong> to require the same fight to include both fighters.</p>
             </div>
             <div class="fight-filter-group">
                 <label>Result</label>

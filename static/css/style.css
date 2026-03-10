@@ -2561,6 +2561,86 @@ img {
     grid-column: span 2;
 }
 
+.fight-fighter-filter-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.45rem;
+}
+
+.fight-fighter-builder {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.fight-fighter-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.fight-fighter-row:not([data-row="1"]) {
+    grid-template-columns: 92px minmax(0, 1fr) auto;
+}
+
+.fight-fighter-row.is-hidden {
+    display: none;
+}
+
+.fight-filter-operator {
+    min-width: 92px;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.fight-add-filter-btn,
+.fight-remove-filter-btn {
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.fight-add-filter-btn {
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: var(--text-primary);
+    padding: 0.5rem 0.85rem;
+}
+
+.fight-add-filter-btn:hover:not(:disabled),
+.fight-remove-filter-btn:hover {
+    transform: translateY(-1px);
+}
+
+.fight-add-filter-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.fight-remove-filter-btn {
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.035);
+    color: var(--text-muted);
+    padding: 0.58rem 0.75rem;
+}
+
+.fight-filter-microcopy {
+    margin: 0.55rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+.fight-filter-microcopy strong {
+    color: var(--text-primary);
+}
+
 .fight-filter-group label {
     display: block;
     font-size: 0.68rem;
@@ -3890,6 +3970,13 @@ img {
     }
     .fight-filter-group-featured {
         grid-column: span 1;
+    }
+    .fight-fighter-filter-head {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .fight-fighter-row:not([data-row="1"]) {
+        grid-template-columns: 1fr;
     }
     .fight-hero-card {
         grid-template-columns: 1fr;

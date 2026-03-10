@@ -14,7 +14,6 @@ def get_fight_log(filters, page=1, per_page=100):
         ("location", "Location_Name", False),
         ("ppv", "PPV_Name", False),
         ("championship", "Championship_Name", False),
-        ("fighter", "Fighter_Name", True),
         ("brand", "Brand_Name", False),
         ("decision", "Decision", False),
         ("contender", "Contender_Indicator", False),
@@ -23,17 +22,34 @@ def get_fight_log(filters, page=1, per_page=100):
     for key, col, use_like in mapping:
         val = filters.get(key, "")
         if val:
-            if use_like:
-                canonical = canonical_names.get(str(val).strip().lower())
-                if canonical:
-                    conditions.append(f"{col} = %s")
-                    params.append(canonical)
-                else:
-                    conditions.append(f"{col} LIKE %s")
-                    params.append(f"%{val}%")
+            conditions.append(f"{col} = %s")
+            params.append(val)
+
+    fighter_tokens = []
+    for index, key in enumerate(("fighter", "fighter2", "fighter3", "fighter4"), start=1):
+        value = (filters.get(key) or "").strip()
+        if not value:
+            continue
+        operator = "or" if index == 1 else (filters.get(f"fighter_op{index}") or "or").lower()
+        canonical = canonical_names.get(value.lower())
+        if canonical:
+            clause = "EXISTS (SELECT 1 FROM FightLog fx WHERE fx.Fight_ID = FightLog.Fight_ID AND fx.Fighter_Name = %s)"
+            token_params = [canonical]
+        else:
+            clause = "EXISTS (SELECT 1 FROM FightLog fx WHERE fx.Fight_ID = FightLog.Fight_ID AND fx.Fighter_Name LIKE %s)"
+            token_params = [f"%{value}%"]
+        fighter_tokens.append((operator, clause, token_params))
+
+    if fighter_tokens:
+        expression_parts = []
+        for index, (operator, clause, token_params) in enumerate(fighter_tokens):
+            if index == 0:
+                expression_parts.append(clause)
             else:
-                conditions.append(f"{col} = %s")
-                params.append(val)
+                expression_parts.append(operator.upper())
+                expression_parts.append(clause)
+            params.extend(token_params)
+        conditions.append("(" + " ".join(expression_parts) + ")")
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     offset = (page - 1) * per_page
