@@ -1,0 +1,71 @@
+<section class="fighter-profile-section">
+    <!-- Hero -->
+    <div class="fighter-hero">
+        <div class="fighter-hero-image">
+            <img src="{{ url_for('static', filename='assets/fighters/' + filename + '.png') }}"
+                 alt="{{ fighter_name }}"
+                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22><rect fill=%22%2312122a%22 width=%22300%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>?</text></svg>'">
+        </div>
+        <div class="fighter-hero-info">
+            <div class="fighter-name-row">
+                <h1 class="fighter-hero-name">{{ fighter_name }}</h1>
+                <div id="currentTitlesBadge" class="current-titles-badge"></div>
+            </div>
+            {% if blurb.get('nickname') %}
+            <p class="fighter-nickname">&ldquo;{{ blurb.nickname }}&rdquo;</p>
+            {% endif %}
+            {% if blurb.get('game') %}
+            <p class="fighter-game">{{ blurb.game }}</p>
+            {% endif %}
+            {% if blurb.get('bio') %}
+            <p class="fighter-bio">{{ blurb.bio }}</p>
+            {% endif %}
+            <div id="activeStreakRow" style="display:none;" class="active-streak-row">
+                <div id="activeStreakBadge"></div>
+            </div>
+            <div class="fighter-stat-cards" id="statCards">
+                <div class="stat-card glass-card">
+                    <div class="stat-card-value" id="totalWins">--</div>
+                    <div class="stat-card-label">Wins</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-card-value" id="totalLosses">--</div>
+                    <div class="stat-card-label">Losses</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-card-value" id="winPct">--</div>
+                    <div class="stat-card-label">Win Rate</div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-card-value" id="careerPowerScore">--</div>
+                    <div class="stat-card-label">Power Score</div>
+                    <div class="stat-card-sub" id="careerPowerRank"></div>
+                </div>
+                <div class="stat-card-subtle streak-win-card">
+                    <div class="subtle-value" id="winStreakVal">--</div>
+                    <div class="subtle-label">Longest Win Streak</div>
+                </div>
+                <div class="stat-card-subtle streak-loss-card">
+                    <div class="subtle-value" id="lossStreakVal">--</div>
+                    <div class="subtle-label">Longest Losing Streak</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Loading fighter stats...</p>
+    </div>
+
+    <!-- Accolades -->
+    <div class="accolades-section" id="accoladesSection" style="display: none;">
+        <div class="accolades-inner">
+            <div class="accolades-group" id="champBadges"></div>
+            <div class="accolades-group" id="eventBadges"></div>
+            <div class="accolades-group" id="awardBadges"></div>
+        </div>
+    </div>
+</section>
+

@@ -1,0 +1,28 @@
+<div class="compare-hero">
+    <div class="compare-fighter-slot">
+        <div class="portrait-frame" id="f1Frame">
+            <img id="f1Img" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 1</text></svg>" alt="Fighter 1">
+        </div>
+        <div class="autocomplete-wrapper">
+            <input type="text" id="f1Input" class="fighter-input" placeholder="Fighter 1" data-category="fighters" autocomplete="off">
+            <div class="autocomplete-dropdown" id="f1Dropdown"></div>
+        </div>
+    </div>
+
+    <div class="compare-vs-col">
+        <div class="vs-text">VS</div>
+        <button class="btn btn-primary btn-lg" id="compareBtn" onclick="doCompare()">Compare</button>
+        <div id="compareError" class="error-msg"></div>
+    </div>
+
+    <div class="compare-fighter-slot">
+        <div class="portrait-frame" id="f2Frame">
+            <img id="f2Img" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23fb923c%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 2</text></svg>" alt="Fighter 2">
+        </div>
+        <div class="autocomplete-wrapper">
+            <input type="text" id="f2Input" class="fighter-input" placeholder="Fighter 2" data-category="fighters" autocomplete="off">
+            <div class="autocomplete-dropdown" id="f2Dropdown"></div>
+        </div>
+    </div>
+</div>
+

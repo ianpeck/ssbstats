@@ -31,6 +31,16 @@ function debounce(fn, delay) {
     };
 }
 
+function getPowerScoreClass(score, prefix = "ps-tier") {
+    if (score == null || Number.isNaN(Number(score))) return "";
+    const value = Number(score);
+    if (value >= 90) return `${prefix}-5`;
+    if (value >= 75) return `${prefix}-4`;
+    if (value >= 50) return `${prefix}-3`;
+    if (value >= 25) return `${prefix}-2`;
+    return `${prefix}-1`;
+}
+
 // ---------- Animated Counter ----------
 
 function animateCounter(elementId, start, end, duration) {

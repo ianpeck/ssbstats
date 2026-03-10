@@ -18,9 +18,9 @@ TABLE DDL (run once before first use, or pass --create-table):
     );
 
 Usage:
-    python elo.py                # compute, write to DB, write CSV
-    python elo.py --csv-only     # skip DB write (dry run)
-    python elo.py --create-table # also run the CREATE TABLE DDL before inserting
+    python scripts/maintenance/elo.py                # compute, write to DB, write CSV
+    python scripts/maintenance/elo.py --csv-only     # skip DB write (dry run)
+    python scripts/maintenance/elo.py --create-table # also run the CREATE TABLE DDL before inserting
 
 ELO settings:
     Starting ELO : 1500
@@ -45,7 +45,8 @@ from pathlib import Path
 import pymysql
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path=Path('secrets.env'))
+ROOT_DIR = Path(__file__).resolve().parents[2]
+load_dotenv(dotenv_path=ROOT_DIR / 'secrets.env')
 
 # ── ELO constants ─────────────────────────────────────────────────────────────
 STARTING_ELO = 1500.0
@@ -66,11 +67,12 @@ CREATE TABLE IF NOT EXISTS Elo (
 );
 """.strip()
 
-CSV_PATH = 'elo_output.csv'
+CSV_PATH = ROOT_DIR / 'generated' / 'elo_output.csv'
 
 
 # ── DB connection ──────────────────────────────────────────────────────────────
 def get_connection():
+    """Create a database connection for Elo computation tasks."""
     return pymysql.connect(
         host=os.getenv('awsendpoint'),
         database=os.getenv('awsdb'),
@@ -212,6 +214,7 @@ def compute_elo(rows):
 
 # ── Output ─────────────────────────────────────────────────────────────────────
 def write_to_db(conn, records, create_table=False):
+    """Replace the Elo table contents with the newly computed records."""
     cur = conn.cursor()
 
     if create_table:
@@ -229,6 +232,7 @@ def write_to_db(conn, records, create_table=False):
 
 
 def write_to_csv(records, path=CSV_PATH):
+    """Write computed Elo records to a CSV export file."""
     with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(['result_id', 'fighter_name', 'fight_id', 'elo_before', 'elo_after'])

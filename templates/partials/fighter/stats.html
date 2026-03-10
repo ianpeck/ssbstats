@@ -1,0 +1,88 @@
+<section class="fighter-stats-section" id="section-stats">
+    <div class="fighter-stats-shell">
+        <div class="fighter-stats-intro">
+            <span class="fighter-stats-kicker">Performance Breakdown</span>
+            <h2 class="fighter-stats-heading">Stats Snapshot</h2>
+            <p class="fighter-stats-copy">The same fighter data, split into the formats, brands, events, and title contexts that shaped the career.</p>
+        </div>
+
+        <div class="fighter-stats-grid" id="statsGrid" style="display:none;">
+            <div class="stats-table-wrapper glass-card fighter-stats-card fighter-stats-card-feature">
+                <div class="fighter-stats-card-header">
+                    <span class="fighter-stats-card-icon">★</span>
+                    <div>
+                        <h3 class="analytics-chart-title">Season Power Rankings</h3>
+                        <p class="analytics-chart-subtitle">End-of-season composite score vs. rest of roster</p>
+                    </div>
+                </div>
+                <div id="powerScoreTableWrap"></div>
+            </div>
+
+            <div class="stats-table-wrapper glass-card fighter-stats-card fighter-stats-card-feature">
+                <div class="fighter-stats-card-header">
+                    <span class="fighter-stats-card-icon">◔</span>
+                    <div>
+                        <h3 class="analytics-chart-title">Season Stats</h3>
+                        <p class="analytics-chart-subtitle">Wins and losses by season</p>
+                    </div>
+                </div>
+                <div class="fighter-stats-canvas fighter-stats-canvas-compact"><canvas id="seasonChart"></canvas></div>
+            </div>
+
+            <div class="stats-table-wrapper glass-card fighter-stats-card">
+                <div class="fighter-stats-card-header">
+                    <span class="fighter-stats-card-icon">⚡</span>
+                    <div>
+                        <h3 class="analytics-chart-title">Match Type Stats</h3>
+                        <p class="analytics-chart-subtitle">Performance across fight formats</p>
+                    </div>
+                </div>
+                <div id="fightTypeChartWrap"><canvas id="fightTypeChart"></canvas></div>
+            </div>
+
+            <div class="stats-table-wrapper glass-card fighter-stats-card">
+                <div class="fighter-stats-card-header">
+                    <span class="fighter-stats-card-icon">◆</span>
+                    <div>
+                        <h3 class="analytics-chart-title">Brand Stats</h3>
+                        <p class="analytics-chart-subtitle">Record by brand</p>
+                    </div>
+                </div>
+                <div id="brandChartWrap"><canvas id="brandChart"></canvas></div>
+            </div>
+
+            <div class="stats-table-wrapper glass-card fighter-stats-card">
+                <div class="fighter-stats-card-header">
+                    <span class="fighter-stats-card-icon">♛</span>
+                    <div>
+                        <h3 class="analytics-chart-title">Championship Stats</h3>
+                        <p class="analytics-chart-subtitle">Record in title fights by championship</p>
+                    </div>
+                </div>
+                <div class="analytics-chart-scroll"><canvas id="champByChampChart"></canvas></div>
+            </div>
+
+            <div class="stats-table-wrapper glass-card stats-card-full fighter-stats-card">
+                <div class="fighter-stats-card-header">
+                    <span class="fighter-stats-card-icon">✦</span>
+                    <div>
+                        <h3 class="analytics-chart-title">PPV Stats</h3>
+                        <p class="analytics-chart-subtitle">Record at each pay-per-view event</p>
+                    </div>
+                </div>
+                <div class="analytics-chart-scroll"><canvas id="ppvChart"></canvas></div>
+            </div>
+
+            <div class="stats-table-wrapper glass-card stats-card-full fighter-stats-card">
+                <div class="fighter-stats-card-header">
+                    <span class="fighter-stats-card-icon">⌂</span>
+                    <div>
+                        <h3 class="analytics-chart-title">Location Stats</h3>
+                        <p class="analytics-chart-subtitle">Record by arena and venue</p>
+                    </div>
+                </div>
+                <div class="analytics-chart-scroll"><canvas id="locationChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,21 @@
+<section class="fighter-fight-history" id="section-history">
+    <div class="stats-table-wrapper glass-card fight-history-card">
+        <button class="fight-history-header" id="fightHistoryToggle" aria-expanded="false">
+            <span class="fight-history-label">
+                <span class="fight-history-icon">&#128203;</span> Fight History
+            </span>
+            <span class="chevron" id="fightHistoryChevron">&#9660;</span>
+        </button>
+        <div id="fightHistoryBody" style="display:none;">
+            <div class="loading-overlay" id="fightHistoryLoading"
+                 style="display:none; position:relative; min-height:90px; border-radius:0;">
+                <div class="spinner"></div>
+            </div>
+            <div id="fightHistoryList" class="fight-list"></div>
+            <div id="fightHistoryLoadMore" style="text-align:center;margin:1rem;display:none;">
+                <button class="btn-outline" id="fightHistoryLoadMoreBtn">Load More</button>
+            </div>
+        </div>
+    </div>
+</section>
+

@@ -17,7 +17,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 import pymysql
 
-load_dotenv(dotenv_path=Path('secrets.env'))
+ROOT_DIR = Path(__file__).resolve().parents[2]
+load_dotenv(dotenv_path=ROOT_DIR / 'secrets.env')
 
 EVENT_COLS = [
     'Won_Tournament', 'Won_Royal_Rumble', 'Won_Scramble',
@@ -47,6 +48,7 @@ assert abs(sum(CAREER_WEIGHTS.values()) - 1.0) < 1e-9, "Career weights must sum 
 
 
 def get_connection():
+    """Create a database connection for power-score calculations."""
     return pymysql.connect(
         host=os.getenv('awsendpoint'),
         database=os.getenv('awsdb'),
@@ -57,6 +59,7 @@ def get_connection():
 
 
 def q(conn, sql, params=None):
+    """Execute a query and return rows as dictionaries."""
     cur = conn.cursor()
     cur.execute(sql, params) if params else cur.execute(sql)
     cols = [d[0] for d in cur.description]
@@ -73,6 +76,7 @@ def percentile_rank(vals, v):
 
 
 def apply_power_scores(fighters, weights):
+    """Apply percentile-based metric weights to each fighter record."""
     for metric in weights:
         vals = [f[metric] for f in fighters]
         for f in fighters:
@@ -82,6 +86,7 @@ def apply_power_scores(fighters, weights):
 
 
 def print_ranking(fighters, title, weights, top_n=None):
+    """Print a formatted power-score ranking table to stdout."""
     ranked = sorted(fighters, key=lambda x: x['power_score'], reverse=True)
     if top_n:
         ranked = ranked[:top_n]
@@ -106,6 +111,7 @@ def print_ranking(fighters, title, weights, top_n=None):
 
 
 def main():
+    """Compute and print season and career power-score rankings."""
     conn = get_connection()
 
     seasons = [r['Season'] for r in q(conn,

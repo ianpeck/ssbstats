@@ -1,0 +1,25 @@
+<section class="compare-against-section">
+    <div class="compare-against-card glass-card">
+        <div class="ca-header">
+            <span class="ca-icon">⚔</span>
+            <span class="ca-title">Compare Against</span>
+        </div>
+        <div class="ca-body">
+            <div class="ca-fighter">
+                <img class="ca-portrait" src="{{ url_for('static', filename='assets/fighters/' + filename + '.png') }}" alt="{{ fighter_name }}" onerror="this.style.opacity='0.3'">
+                <span class="ca-name">{{ fighter_name }}</span>
+            </div>
+            <div class="ca-vs">VS</div>
+            <div class="ca-fighter">
+                <img class="ca-portrait" id="caOpponentPortrait" src="" alt="" style="opacity:0.15;">
+                <span class="ca-name ca-opponent-name" id="caOpponentName">?</span>
+            </div>
+            <div class="autocomplete-wrapper ca-search-wrap">
+                <input type="text" id="caInput" class="ca-input fighter-input" placeholder="Search fighter…" data-category="fighters" autocomplete="off">
+                <div class="autocomplete-dropdown" id="caDropdown"></div>
+            </div>
+            <button class="btn btn-primary ca-btn" id="caBtn">Compare →</button>
+        </div>
+    </div>
+</section>
+
