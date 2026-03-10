@@ -35,11 +35,11 @@ SEASON_WEIGHTS = {
 
 # Career: ELO + SOS cover quality/skill; win% is redundant with ELO over large samples
 CAREER_WEIGHTS = {
-    'avg_elo':       0.40,
-    'wtitle_months': 0.40,
+    'avg_elo':       0.45,
+    'wtitle_months': 0.45,
     'event_wins':    0.10,
     'win_pct':       0.00,
-    'sos':           0.10,
+    'sos':           0.00,
 }
 
 assert abs(sum(v for v in SEASON_WEIGHTS.values()) - 1.0) < 1e-9, "Season weights must sum to 1.0"
