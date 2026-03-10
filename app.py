@@ -499,11 +499,13 @@ def api_compare():
     if not f1 or not f2:
         return jsonify({'error': 'Both fighters required'}), 400
     try:
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            raw_future = pool.submit(db.get_comparison_data, f1, f2)
-            ps_future  = pool.submit(db.get_all_season_power_scores)
-            raw    = raw_future.result()
-            ps_all = ps_future.result()
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            raw_future       = pool.submit(db.get_comparison_data, f1, f2)
+            ps_future        = pool.submit(db.get_all_season_power_scores)
+            ps_career_future = pool.submit(db.get_career_power_scores)
+            raw       = raw_future.result()
+            ps_all    = ps_future.result()
+            ps_career = ps_career_future.result()
 
         def career(rows):
             if not rows:
@@ -561,6 +563,7 @@ def api_compare():
                 'elo_history': elo_history(raw.get(f'{prefix}_elo_history', [])),
                 'h2h_wins': int(h2h[0 if prefix == 'f1' else 1].get('Wins', 0)) if len(h2h) > 1 else 0,
                 'h2h_losses': int(h2h[0 if prefix == 'f1' else 1].get('Losses', 0)) if len(h2h) > 1 else 0,
+                'career_power_score': ps_career.get(nk, {}),
                 'power_scores_by_season': {
                     str(s): ps_all[s][nk]
                     for s in sorted(ps_all.keys())

@@ -419,7 +419,30 @@ function renderStatsGrid(d, isSeason) {
     const wrLabel      = isSeason ? 'Season Win Rate'   : 'Career Win Rate';
     const recordLabel  = isSeason ? 'Season Record'     : 'Career Record';
 
+    // Power score row
+    let psRow = null;
+    if (isSeason) {
+        const f1Season = document.getElementById('seasonF1')?.value;
+        const f2Season = document.getElementById('seasonF2')?.value;
+        const ps1 = (h2h.fighter1.power_scores_by_season || {})[f1Season];
+        const ps2 = (h2h.fighter2.power_scores_by_season || {})[f2Season];
+        const s1 = ps1 ? ps1.power_score : null;
+        const s2 = ps2 ? ps2.power_score : null;
+        const r1 = ps1 ? `#${ps1.power_rank}` : '--';
+        const r2 = ps2 ? `#${ps2.power_rank}` : '--';
+        psRow = ['Season Power Score', s1 != null ? `${s1.toFixed(1)} (${r1})` : '--', s2 != null ? `${s2.toFixed(1)} (${r2})` : '--', 'num', s1 || 0, s2 || 0];
+    } else {
+        const cps1 = h2h.fighter1.career_power_score || {};
+        const cps2 = h2h.fighter2.career_power_score || {};
+        const s1 = cps1.power_score != null ? cps1.power_score : null;
+        const s2 = cps2.power_score != null ? cps2.power_score : null;
+        const r1 = cps1.power_rank != null ? `#${cps1.power_rank}` : '--';
+        const r2 = cps2.power_rank != null ? `#${cps2.power_rank}` : '--';
+        psRow = ['Career Power Score', s1 != null ? `${s1.toFixed(1)} (${r1})` : '--', s2 != null ? `${s2.toFixed(1)} (${r2})` : '--', 'num', s1 || 0, s2 || 0];
+    }
+
     const rows = [
+        psRow,
         [wrLabel,          f1.career.win_pct,                        f2.career.win_pct,                        'pct'],
         [recordLabel,      `${f1.career.wins}W – ${f1.career.losses}L`, `${f2.career.wins}W – ${f2.career.losses}L`, 'wins'],
         ...(!isSeason ? [
