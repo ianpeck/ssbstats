@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, abort, render_template
 
 from ssbstats_app.repositories.seasons import get_all_seasons
 from ssbstats_app.services.content import get_fighter_blurb
-from ssbstats_app.services.stats import build_index_payload, get_fights_page_filters
+from ssbstats_app.services.stats import build_index_payload, get_fight_detail_payload, get_fights_page_filters
 from ssbstats_app.utils import fighter_to_filename
 
 
@@ -61,6 +61,15 @@ def about():
 def fights():
     """Render the fight log explorer with filter options."""
     return render_template("fightlog.html", **get_fights_page_filters())
+
+
+@pages_bp.route("/fight/<int:fight_id>")
+def fight_detail_page(fight_id):
+    """Render the dedicated fight detail page."""
+    payload = get_fight_detail_payload(fight_id)
+    if payload is None:
+        abort(404)
+    return render_template("fight_detail.html", fight=payload)
 
 
 @pages_bp.route("/chat")

@@ -8,12 +8,24 @@
 
     <!-- Filter bar -->
     <div class="fight-filters glass-card">
+        <div class="fight-filter-header">
+            <div>
+                <span class="fight-filter-kicker">Archive Controls</span>
+                <h2 class="fight-filter-title">Find A Specific Fight Fast</h2>
+                <p class="fight-filter-copy">Slice the archive by fighter, season, title stakes, event, or result.</p>
+            </div>
+            <div class="fight-filter-summary">
+                <span class="fight-filter-summary-label">Active Filters</span>
+                <strong id="fightFilterCount">0</strong>
+            </div>
+        </div>
+
         <div class="fight-filter-grid">
-            <div class="fight-filter-group">
+            <div class="fight-filter-group fight-filter-group-featured">
                 <label>Fighter</label>
                 <div class="autocomplete-wrapper">
                     <input type="text" id="filterFighter" class="fight-filter-input"
-                           placeholder="Type a name..." autocomplete="off">
+                           placeholder="Type a fighter name..." autocomplete="off">
                     <div class="autocomplete-dropdown"></div>
                 </div>
             </div>
@@ -23,6 +35,14 @@
                     <option value="">All Results</option>
                     <option value="W">Wins Only</option>
                     <option value="L">Losses Only</option>
+                </select>
+            </div>
+            <div class="fight-filter-group">
+                <label>#1 Contender</label>
+                <select id="filterContender" class="fight-filter-input">
+                    <option value="">All Fights</option>
+                    <option value="Y">Contender Matches</option>
+                    <option value="N">Non-Contender Matches</option>
                 </select>
             </div>
             <div class="fight-filter-group">
@@ -41,42 +61,48 @@
             </div>
             <div class="fight-filter-group">
                 <label>Fight Type</label>
-                <select id="filterFightType" class="fight-filter-input">
-                    <option value="">All Types</option>
-                    {% for t in fight_types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
-                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="filterFightType" class="fight-filter-input"
+                           placeholder="Type a fight type..." autocomplete="off">
+                    <div class="autocomplete-dropdown"></div>
+                </div>
             </div>
             <div class="fight-filter-group">
                 <label>Location</label>
-                <select id="filterLocation" class="fight-filter-input">
-                    <option value="">All Locations</option>
-                    {% for l in locations %}<option value="{{ l }}">{{ l }}</option>{% endfor %}
-                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="filterLocation" class="fight-filter-input"
+                           placeholder="Type a location..." autocomplete="off">
+                    <div class="autocomplete-dropdown"></div>
+                </div>
             </div>
             <div class="fight-filter-group">
                 <label>PPV</label>
-                <select id="filterPPV" class="fight-filter-input">
-                    <option value="">All PPVs</option>
-                    {% for p in ppvs %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
-                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="filterPPV" class="fight-filter-input"
+                           placeholder="Type a PPV..." autocomplete="off">
+                    <div class="autocomplete-dropdown"></div>
+                </div>
             </div>
             <div class="fight-filter-group">
                 <label>Championship</label>
-                <select id="filterChampionship" class="fight-filter-input">
-                    <option value="">All Championships</option>
-                    {% for c in championships %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
-                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="filterChampionship" class="fight-filter-input"
+                           placeholder="Type a championship..." autocomplete="off">
+                    <div class="autocomplete-dropdown"></div>
+                </div>
             </div>
             <div class="fight-filter-group">
                 <label>Brand</label>
-                <select id="filterBrand" class="fight-filter-input">
-                    <option value="">All Brands</option>
-                    {% for b in brands %}<option value="{{ b }}">{{ b }}</option>{% endfor %}
-                </select>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="filterBrand" class="fight-filter-input"
+                           placeholder="Type a brand..." autocomplete="off">
+                    <div class="autocomplete-dropdown"></div>
+                </div>
             </div>
         </div>
         <div class="fight-filter-actions">
-            <button class="btn-outline" id="clearFilters">Clear Filters</button>
+            <span class="fight-filter-hint">Filters update the archive instantly.</span>
+            <button class="fight-filter-clear-btn" id="clearFilters" type="button">Clear Filters</button>
         </div>
     </div>
 

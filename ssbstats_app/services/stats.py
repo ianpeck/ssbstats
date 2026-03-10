@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 
-from ssbstats_app.repositories import comparisons, events, fighters, fights, leaderboards, lookups, power, seasons
+from ssbstats_app.repositories import comparisons, events, fight_detail, fighters, fights, leaderboards, lookups, power, seasons
 from ssbstats_app.utils import fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
 
 
@@ -236,6 +236,259 @@ def get_fight_log_payload(filters, page):
     return result
 
 
+def get_fight_detail_payload(fight_id):
+    """Assemble the full payload for the dedicated fight detail page."""
+    fight_rows = fight_detail.get_fight_rows(fight_id)
+    if not fight_rows:
+        return None
+
+    base = fight_rows[0]
+    season = int(base.get("Season") or 0)
+    month = int(base.get("Month") or 0)
+    week = int(base.get("Week") or 99)
+    location = base.get("Location_Name")
+    fight_type = base.get("Description")
+    ppv = base.get("PPV_Name")
+    championship = normalize_champ_name(base.get("Championship_Name")) if base.get("Championship_Name") else ""
+    brand = base.get("Brand_Name")
+
+    elo_rows = fight_detail.get_elo_rows_for_fight(fight_id)
+    elo_by_name = {row.get("fighter_name", "").lower(): row for row in elo_rows}
+
+    participants = []
+    for row in fight_rows:
+        name = row.get("Fighter_Name") or "?"
+        elo = elo_by_name.get(name.lower(), {})
+        participants.append(
+            {
+                "name": name,
+                "filename": fighter_to_filename(name),
+                "decision": str(row.get("Decision") or "").upper(),
+                "match_result": serialize_value(row.get("Match_Result")),
+                "seed": serialize_value(row.get("Seed")),
+                "defending": str(row.get("DefendingIndicator") or "").upper() not in ("", "N", "0", "NONE"),
+                "contender": str(row.get("Contender_Indicator") or "").upper() not in ("", "N", "0", "NONE"),
+                "elo_before": serialize_value(elo.get("elo_before")),
+                "elo_after": serialize_value(elo.get("elo_after")),
+            }
+        )
+
+    winners = [participant for participant in participants if participant["decision"] == "W"]
+    losers = [participant for participant in participants if participant["decision"] == "L"]
+    fight_type_lower = (fight_type or "").lower()
+    is_team = fight_type_lower in ("tag team", "handicap")
+    is_singles = not is_team and len(participants) == 2
+    layout = "tag" if is_team else ("singles" if is_singles else "multi")
+
+    fighter_names = [participant["name"] for participant in participants]
+    prior_rows = fight_detail.get_prior_rows_for_fighters(fighter_names, season, month, week, fight_id)
+    prior_by_fighter = {}
+    for row in prior_rows:
+        prior_by_fighter.setdefault(row.get("Fighter_Name") or "", []).append(row)
+
+    def record_from_rows(rows, predicate=None):
+        """Count wins and losses from a list of fight rows."""
+        wins = 0
+        losses = 0
+        for row in rows:
+            if predicate and not predicate(row):
+                continue
+            decision = str(row.get("Decision") or "").upper()
+            if decision == "W":
+                wins += 1
+            elif decision == "L":
+                losses += 1
+        return {"wins": wins, "losses": losses, "win_pct": f"{(wins / (wins + losses) * 100):.2f}%" if wins + losses else "0.00%"}
+
+    def streak_from_rows(rows):
+        """Return the active streak entering the fight from reverse chronological rows."""
+        if not rows:
+            return {"type": "none", "count": 0, "label": "No active streak"}
+        ordered = list(rows)
+        ordered.sort(key=lambda row: (row.get("Season") or 0, row.get("Month") or 0, row.get("Week") if row.get("Week") is not None else 99, row.get("Fight_ID") or 0), reverse=True)
+        first = str(ordered[0].get("Decision") or "").upper()
+        if first not in ("W", "L"):
+            return {"type": "none", "count": 0, "label": "No active streak"}
+        count = 0
+        for row in ordered:
+            if str(row.get("Decision") or "").upper() == first:
+                count += 1
+            else:
+                break
+        return {
+            "type": "win" if first == "W" else "loss",
+            "count": count,
+            "label": f"{count}-fight {'win' if first == 'W' else 'loss'} streak",
+        }
+
+    def participant_context(participant):
+        """Build the pre-fight snapshot card for a participant."""
+        rows = prior_by_fighter.get(participant["name"], [])
+        current_season = record_from_rows(rows, lambda row: int(row.get("Season") or 0) == season)
+        at_location = record_from_rows(rows, lambda row: row.get("Location_Name") == location)
+        by_type = record_from_rows(rows, lambda row: row.get("Description") == fight_type)
+        at_ppv = record_from_rows(rows, lambda row: row.get("PPV_Name") == ppv)
+        contextual_records = []
+        if championship:
+            championship_record = record_from_rows(
+                rows,
+                lambda row: normalize_champ_name(row.get("Championship_Name")) == championship if row.get("Championship_Name") else False,
+            )
+            contextual_records.append(
+                {
+                    "label": f"For {championship}",
+                    "record": championship_record,
+                }
+            )
+        if participant["contender"]:
+            contender_record = record_from_rows(
+                rows,
+                lambda row: str(row.get("Contender_Indicator") or "").upper() not in ("", "N", "0", "NONE"),
+            )
+            contextual_records.append(
+                {
+                    "label": "#1 Contender Matches",
+                    "record": contender_record,
+                }
+            )
+        if participant["defending"]:
+            defending_record = record_from_rows(
+                rows,
+                lambda row: str(row.get("DefendingIndicator") or "").upper() not in ("", "N", "0", "NONE"),
+            )
+            contextual_records.append(
+                {
+                    "label": "Title Defenses",
+                    "record": defending_record,
+                }
+            )
+        return {
+            "name": participant["name"],
+            "filename": participant["filename"],
+            "career": record_from_rows(rows),
+            "season": current_season,
+            "location": at_location,
+            "fight_type": by_type,
+            "ppv": at_ppv,
+            "streak": streak_from_rows(rows),
+            "elo_before": participant.get("elo_before"),
+            "status": (
+                "Champion"
+                if participant["defending"]
+                else ("Contender" if championship or participant["contender"] else "Entrant")
+            ),
+            "contextual_records": contextual_records,
+        }
+
+    participant_cards = [participant_context(participant) for participant in participants]
+
+    matchup_context = None
+    if is_singles:
+        f1 = participants[0]["name"]
+        f2 = participants[1]["name"]
+        common_rows = fight_detail.get_prior_common_fight_rows(f1, f2, season, month, week, fight_id)
+        grouped_common = {}
+        for row in common_rows:
+            grouped_common.setdefault(row.get("Fight_ID"), []).append(row)
+        direct_prior = []
+        for rows in grouped_common.values():
+            if len(rows) != 2:
+                continue
+            names = {rows[0].get("Fighter_Name"), rows[1].get("Fighter_Name")}
+            decisions = {str(rows[0].get("Decision") or "").upper(), str(rows[1].get("Decision") or "").upper()}
+            if names == {f1, f2} and decisions == {"W", "L"}:
+                direct_prior.append(rows)
+
+        wins1 = 0
+        wins2 = 0
+        for rows in direct_prior:
+            for row in rows:
+                if row.get("Fighter_Name") == f1 and str(row.get("Decision") or "").upper() == "W":
+                    wins1 += 1
+                if row.get("Fighter_Name") == f2 and str(row.get("Decision") or "").upper() == "W":
+                    wins2 += 1
+
+        def matchup_record(predicate=None):
+            """Return the pre-fight matchup record for the two fighters under a specific filter."""
+            record = {
+                f1: {"wins": 0, "losses": 0},
+                f2: {"wins": 0, "losses": 0},
+            }
+            for rows in direct_prior:
+                if predicate and not any(predicate(row) for row in rows):
+                    continue
+                for row in rows:
+                    name = row.get("Fighter_Name")
+                    decision = str(row.get("Decision") or "").upper()
+                    if name not in record or decision not in ("W", "L"):
+                        continue
+                    if decision == "W":
+                        record[name]["wins"] += 1
+                    else:
+                        record[name]["losses"] += 1
+            return record
+
+        winner_name = winners[0]["name"] if len(winners) == 1 else None
+        post_wins1 = wins1 + (1 if winner_name == f1 else 0)
+        post_wins2 = wins2 + (1 if winner_name == f2 else 0)
+        matchup_context = {
+            "fighter1": f1,
+            "fighter2": f2,
+            "pre_h2h": {"fighter1_wins": wins1, "fighter2_wins": wins2, "total_fights": wins1 + wins2},
+            "post_h2h": {"fighter1_wins": post_wins1, "fighter2_wins": post_wins2, "total_fights": post_wins1 + post_wins2},
+            "location_record": matchup_record(lambda row: row.get("Location_Name") == location),
+            "fight_type_record": matchup_record(lambda row: row.get("Description") == fight_type),
+            "season_record": matchup_record(lambda row: int(row.get("Season") or 0) == season),
+            "championship_record": matchup_record(
+                lambda row: normalize_champ_name(row.get("Championship_Name")) == championship if row.get("Championship_Name") else False
+            ) if championship else None,
+        }
+
+    insights = []
+    if championship:
+        defending_winners = [participant for participant in winners if participant["defending"]]
+        defending_losers = [participant for participant in losers if participant["defending"]]
+        if defending_losers and not defending_winners and winners:
+            insights.append(f"{' & '.join(participant['name'] for participant in winners)} captured the {championship}.")
+        elif defending_winners:
+            insights.append(f"{' & '.join(participant['name'] for participant in defending_winners)} successfully defended the {championship}.")
+    if is_singles and matchup_context and matchup_context["pre_h2h"]["total_fights"] == 0:
+        insights.append("This was their first recorded singles meeting.")
+    for participant in participants:
+        if participant.get("elo_before") is not None and participant.get("elo_after") is not None:
+            delta = round(float(participant["elo_after"]) - float(participant["elo_before"]), 2)
+            if delta:
+                sign = "+" if delta > 0 else ""
+                insights.append(f"{participant['name']} moved {sign}{delta} Elo in this fight.")
+
+    result_summary = _build_fight_result_summary(participants, winners, losers, fight_type, championship)
+    navigation = fight_detail.get_prev_next_fight_ids(season, month, week, fight_id)
+
+    return {
+        "fight_id": fight_id,
+        "season": season,
+        "month": month,
+        "week": None if week == 99 else week,
+        "ppv": ppv,
+        "location": location,
+        "stage_image": stage_to_filename(location) + ".png" if location else "",
+        "fight_type": fight_type,
+        "championship": championship,
+        "brand": brand,
+        "participants": participant_cards,
+        "participants_raw": participants,
+        "winners": winners,
+        "losers": losers,
+        "layout": layout,
+        "result_summary": result_summary,
+        "matchup_context": matchup_context,
+        "insights": insights,
+        "navigation": navigation,
+        "hero_title": _build_fight_hero_title(participants, winners, losers, fight_type, championship),
+        "hero_subtitle": _build_fight_hero_subtitle(season, month, None if week == 99 else week, ppv, brand),
+    }
+
+
 def get_compare_payload(f1, f2):
     """Assemble the full fighter-vs-fighter comparison payload."""
     with ThreadPoolExecutor(max_workers=3) as pool:
@@ -338,6 +591,94 @@ def get_compare_payload(f1, f2):
             "max_champs": int(serialize_value(season_row.get("max_tc")) or 1),
         },
     }
+
+
+def _build_fight_result_summary(participants, winners, losers, fight_type, championship=""):
+    """Build a concise fight result string for the detail page."""
+    fight_type_lower = (fight_type or "").lower()
+    winner_names = " & ".join(participant["name"] for participant in winners) if winners else ""
+    loser_names = " & ".join(participant["name"] for participant in losers) if losers else ""
+
+    if championship and winner_names and loser_names:
+        title_label = f"{championship} Title"
+        defending_winners = [participant for participant in winners if participant.get("defending")]
+        defending_losers = [participant for participant in losers if participant.get("defending")]
+        if defending_winners:
+            retain_verb = "retains" if len(defending_winners) == 1 else "retain"
+            return f"{winner_names} {retain_verb} the {title_label}"
+        if defending_losers:
+            verb = "defeats" if len(winners) == 1 else "defeat"
+            return f"{winner_names} {verb} {loser_names} for the {title_label}"
+        if len(winners) == 1:
+            return f"{winner_names} wins the {title_label}"
+        return f"{winner_names} win the {title_label}"
+
+    if fight_type_lower == "smash series" and winner_names:
+        return f"{winner_names} win the Smash Series"
+
+    if len(participants) == 2 and len(winners) == 1 and len(losers) == 1:
+        result = winners[0].get("match_result")
+        suffix = f" {result}" if result not in (None, "", "None") else ""
+        return f"{winners[0]['name']} def. {losers[0]['name']}{suffix}"
+    if fight_type_lower in ("tag team", "handicap"):
+        winner_names = winner_names or "Winning team"
+        loser_names = loser_names or "Opposing team"
+        return f"{winner_names} def. {loser_names}"
+    if winners:
+        return f"{', '.join(participant['name'] for participant in winners)} won this {fight_type or 'fight'}."
+    return f"{fight_type or 'Fight'} result recorded."
+
+
+def _build_fight_hero_title(participants, winners, losers, fight_type, championship=""):
+    """Build the page hero title based on match type and participants."""
+    fight_type_lower = (fight_type or "").lower()
+    winner_names = " & ".join(participant["name"] for participant in winners) if winners else ""
+    loser_names = " & ".join(participant["name"] for participant in losers) if losers else ""
+
+    if championship and winner_names:
+        title_label = f"{championship} Title"
+        defending_winners = [participant for participant in winners if participant.get("defending")]
+        defending_losers = [participant for participant in losers if participant.get("defending")]
+        if fight_type_lower == "cash in":
+            if defending_winners:
+                return f"{winner_names} Defends Against The Cash-In To Retain The {title_label}"
+            if defending_losers:
+                return f"{winner_names} Cashes In And Captures The {title_label}"
+            if len(winners) == 1:
+                return f"{winner_names} Wins The {title_label}"
+            return f"{winner_names} Win The {title_label}"
+        if defending_winners:
+            verb = "Retains" if len(defending_winners) == 1 else "Retain"
+            return f"{winner_names} {verb} The {title_label}"
+        if defending_losers and loser_names:
+            verb = "Defeats" if len(winners) == 1 else "Defeat"
+            return f"{winner_names} {verb} {loser_names} For The {title_label}"
+        if len(winners) == 1:
+            return f"{winner_names} Wins The {title_label}"
+        return f"{winner_names} Win The {title_label}"
+
+    if fight_type_lower == "smash series" and winner_names:
+        return f"{winner_names} Win The Smash Series"
+
+    if len(participants) == 2:
+        return f"{participants[0]['name']} vs. {participants[1]['name']}"
+    if fight_type_lower in ("tag team", "handicap"):
+        return f"{winner_names} vs. {loser_names}"
+    if winners:
+        return f"{winners[0]['name']} won the {fight_type or 'match'}"
+    return fight_type or "Fight Detail"
+
+
+def _build_fight_hero_subtitle(season, month, week, ppv, brand):
+    """Build the compact chronology subtitle for the hero section."""
+    parts = [f"Season {season}", f"Month {month}"]
+    if week is not None:
+        parts.append(f"Week {week}")
+    if ppv:
+        parts.append(ppv)
+    if brand:
+        parts.append(brand)
+    return " · ".join(parts)
 
 
 def get_championships_payload():

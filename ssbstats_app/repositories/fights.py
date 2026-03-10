@@ -17,6 +17,7 @@ def get_fight_log(filters, page=1, per_page=100):
         ("fighter", "Fighter_Name", True),
         ("brand", "Brand_Name", False),
         ("decision", "Decision", False),
+        ("contender", "Contender_Indicator", False),
         ("fight_id", "Fight_ID", False),
     ]
     for key, col, use_like in mapping:

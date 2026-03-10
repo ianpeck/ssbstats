@@ -4,6 +4,13 @@ let currentFilters = {};
 let hasMore = true;
 let loadInProgress = false;
 
+function updateFightFilterCount() {
+    const countEl = document.getElementById("fightFilterCount");
+    if (!countEl) return;
+    const count = Object.entries(currentFilters).filter(([, value]) => value).length;
+    countEl.textContent = String(count);
+}
+
 function debounceFightLog(fn, ms) {
     let t;
     return (...args) => {
@@ -16,6 +23,7 @@ function getFightLogFilters() {
     return {
         fighter: document.getElementById("filterFighter").value.trim(),
         decision: document.getElementById("filterDecision").value,
+        contender: document.getElementById("filterContender").value,
         season: document.getElementById("filterSeason").value,
         month: document.getElementById("filterMonth").value,
         fight_type: document.getElementById("filterFightType").value,
@@ -95,10 +103,11 @@ function loadFights(reset = false) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    const dropdownIds = ["filterDecision", "filterSeason", "filterMonth", "filterFightType", "filterLocation", "filterPPV", "filterChampionship", "filterBrand"];
+    const dropdownIds = ["filterDecision", "filterContender", "filterSeason", "filterMonth"];
     dropdownIds.forEach(id => {
         document.getElementById(id).addEventListener("change", () => {
             currentFilters = getFightLogFilters();
+            updateFightFilterCount();
             updateFightLogURL();
             loadFights(true);
         });
@@ -106,17 +115,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const fighterInput = document.getElementById("filterFighter");
     setupAutocomplete(fighterInput, "fighters");
+    const textAutocompleteInputs = [
+        [document.getElementById("filterFightType"), "fight_types"],
+        [document.getElementById("filterLocation"), "locations"],
+        [document.getElementById("filterPPV"), "ppvs"],
+        [document.getElementById("filterChampionship"), "championships"],
+        [document.getElementById("filterBrand"), "brands"],
+    ];
+    textAutocompleteInputs.forEach(([input, category]) => setupAutocomplete(input, category));
 
     const debouncedLoad = debounceFightLog(() => {
         currentFilters = getFightLogFilters();
+        updateFightFilterCount();
         updateFightLogURL();
         loadFights(true);
     }, 350);
     fighterInput.addEventListener("input", debouncedLoad);
     fighterInput.addEventListener("change", () => {
         currentFilters = getFightLogFilters();
+        updateFightFilterCount();
         updateFightLogURL();
         loadFights(true);
+    });
+    textAutocompleteInputs.forEach(([input]) => {
+        input.addEventListener("input", debouncedLoad);
+        input.addEventListener("change", () => {
+            currentFilters = getFightLogFilters();
+            updateFightFilterCount();
+            updateFightLogURL();
+            loadFights(true);
+        });
     });
 
     document.getElementById("clearFilters").addEventListener("click", () => {
@@ -124,7 +152,11 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById(id).selectedIndex = 0;
         });
         fighterInput.value = "";
+        textAutocompleteInputs.forEach(([input]) => {
+            input.value = "";
+        });
         currentFilters = {};
+        updateFightFilterCount();
         updateFightLogURL();
         loadFights(true);
     });
@@ -138,6 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const filterMap = {
         fighter: "filterFighter",
         decision: "filterDecision",
+        contender: "filterContender",
         season: "filterSeason",
         month: "filterMonth",
         fight_type: "filterFightType",
@@ -152,6 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     currentFilters = getFightLogFilters();
     if (urlParams.get("fight_id")) currentFilters.fight_id = urlParams.get("fight_id");
+    updateFightFilterCount();
 
     loadFights(true);
 });

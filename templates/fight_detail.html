@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Fight {{ fight.fight_id }}{% endblock %}
+
+{% block content %}
+<section class="fight-page">
+    <div class="fight-page-topbar">
+        <a href="{{ url_for('pages.fights') }}" class="btn-outline fight-back-link">&larr; Back to Fight Log</a>
+        <div class="fight-page-nav">
+            {% if fight.navigation.previous_fight_id %}
+            <a href="{{ url_for('pages.fight_detail_page', fight_id=fight.navigation.previous_fight_id) }}" class="btn-outline">Previous Fight</a>
+            {% endif %}
+            {% if fight.navigation.next_fight_id %}
+            <a href="{{ url_for('pages.fight_detail_page', fight_id=fight.navigation.next_fight_id) }}" class="btn-outline">Next Fight</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="fight-hero-card glass-card">
+        <div class="fight-hero-copy">
+            <span class="fight-page-kicker">Fight Detail</span>
+            <h1 class="fight-page-title">{{ fight.hero_title }}</h1>
+            <p class="fight-page-subtitle">{{ fight.hero_subtitle }}</p>
+            <div class="fight-page-badges">
+                {% if fight.fight_type %}<span class="fight-badge fight-badge-type">{{ fight.fight_type }}</span>{% endif %}
+                {% if fight.championship %}<span class="fight-badge fight-badge-champ">&#127942; {{ fight.championship }}</span>{% endif %}
+                {% if fight.ppv %}<span class="fight-badge fight-badge-ppv">{{ fight.ppv }}</span>{% endif %}
+                {% if fight.location %}<span class="fight-badge fight-badge-season">{{ fight.location }}</span>{% endif %}
+            </div>
+        </div>
+
+        <div class="fight-hero-arena fight-layout-{{ fight.layout }}">
+            {% if fight.layout == "singles" %}
+                <div class="fight-hero-side fight-hero-side-left">
+                    {% set participant = fight.participants_raw[0] %}
+                    <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-hero-fighter-card {% if participant.decision == 'W' %}is-winner{% else %}is-loser{% endif %}">
+                        <img src="{{ url_for('static', filename='assets/fighters/' + participant.filename + '.png') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
+                        <span class="fight-hero-fighter-name">{{ participant.name }}</span>
+                        <span class="fight-hero-fighter-outcome">{{ 'Winner' if participant.decision == 'W' else 'Loss' }}</span>
+                    </a>
+                </div>
+                <div class="fight-hero-stage">
+                    {% if fight.stage_image %}
+                    <img src="{{ url_for('static', filename='assets/stages/' + fight.stage_image) }}" alt="{{ fight.location }}" class="fight-hero-stage-img">
+                    {% else %}
+                    <div class="fight-hero-stage-placeholder">No stage image</div>
+                    {% endif %}
+                    <div class="fight-hero-stage-label">{{ fight.location or 'Unknown Location' }}</div>
+                </div>
+                <div class="fight-hero-side fight-hero-side-right">
+                    {% set participant = fight.participants_raw[1] %}
+                    <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-hero-fighter-card {% if participant.decision == 'W' %}is-winner{% else %}is-loser{% endif %}">
+                        <img src="{{ url_for('static', filename='assets/fighters/' + participant.filename + '.png') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
+                        <span class="fight-hero-fighter-name">{{ participant.name }}</span>
+                        <span class="fight-hero-fighter-outcome">{{ 'Winner' if participant.decision == 'W' else 'Loss' }}</span>
+                    </a>
+                </div>
+            {% else %}
+                <div class="fight-hero-stage fight-hero-stage-wide">
+                    {% if fight.stage_image %}
+                    <img src="{{ url_for('static', filename='assets/stages/' + fight.stage_image) }}" alt="{{ fight.location }}" class="fight-hero-stage-img">
+                    {% else %}
+                    <div class="fight-hero-stage-placeholder">No stage image</div>
+                    {% endif %}
+                    <div class="fight-hero-stage-label">{{ fight.location or 'Unknown Location' }}</div>
+                </div>
+                <div class="fight-hero-grid">
+                    {% for participant in fight.participants_raw %}
+                    <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-hero-fighter-card fight-hero-fighter-card-small {% if participant.decision == 'W' %}is-winner{% else %}is-loser{% endif %}">
+                        <img src="{{ url_for('static', filename='assets/fighters/' + participant.filename + '.png') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
+                        <span class="fight-hero-fighter-name">{{ participant.name }}</span>
+                        <span class="fight-hero-fighter-outcome">{{ 'Winner' if participant.decision == 'W' else 'Entrant' }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="fight-detail-grid-page">
+        <section class="fight-detail-section glass-card">
+            <div class="fight-detail-section-header">
+                <span class="fight-detail-section-kicker">Before The Bell</span>
+                <h2 class="fight-detail-section-title">Participant Snapshots</h2>
+                <p class="fight-detail-section-copy">These numbers reflect where each fighter stood entering this fight, not their current-day totals.</p>
+            </div>
+            <div class="fight-pre-grid">
+                {% for participant in fight.participants %}
+                <div class="fight-pre-card">
+                    <div class="fight-pre-card-top">
+                        <img src="{{ url_for('static', filename='assets/fighters/' + participant.filename + '.png') }}" alt="{{ participant.name }}" class="fight-pre-portrait">
+                        <div>
+                            <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-pre-name">{{ participant.name }}</a>
+                            <div class="fight-pre-status">{{ participant.status }}</div>
+                        </div>
+                    </div>
+                    <div class="fight-pre-stats">
+                        <div class="fight-pre-stat"><span>Career</span><strong>{{ participant.career.wins }}-{{ participant.career.losses }}</strong></div>
+                        <div class="fight-pre-stat"><span>Season</span><strong>{{ participant.season.wins }}-{{ participant.season.losses }}</strong></div>
+                        <div class="fight-pre-stat"><span>Win %</span><strong>{{ participant.career.win_pct }}</strong></div>
+                        <div class="fight-pre-stat"><span>ELO</span><strong>{{ participant.elo_before if participant.elo_before is not none else '--' }}</strong></div>
+                        <div class="fight-pre-stat"><span>At {{ fight.location or 'Site' }}</span><strong>{{ participant.location.wins }}-{{ participant.location.losses }}</strong></div>
+                        <div class="fight-pre-stat"><span>{{ fight.fight_type or 'Match' }}</span><strong>{{ participant.fight_type.wins }}-{{ participant.fight_type.losses }}</strong></div>
+                    </div>
+                    {% if participant.contextual_records %}
+                    <div class="fight-pre-stats fight-pre-stats-contextual">
+                        {% for item in participant.contextual_records %}
+                        <div class="fight-pre-stat">
+                            <span>{{ item.label }}</span>
+                            <strong>{{ item.record.wins }}-{{ item.record.losses }}</strong>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="fight-pre-streak">{{ participant.streak.label }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% if fight.matchup_context %}
+        <section class="fight-detail-section glass-card">
+            <div class="fight-detail-section-header">
+                <span class="fight-detail-section-kicker">Matchup Context</span>
+                <h2 class="fight-detail-section-title">Rivalry Snapshot</h2>
+                <p class="fight-detail-section-copy">How the matchup looked before this fight, and how the result changed the rivalry.</p>
+            </div>
+            <div class="fight-matchup-scoreboard">
+                <div class="fight-matchup-side">
+                    <div class="fight-matchup-name">{{ fight.matchup_context.fighter1 }}</div>
+                    <div class="fight-matchup-score">{{ fight.matchup_context.pre_h2h.fighter1_wins }}</div>
+                </div>
+                <div class="fight-matchup-center">
+                    <div class="fight-matchup-label">Head-to-head entering fight</div>
+                    <div class="fight-matchup-post">After this fight: {{ fight.matchup_context.post_h2h.fighter1_wins }} - {{ fight.matchup_context.post_h2h.fighter2_wins }}</div>
+                </div>
+                <div class="fight-matchup-side">
+                    <div class="fight-matchup-name">{{ fight.matchup_context.fighter2 }}</div>
+                    <div class="fight-matchup-score">{{ fight.matchup_context.pre_h2h.fighter2_wins }}</div>
+                </div>
+            </div>
+            <div class="fight-context-grid">
+                <div class="fight-context-card">
+                    <h3 class="fight-context-title">Against Each Other At {{ fight.location or 'This Location' }}</h3>
+                    <div class="fight-context-rows">
+                        <div><span>{{ fight.matchup_context.fighter1 }}</span><strong>{{ fight.matchup_context.location_record[fight.matchup_context.fighter1].wins }}-{{ fight.matchup_context.location_record[fight.matchup_context.fighter1].losses }}</strong></div>
+                        <div><span>{{ fight.matchup_context.fighter2 }}</span><strong>{{ fight.matchup_context.location_record[fight.matchup_context.fighter2].wins }}-{{ fight.matchup_context.location_record[fight.matchup_context.fighter2].losses }}</strong></div>
+                    </div>
+                </div>
+                <div class="fight-context-card">
+                    <h3 class="fight-context-title">Against Each Other In {{ fight.fight_type or 'This Match Type' }}</h3>
+                    <div class="fight-context-rows">
+                        <div><span>{{ fight.matchup_context.fighter1 }}</span><strong>{{ fight.matchup_context.fight_type_record[fight.matchup_context.fighter1].wins }}-{{ fight.matchup_context.fight_type_record[fight.matchup_context.fighter1].losses }}</strong></div>
+                        <div><span>{{ fight.matchup_context.fighter2 }}</span><strong>{{ fight.matchup_context.fight_type_record[fight.matchup_context.fighter2].wins }}-{{ fight.matchup_context.fight_type_record[fight.matchup_context.fighter2].losses }}</strong></div>
+                    </div>
+                </div>
+                <div class="fight-context-card">
+                    <h3 class="fight-context-title">
+                        {% if fight.ppv %}
+                        Against Each Other At {{ fight.ppv }}
+                        {% else %}
+                        Against Each Other In Season {{ fight.season }}
+                        {% endif %}
+                    </h3>
+                    <div class="fight-context-rows">
+                        {% set seasonal_or_ppv = fight.matchup_context.ppv_record if fight.ppv else fight.matchup_context.season_record %}
+                        <div><span>{{ fight.matchup_context.fighter1 }}</span><strong>{{ seasonal_or_ppv[fight.matchup_context.fighter1].wins }}-{{ seasonal_or_ppv[fight.matchup_context.fighter1].losses }}</strong></div>
+                        <div><span>{{ fight.matchup_context.fighter2 }}</span><strong>{{ seasonal_or_ppv[fight.matchup_context.fighter2].wins }}-{{ seasonal_or_ppv[fight.matchup_context.fighter2].losses }}</strong></div>
+                    </div>
+                </div>
+                {% if fight.matchup_context.championship_record %}
+                <div class="fight-context-card">
+                    <h3 class="fight-context-title">Against Each Other For The {{ fight.championship }}</h3>
+                    <div class="fight-context-rows">
+                        <div><span>{{ fight.matchup_context.fighter1 }}</span><strong>{{ fight.matchup_context.championship_record[fight.matchup_context.fighter1].wins }}-{{ fight.matchup_context.championship_record[fight.matchup_context.fighter1].losses }}</strong></div>
+                        <div><span>{{ fight.matchup_context.fighter2 }}</span><strong>{{ fight.matchup_context.championship_record[fight.matchup_context.fighter2].wins }}-{{ fight.matchup_context.championship_record[fight.matchup_context.fighter2].losses }}</strong></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="fight-detail-section glass-card">
+            <div class="fight-detail-section-header">
+                <span class="fight-detail-section-kicker">Aftermath</span>
+                <h2 class="fight-detail-section-title">What Changed</h2>
+                <p class="fight-detail-section-copy">The immediate consequences and context generated from the result.</p>
+            </div>
+            <div class="fight-insights-list">
+                {% for insight in fight.insights %}
+                <div class="fight-insight-row">{{ insight }}</div>
+                {% endfor %}
+                {% if not fight.insights %}
+                <div class="fight-insight-row">No derived insights were available for this fight yet.</div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</section>
+{% endblock %}

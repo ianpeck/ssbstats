@@ -6,6 +6,7 @@ from ssbstats_app.services.content import get_autocomplete_data
 from ssbstats_app.services.stats import (
     get_championships_payload,
     get_compare_payload,
+    get_fight_detail_payload,
     get_events_payload,
     get_fight_log_payload,
     get_fighter_advanced_payload,
@@ -112,11 +113,24 @@ def fights():
         "fighter": request.args.get("fighter", ""),
         "brand": request.args.get("brand", ""),
         "decision": request.args.get("decision", ""),
+        "contender": request.args.get("contender", ""),
         "fight_id": request.args.get("fight_id", ""),
     }
     page = int(request.args.get("page", 1))
     try:
         return jsonify(get_fight_log_payload(filters, page))
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@api_bp.route("/fight/<int:fight_id>")
+def fight_detail(fight_id):
+    """Return the full payload for a dedicated fight detail page."""
+    try:
+        payload = get_fight_detail_payload(fight_id)
+        if payload is None:
+            return jsonify({"error": "Fight not found"}), 404
+        return jsonify(payload)
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 

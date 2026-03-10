@@ -96,6 +96,7 @@ function updateEloHeaders() {
 function renderLeaderboard(data) {
     const tbody = document.getElementById("leaderboardTbody");
     tbody.innerHTML = "";
+    const fragment = document.createDocumentFragment();
     const isSeason = !!currentSeason;
     const eloKey1 = isSeason ? "peak_season_elo" : "current_elo";
     const eloKey3 = isSeason ? "season_end_elo" : "peak_elo";
@@ -138,15 +139,10 @@ function renderLeaderboard(data) {
             <td class="stat-cell ${pctClass}">${fighter.win_pct}</td>
             ${extraCells}
         `;
-        row.style.opacity = "0";
-        row.style.transform = "translateY(10px)";
-        tbody.appendChild(row);
-        setTimeout(() => {
-            row.style.transition = "opacity 0.25s ease, transform 0.25s ease";
-            row.style.opacity = "1";
-            row.style.transform = "translateY(0)";
-        }, i * 20);
+        fragment.appendChild(row);
     });
+
+    tbody.appendChild(fragment);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

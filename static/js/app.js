@@ -186,7 +186,7 @@ function chipHTML(f) {
 }
 
 function renderFight(fight) {
-    const { season, month, week, ppv, location, fight_type,
+    const { fight_id, season, month, week, ppv, location, fight_type,
             championship, brand, fighters } = fight;
 
     const winners   = fighters.filter(isWinner);
@@ -259,74 +259,16 @@ function renderFight(fight) {
             </div>` : ''}
         </div>`;
 
-    function detailFighterHTML(f) {
-        const fn  = fighterToFilename(f.name);
-        const win = isWinner(f);
-        const extras = [
-            f.match_result != null && f.match_result !== '' ? String(f.match_result) : '',
-            f.defending ? 'Defending'  : '',
-            f.seed      ? `Seed #${f.seed}` : '',
-            // #1 Contender is match-level; shown in meta badges above, not per-fighter
-        ].filter(Boolean).join(' \u00b7 ');
-        return `<div class="fight-detail-fighter ${win ? 'is-winner' : 'is-loser'}">
-            <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
-                 class="fight-detail-portrait" onerror="this.style.display='none'">
-            <div class="fight-detail-fighter-info">
-                <a href="/fighter/${encodeURIComponent(f.name)}"
-                   class="fight-detail-fighter-name"
-                   onclick="event.stopPropagation()">${f.name}</a>
-            </div>
-            <span class="fight-detail-result-badge ${win ? 'win' : 'loss'}">${win ? 'WIN' : 'LOSS'}</span>
-            ${extras ? `<span class="fight-detail-stocks">${extras}</span>` : ''}
-        </div>`;
-    }
-
-    const stageImg = location ? `
-        <div class="fight-detail-stage">
-            <div class="fight-stage-img-wrap">
-                <img src="/static/assets/stages/${stageToFilename(location)}.png"
-                     alt="${location}" class="fight-stage-img"
-                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-                <div class="fight-stage-placeholder">
-                    <span>Stage Photo<br>Not Available</span>
-                </div>
-            </div>
-            <span class="fight-stage-label">${location}</span>
-        </div>` : '';
-
-    const infoRows = [
-        season  != null ? `<div>Season <span>${season}</span></div>` : '',
-        month   != null ? `<div>Month <span>${month}</span></div>` : '',
-        week    != null ? `<div>Week <span>${week}</span></div>` : '',
-        ppv     ? `<div>PPV <span>${ppv}</span></div>` : '',
-        location? `<div>Location <span>${location}</span></div>` : '',
-        fight_type   ? `<div>Fight Type <span>${fight_type}</span></div>` : '',
-        championship ? `<div>Championship <span>${championship}</span></div>` : '',
-        brand        ? `<div>Brand <span>${brand}</span></div>` : '',
-    ].filter(Boolean).join('');
-
     const row = document.createElement('div');
     row.className = 'fight-row';
     row.innerHTML = `
         <div class="fight-row-main">
             ${metaHTML}
             <div class="fight-participants-col">${participantsHTML}</div>
-            <span class="fight-chevron">&#9660;</span>
-        </div>
-        <div class="fight-detail">
-            <div class="fight-detail-grid">
-                <div class="fight-detail-left">
-                    <div class="fight-detail-info">${infoRows}</div>
-                    ${stageImg}
-                </div>
-                <div class="fight-detail-participants">
-                    ${fighters.map(detailFighterHTML).join('')}
-                </div>
-            </div>
         </div>`;
 
     row.querySelector('.fight-row-main').addEventListener('click', () => {
-        row.classList.toggle('is-open');
+        window.location.href = `/fight/${fight_id}`;
     });
 
     return row;

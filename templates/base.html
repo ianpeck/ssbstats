@@ -50,7 +50,7 @@
                     <span>Events (PPVs)</span>
                 </a>
 
-                <a href="/fights" class="nav-link {% if request.path.startswith('/fights') %}active{% endif %}">
+                <a href="/fights" class="nav-link {% if request.path.startswith('/fights') or request.path.startswith('/fight/') %}active{% endif %}">
                     <i data-lucide="notebook"></i>
                     <span>Fight Logs</span>
                 </a>
