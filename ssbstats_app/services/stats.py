@@ -438,6 +438,7 @@ def get_fight_detail_payload(fight_id):
             "post_h2h": {"fighter1_wins": post_wins1, "fighter2_wins": post_wins2, "total_fights": post_wins1 + post_wins2},
             "location_record": matchup_record(lambda row: row.get("Location_Name") == location),
             "fight_type_record": matchup_record(lambda row: row.get("Description") == fight_type),
+            "ppv_record": matchup_record(lambda row: row.get("PPV_Name") == ppv),
             "season_record": matchup_record(lambda row: int(row.get("Season") or 0) == season),
             "championship_record": matchup_record(
                 lambda row: normalize_champ_name(row.get("Championship_Name")) == championship if row.get("Championship_Name") else False
