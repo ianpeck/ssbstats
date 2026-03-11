@@ -5,7 +5,7 @@ import re
 from flask import current_app
 
 from ssbstats_app.repositories.base import h2h_query_sql, select_view_dicts
-from ssbstats_app.services.chat_metadata import render_legacy_schema_prompt, render_planner_prompt
+from ssbstats_app.services.chat_metadata import render_agent_prompt, render_legacy_schema_prompt, render_planner_prompt
 from ssbstats_app.services.chat_state import apply_chat_state, build_chat_state, extract_fighter_names
 from ssbstats_app.services.content import get_autocomplete_data
 from ssbstats_app.utils import normalize_champ_name, serialize_value
@@ -19,6 +19,7 @@ except ImportError:
 _GROQ_CLIENT = None
 _PLANNER_MODEL = "llama-3.3-70b-versatile"
 _DEFAULT_MIN_SAMPLE = 5
+_AGENT_PROMPT = render_agent_prompt()
 _PLANNER_PROMPT = render_planner_prompt()
 _LEGACY_CHAT_SCHEMA = render_legacy_schema_prompt()
 
@@ -62,6 +63,9 @@ def answer_question(question, history):
         return {"error": "No question provided.", "status": 400}
 
     try:
+        agent_result = _schema_grounded_answer_question(client, question, history or [])
+        if agent_result:
+            return agent_result
         state = build_chat_state(history or [])
         plan = _plan_question(client, question, state)
         if plan.get("needs_clarification"):
@@ -111,6 +115,142 @@ def _plan_question(client, question, state):
     except Exception:
         raw_plan = {}
     return _normalize_plan(raw_plan, question, state)
+
+
+def _schema_grounded_answer_question(client, question, history):
+    """Run the SQL-first schema-grounded agent before any semantic fallback."""
+    history = (history or [])[-3:]
+    state = build_chat_state(history)
+    messages = [
+        {"role": "system", "content": _AGENT_PROMPT},
+        {"role": "system", "content": f"Recent conversation state: {json.dumps(state)}"},
+    ]
+    for item in history:
+        prior_question = str(item.get("question", ""))[:300]
+        prior_sql = str(item.get("sql", ""))
+        prior_rows = item.get("rows", [])
+        messages.append({"role": "user", "content": prior_question})
+        messages.append({"role": "assistant", "content": json.dumps({"sql": prior_sql, "result_preview": prior_rows[:5]})})
+    messages.append({"role": "user", "content": question})
+
+    try:
+        response = client.chat.completions.create(
+            model=_PLANNER_MODEL,
+            messages=messages,
+            temperature=0,
+            max_tokens=700,
+        )
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```[a-z]*\n?", "", raw).rstrip("`").strip()
+        parsed = json.loads(raw)
+    except Exception:
+        return None
+
+    if parsed.get("needs_clarification"):
+        return {
+            "answer": parsed.get("clarification_question") or "I need a little more detail to answer that correctly.",
+            "rows": [],
+            "sql": "",
+            "status": 200,
+        }
+
+    sql = str(parsed.get("sql", "")).strip()
+    if not sql:
+        return None
+
+    sql, guard_error = guard_sql(sql)
+    if guard_error:
+        current_app.logger.warning("[chat] schema agent guard error: %s | SQL: %s", guard_error, sql)
+        return None
+
+    try:
+        rows = select_view_dicts(sql)
+    except Exception as db_err:
+        current_app.logger.warning("[chat] schema agent SQL error: %s | SQL: %s", db_err, sql)
+        repaired = _repair_schema_sql(client, question, history, sql, str(db_err), state)
+        if not repaired:
+            return None
+        sql = repaired
+        try:
+            rows = select_view_dicts(sql)
+        except Exception as db_err2:
+            current_app.logger.warning("[chat] repaired schema agent SQL error: %s | SQL: %s", db_err2, sql)
+            return None
+
+    serialized = _serialize_rows(rows)
+    answer = _compose_schema_grounded_answer(client, question, sql, serialized)
+    return {"answer": answer, "rows": serialized, "sql": sql, "status": 200}
+
+
+def _repair_schema_sql(client, question, history, sql, error_text, state):
+    """Ask the model to repair a failed read-only SQL query using the schema prompt."""
+    messages = [
+        {"role": "system", "content": _AGENT_PROMPT},
+        {"role": "system", "content": f"Recent conversation state: {json.dumps(state)}"},
+        {
+            "role": "user",
+            "content": (
+                f"Question: {question}\n\n"
+                f"Broken SQL: {sql}\n\n"
+                f"Database error: {error_text}\n\n"
+                "Return corrected JSON in the same format."
+            ),
+        },
+    ]
+    for item in history[-2:]:
+        prior_question = str(item.get("question", ""))[:300]
+        prior_sql = str(item.get("sql", ""))
+        messages.append({"role": "user", "content": prior_question})
+        messages.append({"role": "assistant", "content": json.dumps({"sql": prior_sql, "result_preview": (item.get("rows", [])[:5])})})
+    try:
+        response = client.chat.completions.create(
+            model=_PLANNER_MODEL,
+            messages=messages,
+            temperature=0,
+            max_tokens=700,
+        )
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```[a-z]*\n?", "", raw).rstrip("`").strip()
+        parsed = json.loads(raw)
+        repaired_sql = str(parsed.get("sql", "")).strip()
+    except Exception:
+        return None
+    repaired_sql, guard_error = guard_sql(repaired_sql)
+    if guard_error:
+        return None
+    return repaired_sql
+
+
+def _compose_schema_grounded_answer(client, question, sql, rows):
+    """Use the model to phrase a query result without mentioning SQL."""
+    answer_messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a friendly, concise sports stats analyst for a Super Smash Bros league. "
+                "Answer using the returned data only. Do not mention SQL or databases. "
+                "If there are no rows, say so plainly."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"Question: {question}\n\nQuery used: {sql}\n\nResult rows ({len(rows)} rows): {json.dumps(rows[:20])}",
+        },
+    ]
+    try:
+        answer_resp = client.chat.completions.create(
+            model=_PLANNER_MODEL,
+            messages=answer_messages,
+            temperature=0.1,
+            max_tokens=250,
+        )
+        return answer_resp.choices[0].message.content.strip()
+    except Exception:
+        if not rows:
+            return "I couldn't find anything matching that in the stats."
+        return "I found the data, but I couldn't phrase it cleanly."
 
 
 def _normalize_plan(raw_plan, question, state):

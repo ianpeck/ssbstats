@@ -113,6 +113,24 @@ METRIC_DEFINITIONS = [
 ]
 
 
+SOURCE_SELECTION_RULES = [
+    "If the question asks about title wins, title reigns, captured a championship, held a championship, or how many times someone won a belt, use ChampionshipHistory or CurrentChampions, not champfightstats.",
+    "If the question asks about record in championship matches, use champfightstats or champfightstatsbychampionship.",
+    "If the question asks about defending a title or title defenses, first decide whether the user wants a count or a record.",
+    "If the user asks for most title defenses, number of successful defenses, or who defended a title the most, count winning FightLog rows where DefendingIndicator is true.",
+    "If the user asks for defending record, win percentage while defending, or best defending record, use defendingtitle or aggregate FightLog rows with DefendingIndicator.",
+    "If the question asks for current holders, current champions, or who has a belt right now, use CurrentChampions.",
+    "If the question asks for longest reign, total months held, or title lineage, use ChampionshipHistory.",
+    "If the user mentions major titles or major championships, filter championships to Championship.championship_tier = 'Major' or use ChampionshipHistory.Championship_Tier = 'Major' where available.",
+    "If the question asks about season-scoped PPV performance, use FightLog, not CareerStatsByPPV.",
+    "If the question asks about all-time PPV performance for one fighter or all fighters, CareerStatsByPPV is appropriate.",
+    "If the question asks about direct matchup between exactly two fighters, prefer headtohead stored procedures.",
+    "If the question asks about every opponent against one fighter, use CareerStatsByOpponent.",
+    "If the question asks about pre-fight or post-fight chronology, use CareerRunningStats, allwinstreaks/alllosingsteaks, or FightLog ordered by Season, Month, Week, Fight_ID.",
+    "If the question asks about Elo changes, current Elo, average Elo, or peak Elo, use Elo joined to Fight or Results as needed.",
+]
+
+
 PLANNER_RULES = [
     "Map the question into a semantic stats plan, not a canned intent label.",
     "Use rank_fighters for leaderboard questions like most wins, most losses, most fights, best record, worst record, longest win streak.",
@@ -202,6 +220,7 @@ def render_legacy_schema_prompt():
     sprocs = "\n".join(f"- {name}: {description}" for name, description in STORED_PROCEDURES)
     joins = "\n".join(f"- {rule}" for rule in JOIN_RULES)
     metrics = "\n".join(f"- {item}" for item in METRIC_DEFINITIONS)
+    source_rules = "\n".join(f"- {item}" for item in SOURCE_SELECTION_RULES)
     return dedent(
         f"""
         You are a sports statistics assistant for SSB Stats — a WWE-style franchise using Super Smash Bros characters.
@@ -227,6 +246,10 @@ def render_legacy_schema_prompt():
         ==================
         {metrics}
 
+        SOURCE SELECTION RULES
+        ======================
+        {source_rules}
+
         SQL RULES
         =========
         - Return only SELECT or WITH queries.
@@ -238,6 +261,73 @@ def render_legacy_schema_prompt():
         {{
           "sql": "your query",
           "explanation": "one sentence"
+        }}
+        """
+    ).strip()
+
+
+def render_agent_prompt():
+    """Build a schema-grounded prompt for the SQL-first chat agent."""
+    views = "\n".join(
+        f"- {name}: {columns} ({description})"
+        for name, columns, description in VIEW_DEFINITIONS
+    )
+    tables = "\n".join(
+        f"- {name}: {columns} ({description})"
+        for name, columns, description in BASE_TABLES
+    )
+    sprocs = "\n".join(f"- {name}: {description}" for name, description in STORED_PROCEDURES)
+    joins = "\n".join(f"- {rule}" for rule in JOIN_RULES)
+    metrics = "\n".join(f"- {item}" for item in METRIC_DEFINITIONS)
+    source_rules = "\n".join(f"- {item}" for item in SOURCE_SELECTION_RULES)
+    return dedent(
+        f"""
+        You are a schema-grounded stats analyst for SSB Stats.
+        Your job is to answer arbitrary natural-language questions about the league by reasoning from the database schema.
+        Do not use a canned intent list. Infer the metric from the user's wording and the schema.
+
+        VIEW LAYER
+        ==========
+        {views}
+
+        BASE TABLES
+        ===========
+        {tables}
+
+        STORED PROCEDURES
+        =================
+        {sprocs}
+
+        JOIN / GRAIN RULES
+        ==================
+        {joins}
+
+        METRIC DEFINITIONS
+        ==================
+        {metrics}
+
+        SOURCE SELECTION RULES
+        ======================
+        {source_rules}
+
+        QUERY GUIDELINES
+        ================
+        - Prefer views when they already answer the question cleanly.
+        - Use FightLog when the question combines multiple contexts or needs per-fight sequencing.
+        - Use CareerRunningStats or streak-history views when the user asks about "at that point", momentum, or after/before sequences.
+        - Use stored procedures for direct head-to-head when possible.
+        - Distinguish count questions from record questions. "Most", "how many", and "number of" usually mean counts, not win percentage.
+        - Distinguish title reign questions from championship-match record questions.
+        - COUNT(DISTINCT Fight_ID) when counting fights from FightLog.
+        - All SQL must be read-only SELECT or WITH queries.
+        - If the user question is underspecified in a way that changes the answer materially, ask one short clarification question instead of guessing.
+
+        Return ONLY JSON with this shape:
+        {{
+          "needs_clarification": false,
+          "clarification_question": "",
+          "sql": "read-only query here",
+          "reasoning": "short internal explanation of why this query answers the question"
         }}
         """
     ).strip()
