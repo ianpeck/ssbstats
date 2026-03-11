@@ -3,13 +3,30 @@
 
 {% block content %}
 <section class="seasons-section">
-    <h1 class="section-title">Season Archive</h1>
-    <p class="section-subtitle">Full breakdown of every season</p>
+    <div class="season-page-intro glass-card">
+        <div class="season-page-copy">
+            <span class="season-page-kicker">Archive</span>
+            <h1 class="section-title">Season Archive</h1>
+            <p class="section-subtitle">A full season-by-season recap of champions, awards, signature moments, and the final rankings table.</p>
+        </div>
+        <div class="season-page-meta">
+            <div class="season-page-meta-label">Browse Season</div>
+            <div class="season-page-meta-value" id="seasonMetaValue">Season {{ seasons[0] if seasons else '' }}</div>
+        </div>
+    </div>
 
-    <div class="season-pills" id="seasonPills">
+    <div class="season-pills-wrap glass-card">
+        <div class="season-pills-header">
+            <div>
+                <div class="season-pills-kicker">Season Selector</div>
+                <div class="season-pills-title">Jump to any era of the league</div>
+            </div>
+        </div>
+        <div class="season-pills" id="seasonPills">
         {% for s in seasons %}
         <button class="season-pill {% if loop.first %}active{% endif %}" data-season="{{ s }}">S{{ s }}</button>
         {% endfor %}
+        </div>
     </div>
 
     <div class="loading-overlay" id="loadingOverlay">
@@ -18,31 +35,66 @@
     </div>
 
     <div id="seasonContent" style="display:none;">
-        <h2 class="season-heading" id="seasonHeading"></h2>
+        <div class="season-hero glass-card">
+            <div>
+                <div class="season-hero-kicker">Season Overview</div>
+                <h2 class="season-heading" id="seasonHeading"></h2>
+                <p class="season-hero-copy">The defining title picture, awards slate, event winners, and closing rankings for the selected season.</p>
+            </div>
+            <div class="season-hero-tagline" id="seasonHeroTagline"></div>
+        </div>
 
         <div class="season-top-grid">
             <!-- Notable Events -->
-            <div class="glass-card season-card">
-                <h3 class="season-card-title">Notable Events</h3>
+            <div class="glass-card season-card season-section-card">
+                <div class="season-card-head">
+                    <div>
+                        <div class="season-card-kicker">Moments</div>
+                        <h3 class="season-card-title">Notable Events</h3>
+                    </div>
+                </div>
                 <div id="eventsList" class="season-highlights"></div>
             </div>
 
             <!-- Awards -->
-            <div class="glass-card season-card">
-                <h3 class="season-card-title">Awards</h3>
+            <div class="glass-card season-card season-section-card">
+                <div class="season-card-head">
+                    <div>
+                        <div class="season-card-kicker">Recognition</div>
+                        <h3 class="season-card-title">Awards</h3>
+                    </div>
+                </div>
                 <div id="awardsList" class="season-highlights"></div>
             </div>
         </div>
 
         <!-- Championship Timeline -->
-        <div class="glass-card" style="margin-top: 1.25rem;" id="champTimelineCard">
-            <div class="season-card-title" style="padding: 1.25rem 1.5rem 0.75rem;">Championship Reigns</div>
-            <div id="champTimeline" style="padding: 0 1.5rem 1.25rem;"></div>
+        <div class="glass-card season-section-card season-timeline-card" style="margin-top: 1.25rem;" id="champTimelineCard">
+            <div class="season-card-shell">
+                <div class="season-card-head">
+                    <div>
+                        <div class="season-card-kicker">Title Picture</div>
+                        <h3 class="season-card-title">Championship Reigns</h3>
+                    </div>
+                    <div class="season-card-chip" id="championshipsCountChip">0 belts</div>
+                </div>
+                <p class="season-card-description">A visual timeline of who controlled each championship during the selected season.</p>
+            </div>
+            <div id="champTimeline" class="season-timeline-body"></div>
         </div>
 
         <!-- Season Rankings -->
-        <div class="glass-card" style="margin-top: 1.25rem;">
-            <div class="season-card-title" style="padding: 1.25rem 1.5rem 0.5rem;">Season Rankings</div>
+        <div class="glass-card season-section-card season-rankings-card" style="margin-top: 1.25rem;">
+            <div class="season-card-shell">
+                <div class="season-card-head">
+                    <div>
+                        <div class="season-card-kicker">Final Table</div>
+                        <h3 class="season-card-title">Season Rankings</h3>
+                    </div>
+                    <div class="season-card-chip" id="rankingsCountChip">0 fighters</div>
+                </div>
+                <p class="season-card-description">Sort the final standings by Power Score, record, volume, title months, and event success.</p>
+            </div>
             <div class="table-scroll-wrapper">
             <table class="leaderboard-table" id="seasonRankingsTable">
                 <thead>

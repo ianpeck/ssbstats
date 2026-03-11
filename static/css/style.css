@@ -1892,12 +1892,76 @@ img {
     padding: 2rem 1.5rem;
 }
 
+.season-page-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1.5rem;
+    align-items: end;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.season-page-kicker,
+.season-pills-kicker,
+.season-hero-kicker,
+.season-card-kicker {
+    display: inline-block;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #f6d17a;
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+}
+
+.season-page-meta {
+    min-width: 180px;
+    padding: 0.95rem 1rem;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: right;
+}
+
+.season-page-meta-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+}
+
+.season-page-meta-value {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    color: var(--text-primary);
+}
+
+.season-pills-wrap {
+    padding: 1rem 1.25rem 1.1rem;
+    margin-bottom: 1.25rem;
+}
+
+.season-pills-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.85rem;
+}
+
+.season-pills-title {
+    font-size: 0.98rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
 /* Season pill selector (shared between Power Rankings and Season Archive) */
 .season-pills {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-bottom: 1.75rem;
+    margin-bottom: 0;
 }
 
 .season-pill {
@@ -1926,10 +1990,32 @@ img {
 
 .season-heading {
     font-family: var(--font-heading);
-    font-size: 1.4rem;
+    font-size: 1.75rem;
     color: var(--accent-light);
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.35rem;
     letter-spacing: 0.05em;
+}
+
+.season-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1.5rem;
+    align-items: end;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.15rem;
+}
+
+.season-hero-copy {
+    color: var(--text-secondary);
+    max-width: 760px;
+}
+
+.season-hero-tagline {
+    font-family: var(--font-heading);
+    color: #f6d17a;
+    text-align: right;
+    line-height: 1.4;
+    max-width: 260px;
 }
 
 /* Two-column grid for events + awards */
@@ -1939,23 +2025,56 @@ img {
     gap: 1.25rem;
 }
 
-@media (max-width: 700px) {
-    .season-top-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
 .season-card {
     padding: 1.25rem 1.5rem;
 }
 
+.season-section-card {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+        rgba(10, 14, 22, 0.62);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.season-card-shell {
+    padding: 1.25rem 1.5rem 0.75rem;
+}
+
+.season-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
 .season-card-title {
     font-family: var(--font-heading);
-    font-size: 0.85rem;
+    font-size: 1rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--accent-light);
-    margin-bottom: 1rem;
+    margin-bottom: 0;
+}
+
+.season-card-chip {
+    padding: 0.28rem 0.62rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    white-space: nowrap;
+}
+
+.season-card-description {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+}
+
+.season-timeline-body {
+    padding: 0 1.5rem 1.25rem;
 }
 
 .season-highlights {
@@ -2000,9 +2119,39 @@ img {
     font-style: italic;
 }
 
+.season-rankings-card .table-scroll-wrapper {
+    padding: 0 1.25rem 1.25rem;
+}
+
 /* Power Rankings subtitle */
 #rankingsSubtitle {
     transition: opacity 0.2s ease;
+}
+
+@media (max-width: 700px) {
+    .season-top-grid,
+    .season-page-intro,
+    .season-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .season-page-meta,
+    .season-hero-tagline {
+        text-align: left;
+        max-width: none;
+    }
+
+}
+
+@media (max-width: 560px) {
+    .season-highlight-row {
+        grid-template-columns: 1.5rem 1fr;
+    }
+
+    .highlight-value {
+        grid-column: 2;
+        text-align: left;
+    }
 }
 
 /* ============================================

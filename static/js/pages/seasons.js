@@ -86,14 +86,28 @@ function loadSeason(season) {
             document.getElementById('loadingOverlay').style.display = 'none';
             document.getElementById('seasonContent').style.display = 'block';
             document.getElementById('seasonHeading').textContent = `Season ${season}`;
+            document.getElementById('seasonMetaValue').textContent = `Season ${season}`;
             renderEvents(data.holistic || []);
             renderAwards(data.awards || []);
             renderChampTimeline(data.champ_history || []);
             renderRankings(data.rankings || [], data.holistic || [], data.champ_history || [], data.awards || []);
+            renderSeasonSummary(season, data.rankings || [], data.holistic || [], data.champ_history || [], data.awards || []);
         })
         .catch(() => {
             document.getElementById('loadingOverlay').innerHTML = '<p>Error loading season data.</p>';
         });
+}
+
+function renderSeasonSummary(season, rankings, holistic, champHistory, awards) {
+    const heroTagline = document.getElementById('seasonHeroTagline');
+    const uniqueChampions = new Set((champHistory || []).map(row => row.Fighter_Name).filter(Boolean));
+    const uniqueBelts = new Set((champHistory || []).map(row => row.Championship_Name).filter(Boolean));
+    const awardWinnerCount = new Set((awards || []).map(row => row.Fighter_Name).filter(Boolean)).size;
+    const eventWinnerCount = new Set((holistic || []).map(row => row.Fighter_Name).filter(Boolean)).size;
+
+    document.getElementById('championshipsCountChip').textContent = `${uniqueBelts.size || 0} belts`;
+    document.getElementById('rankingsCountChip').textContent = `${(rankings || []).length || 0} fighters`;
+    heroTagline.textContent = '';
 }
 
 function renderEvents(rows) {
@@ -388,13 +402,6 @@ function _renderSortedRankings() {
             <td class="stat-cell">${f.event_wins > 0 ? f.event_wins + '/6' : '—'}</td>
             <td class="stat-cell">${f.titles || '—'}</td>
         `;
-        tr.style.opacity = '0';
-        tr.style.transform = 'translateY(8px)';
         tbody.appendChild(tr);
-        setTimeout(() => {
-            tr.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-            tr.style.opacity = '1';
-            tr.style.transform = 'translateY(0)';
-        }, i * 20);
     });
 }
