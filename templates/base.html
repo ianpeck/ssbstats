@@ -57,7 +57,7 @@
 
                 <a href="/chat" class="nav-link {% if request.path == '/chat' %}active{% endif %}">
                     <i data-lucide="bot"></i>
-                    <span>Ask AI</span>
+                    <span>Ask AI <span class="nav-beta-badge">Beta</span></span>
                 </a>
 
                 <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">
@@ -93,7 +93,7 @@
     <div id="floatChatWrap" class="float-chat-wrap">
         <div id="floatChatPanel" class="float-chat-panel glass-card" style="display:none;">
             <div class="float-chat-header">
-                <span>Ask the Stats AI</span>
+                <span>Ask the Stats AI <span class="nav-beta-badge">Beta</span></span>
                 <button class="float-chat-close" onclick="toggleFloatChat()">&times;</button>
             </div>
             <div class="float-chat-messages" id="floatChatMessages">
@@ -108,7 +108,7 @@
         </div>
         <button class="float-chat-btn" onclick="toggleFloatChat()" title="Ask the Stats AI">
             <span class="float-chat-icon">✨</span>
-            <span class="float-chat-label">Ask AI</span>
+            <span class="float-chat-label">Ask AI <span class="nav-beta-badge">Beta</span></span>
         </button>
     </div>
 
