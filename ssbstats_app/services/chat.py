@@ -22,6 +22,17 @@ _DEFAULT_MIN_SAMPLE = 5
 _AGENT_PROMPT = render_agent_prompt()
 _PLANNER_PROMPT = render_planner_prompt()
 _LEGACY_CHAT_SCHEMA = render_legacy_schema_prompt()
+_DANGEROUS_REQUEST_PATTERNS = [
+    r"\bdelete\b",
+    r"\bdrop\b",
+    r"\btruncate\b",
+    r"\balter\b",
+    r"\binsert\b",
+    r"\bupdate\b",
+    r"\bremove\b",
+    r"\berase\b",
+    r"\bwipe\b",
+]
 
 
 def get_groq_client():
@@ -52,15 +63,31 @@ def guard_sql(sql):
     return original_sql, None
 
 
+def guard_question(question):
+    """Reject destructive natural-language requests before any model call."""
+    lower = str(question or "").lower()
+    for pattern in _DANGEROUS_REQUEST_PATTERNS:
+        if re.search(pattern, lower):
+            return (
+                "I can't help with deleting, dropping, updating, or otherwise modifying database data. "
+                "I can only answer read-only questions about the stats."
+            )
+    return None
+
+
 def answer_question(question, history):
     """Answer a stats question using a semantic plan plus deterministic executors."""
-    client = get_groq_client()
-    if not client:
-        return {"error": "Chat is not configured (missing GROQ_API_KEY).", "status": 503}
-
     question = str(question or "").strip()[:500]
     if not question:
         return {"error": "No question provided.", "status": 400}
+
+    blocked_reason = guard_question(question)
+    if blocked_reason:
+        return {"answer": blocked_reason, "rows": [], "sql": "", "status": 200}
+
+    client = get_groq_client()
+    if not client:
+        return {"error": "Chat is not configured (missing GROQ_API_KEY).", "status": 503}
 
     try:
         agent_result = _schema_grounded_answer_question(client, question, history or [])

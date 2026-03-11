@@ -1,7 +1,11 @@
 import unittest
 from unittest.mock import patch
 
-from ssbstats_app.services.chat import guard_sql
+from ssbstats_app.services.chat import (
+    answer_question,
+    guard_question,
+    guard_sql,
+)
 from ssbstats_app.services.chat_state import apply_chat_state, build_chat_state
 
 
@@ -31,6 +35,23 @@ class GuardSqlTests(unittest.TestCase):
         sql, error = guard_sql("SELECT * FROM careerstats LIMIT 10")
         self.assertEqual(error, None)
         self.assertEqual(sql, "SELECT * FROM careerstats LIMIT 10")
+
+
+class GuardQuestionTests(unittest.TestCase):
+    """Cover natural-language safety checks before the model layer."""
+
+    def test_blocks_destructive_prompt(self):
+        """Delete/drop-style prompts should be rejected immediately."""
+        error = guard_question("Delete the database")
+
+        self.assertIsNotNone(error)
+        self.assertIn("read-only questions", error)
+
+    def test_allows_read_only_prompt(self):
+        """Normal stats questions should pass the natural-language guard."""
+        error = guard_question("Who has the most wins?")
+
+        self.assertIsNone(error)
 
 
 class ChatStateTests(unittest.TestCase):
@@ -81,6 +102,20 @@ class ChatStateTests(unittest.TestCase):
 
         self.assertEqual(applied["season"], 6)
         self.assertEqual(applied["scope"], "season")
+
+
+class ChatAnswerTests(unittest.TestCase):
+    """Cover answer entrypoint behavior."""
+
+    @patch("ssbstats_app.services.chat.get_groq_client")
+    def test_answer_question_blocks_destructive_request_before_model_lookup(self, mock_client):
+        """Dangerous prompts should be stopped before any model call is attempted."""
+        result = answer_question("Drop the FightLog table", [])
+
+        self.assertEqual(result["status"], 200)
+        self.assertEqual(result["sql"], "")
+        self.assertIn("read-only questions", result["answer"])
+        mock_client.assert_not_called()
 
 
 if __name__ == "__main__":

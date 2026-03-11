@@ -23,6 +23,9 @@
     --warning: #fbbf24;
     --border: rgba(96, 124, 255, 0.15);
     --border-strong: rgba(96, 124, 255, 0.3);
+    --scrollbar-track: rgba(255, 255, 255, 0.05);
+    --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
     --glass-blur: 16px;
     --radius: 12px;
     --radius-sm: 8px;
@@ -1868,19 +1871,27 @@ img {
 }
 
 /* Scrollbar styling */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
 }
 ::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
+    background: var(--scrollbar-track);
 }
 ::-webkit-scrollbar-thumb {
-    background: var(--accent-dark);
-    border-radius: 4px;
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--accent);
+    background: var(--scrollbar-thumb-hover);
+    background-clip: padding-box;
 }
 
 /* ============================================
@@ -2556,12 +2567,12 @@ img {
     padding-bottom: 6px;   /* room for the scrollbar */
     /* Styled scrollbar */
     scrollbar-width: thin;
-    scrollbar-color: var(--accent) rgba(255, 255, 255, 0.06);
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 .champ-scroll-container::-webkit-scrollbar       { height: 4px; }
-.champ-scroll-container::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.06); border-radius: 2px; }
-.champ-scroll-container::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+.champ-scroll-container::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 999px; }
+.champ-scroll-container::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; }
 
 /* The bar itself must NOT shrink — let it be as wide as its content */
 .champ-scroll-container .champ-timeline-bar {
@@ -3293,12 +3304,12 @@ img {
     height: 6px;
 }
 .analytics-chart-scroll::-webkit-scrollbar-track {
-    background: rgba(96, 124, 255, 0.06);
-    border-radius: 3px;
+    background: var(--scrollbar-track);
+    border-radius: 999px;
 }
 .analytics-chart-scroll::-webkit-scrollbar-thumb {
-    background: rgba(96, 124, 255, 0.35);
-    border-radius: 3px;
+    background: var(--scrollbar-thumb);
+    border-radius: 999px;
 }
 
 .analytics-chart-container {
