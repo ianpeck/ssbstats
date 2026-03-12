@@ -307,6 +307,14 @@ img {
     margin: 0 auto 2rem;
 }
 
+.hero-disclaimer {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.82rem;
+    letter-spacing: 0.02em;
+    max-width: 720px;
+    margin: -1.2rem auto 1.5rem;
+}
+
 .hero-actions {
     display: flex;
     gap: 16px;
