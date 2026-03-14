@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Admin Login{% endblock %}
+
+{% block content %}
+<section class="page-shell admin-login-page">
+    <div class="admin-login-card glass-card">
+        <p class="eyebrow">Admin Access</p>
+        <h1 class="page-shell-title">Sign In</h1>
+        <p class="page-shell-subtitle">This area controls scheduling and automation data.</p>
+
+        {% if error %}
+        <div class="admin-login-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" class="admin-login-form">
+            <label>
+                <span>Username</span>
+                <input type="text" name="username" autocomplete="username" required>
+            </label>
+            <label>
+                <span>Password</span>
+                <input type="password" name="password" autocomplete="current-password" required>
+            </label>
+            <button type="submit" class="btn btn-primary">Log In</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

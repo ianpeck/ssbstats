@@ -55,15 +55,30 @@
                     <span>Fight Logs</span>
                 </a>
 
-                <a href="/chat" class="nav-link {% if request.path == '/chat' %}active{% endif %}">
-                    <i data-lucide="bot"></i>
-                    <span>Ask AI <span class="nav-beta-badge">Beta</span></span>
-                </a>
-
                 <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">
                     <i data-lucide="info"></i>
                     <span>About</span>
                 </a>
+
+                {% if admin_ip_allowed %}
+                    {% if admin_logged_in %}
+                    <a href="/admin/schedule" class="nav-link {% if request.path.startswith('/admin/schedule') or request.path.startswith('/schedule-admin') %}active{% endif %}">
+                        <i data-lucide="sliders-horizontal"></i>
+                        <span>Schedule</span>
+                    </a>
+                    <form method="post" action="/admin/logout" class="nav-logout-form">
+                        <button type="submit" class="nav-link nav-link-button">
+                            <i data-lucide="log-out"></i>
+                            <span>Logout</span>
+                        </button>
+                    </form>
+                    {% else %}
+                    <a href="/admin/login" class="nav-link {% if request.path == '/admin/login' %}active{% endif %}">
+                        <i data-lucide="lock"></i>
+                        <span>Admin</span>
+                    </a>
+                    {% endif %}
+                {% endif %}
 
             </div>
             <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">

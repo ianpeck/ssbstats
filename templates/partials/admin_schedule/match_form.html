@@ -1,0 +1,117 @@
+{% macro render_match_form(match, active_window, brand_id, lookups, is_existing=False) %}
+{% set tag_type_id = lookups.tag_team_fight_type_id %}
+{% set is_tag_match = (tag_type_id and match.fight_type_id == tag_type_id) or (match.participants|length > 2) %}
+<form method="post" class="schedule-match-card schedule-form" data-schedule-form>
+    <input type="hidden" name="form_action" value="{{ 'update' if is_existing else 'create' }}">
+    {% if is_existing %}
+    <input type="hidden" name="scheduled_match_id" value="{{ match.scheduled_match_id }}">
+    {% endif %}
+    <input type="hidden" name="season_id" value="{{ active_window.season_id }}">
+    <input type="hidden" name="month" value="{{ active_window.month }}">
+    <input type="hidden" name="week" value="{{ active_window.week }}">
+    <input type="hidden" name="brand_id" value="{{ brand_id }}">
+    <input type="hidden" name="participant_count" value="{{ match.participants|length if match.participants else 2 }}" data-participant-count-hidden>
+    <input type="hidden" name="match_order" value="{{ match.match_order }}" data-match-order-input>
+    <input type="hidden" name="location_id" value="{{ match.location_id or (lookups.locations[0].Location_ID if lookups.locations else '') }}" data-shared-target="location_id">
+    <input type="hidden" name="ppv_id" value="{{ match.ppv_id or '' }}" data-shared-target="ppv_id">
+
+    <div class="schedule-match-card-header">
+        <div>
+            <p class="eyebrow schedule-match-label" data-match-order-label>{{ match.label or ('Match ' ~ match.match_order) }}</p>
+        </div>
+        <div class="schedule-card-actions">
+            <label class="schedule-inline-toggle schedule-toggle-chip{% if is_tag_match %} is-active{% endif %}">
+                <span>Tag / Team</span>
+                <input type="checkbox" data-team-toggle {% if is_tag_match %}checked{% endif %}>
+            </label>
+            {% if is_existing %}
+            <button type="submit" class="btn btn-secondary" formaction="" formmethod="post" name="form_action" value="delete" onclick="return confirm('Delete this scheduled match?');">
+                Delete
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="schedule-form-grid compact">
+        <label>
+            <span>Fight Type</span>
+            <select name="fight_type_id" required data-fight-type-select data-tag-fight-type-id="{{ tag_type_id or '' }}">
+                {% for fight_type in lookups.fight_types %}
+                <option value="{{ fight_type.FightType_ID }}" {% if fight_type.FightType_ID == match.fight_type_id %}selected{% endif %}>{{ fight_type.Description }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>Championship</span>
+            <select name="championship_id">
+                <option value="">None</option>
+                {% for championship in lookups.championships %}
+                <option value="{{ championship.Championship_ID }}" {% if championship.Championship_ID == match.championship_id %}selected{% endif %}>{{ championship.Championship_Name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="schedule-checkbox">
+            <input type="checkbox" name="contender_indicator" {% if match.contender_indicator %}checked{% endif %}>
+            <span>#1 Contender</span>
+        </label>
+    </div>
+
+    <div class="participant-editor">
+        <div class="participant-editor-header">
+            <h4>Participants</h4>
+            <div class="participant-editor-actions">
+                <button type="button" class="btn btn-secondary schedule-add-participant-btn" data-add-participant>+ Add Slot</button>
+                <button type="button" class="btn btn-secondary schedule-remove-participant-btn" data-remove-participant>− Remove Slot</button>
+            </div>
+        </div>
+        {% for slot_number in range(1, 9) %}
+        {% set participant = (match.participants | selectattr('slot_number', 'equalto', slot_number) | list | first) %}
+        <div class="participant-row" data-participant-row data-slot="{{ slot_number }}">
+            <div class="participant-row-title">Slot {{ slot_number }}</div>
+            <label class="schedule-field">
+                <span>Fighter</span>
+                <input type="text" name="fighter_name_{{ slot_number }}" list="fighterOptions" placeholder="Choose fighter" value="{{ participant.fighter_name if participant else '' }}">
+            </label>
+            <label class="schedule-field">
+                <span>CPU</span>
+                <input type="number" name="cpu_level_{{ slot_number }}" min="1" max="9" value="{{ participant.cpu_level if participant else 9 }}" required>
+            </label>
+            <label class="schedule-field">
+                <span>CPU Source</span>
+                <select name="cpu_level_source_{{ slot_number }}">
+                    <option value="manual" {% if not participant or participant.cpu_level_source == 'manual' %}selected{% endif %}>Manual</option>
+                    <option value="elo_suggested" {% if participant and participant.cpu_level_source == 'elo_suggested' %}selected{% endif %}>Elo Suggested</option>
+                </select>
+            </label>
+            <div class="participant-team-fields" data-team-fields>
+                <label class="schedule-field">
+                    <span>Team ID</span>
+                    <input type="number" name="team_id_{{ slot_number }}" min="1" placeholder="Team" value="{{ participant.team_id if participant and participant.team_id is not none else '' }}">
+                </label>
+                <label class="schedule-field">
+                    <span>Team Color</span>
+                    <input type="text" name="team_color_{{ slot_number }}" placeholder="Blue / Red" value="{{ participant.team_color if participant else '' }}">
+                </label>
+            </div>
+            <label class="schedule-field">
+                <span>Seed</span>
+                <input type="number" name="seed_{{ slot_number }}" min="1" placeholder="Seed" value="{{ participant.seed if participant and participant.seed is not none else '' }}">
+            </label>
+            <label class="schedule-checkbox compact">
+                <input type="checkbox" name="defending_indicator_{{ slot_number }}" {% if participant and participant.defending_indicator %}checked{% endif %}>
+                <span>Defending</span>
+            </label>
+        </div>
+        {% endfor %}
+    </div>
+
+    <label class="schedule-notes">
+        <span>Notes</span>
+        <textarea name="notes" rows="2" placeholder="Optional booking notes">{{ match.notes or '' }}</textarea>
+    </label>
+
+    <div class="schedule-submit-row">
+        <button type="submit" class="btn btn-primary">{{ 'Update Match' if is_existing else 'Save Match' }}</button>
+    </div>
+</form>
+{% endmacro %}
