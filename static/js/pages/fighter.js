@@ -73,15 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
             window.fighterHolistic = acc.holistic || [];
 
             // --- Current champion titles ---
-            if (data.current_titles && data.current_titles.length) {
-                const badgeEl = document.getElementById('currentTitlesBadge');
-                data.current_titles.forEach(title => {
-                    const span = document.createElement('span');
-                    span.className = 'current-champ-pill';
-                    span.innerHTML = `👑 ${title} Champion`;
-                    badgeEl.appendChild(span);
-                });
-            }
+            renderCurrentTitleShowcase(data.current_titles || []);
 
             // --- Accolades section ---
             buildChampBadges(acc.champ_reigns || [], !!data.triple_crown, data.major_winner);
@@ -106,6 +98,38 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('loadingOverlay').innerHTML = '<p>Error loading stats</p>';
         });
 });
+
+function renderCurrentTitleShowcase(titles) {
+    const showcase = document.getElementById('currentTitlesShowcase');
+    if (!showcase) return;
+
+    showcase.innerHTML = '';
+    if (!titles.length) {
+        showcase.style.display = 'none';
+        return;
+    }
+
+    showcase.style.display = 'grid';
+
+    titles.forEach(title => {
+        const asset = championshipToBeltAsset(title);
+        const card = document.createElement('div');
+        card.className = 'fighter-title-card';
+
+        const beltMarkup = asset
+            ? `<img src="${asset}" alt="${title} belt" class="fighter-title-belt" loading="lazy">`
+            : `<div class="fighter-title-fallback" aria-hidden="true">🏆</div>`;
+
+        card.innerHTML = `
+            <div class="fighter-title-kicker">Current Champion</div>
+            <div class="fighter-title-name">${title}</div>
+            <div class="fighter-title-belt-wrap">
+                ${beltMarkup}
+            </div>
+        `;
+        showcase.appendChild(card);
+    });
+}
 
 // Build championship reign badges — cols: Championship_Name, reign_count, total_months
 function buildChampBadges(rows, hasTripleCrown, majorWinner) {

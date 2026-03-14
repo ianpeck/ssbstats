@@ -919,7 +919,7 @@ img {
 
 .fighter-hero {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 3rem;
     margin-bottom: 3rem;
     padding: 2rem;
@@ -948,6 +948,19 @@ img {
 .fighter-hero-info {
     flex: 1;
     min-width: 280px;
+}
+
+.fighter-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.fighter-hero-copy {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .fighter-hero-name {
@@ -980,6 +993,70 @@ img {
     line-height: 1.6;
     max-width: 480px;
     margin-bottom: 1.25rem;
+}
+
+.current-titles-showcase {
+    flex: 0 0 320px;
+    display: grid;
+    gap: 1rem;
+    align-self: flex-start;
+}
+
+.fighter-title-card {
+    padding: 1rem 1rem 1.15rem;
+    border-radius: 22px;
+    background:
+        radial-gradient(circle at top, rgba(251, 191, 36, 0.18), transparent 52%),
+        linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+    border: 1px solid rgba(251, 191, 36, 0.24);
+    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.24);
+}
+
+.fighter-title-kicker {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(251, 191, 36, 0.92);
+    margin-bottom: 0.35rem;
+}
+
+.fighter-title-name {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    line-height: 1.1;
+    color: var(--text-primary);
+    margin-bottom: 0.8rem;
+}
+
+.fighter-title-belt-wrap {
+    width: 100%;
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fighter-title-belt {
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.35));
+}
+
+.fighter-title-fallback {
+    width: 100%;
+    max-width: 320px;
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-size: 4rem;
 }
 
 .fighter-stat-cards {
@@ -1841,8 +1918,22 @@ img {
     }
 
     .fighter-hero {
-        flex-direction: column;
         text-align: center;
+    }
+    .fighter-hero-top {
+        flex-direction: column;
+        align-items: center;
+    }
+    .fighter-hero-copy {
+        width: 100%;
+    }
+    .current-titles-showcase {
+        width: 100%;
+        max-width: 420px;
+        flex: 1 1 auto;
+    }
+    .fighter-bio {
+        max-width: 100%;
     }
     .fighter-hero-name {
         font-size: 1.8rem;
@@ -1877,6 +1968,16 @@ img {
 @media (max-width: 600px) {
     .main-content {
         padding: 1rem;
+    }
+    .fighter-title-card {
+        padding: 0.9rem;
+    }
+    .fighter-title-belt-wrap,
+    .fighter-title-fallback {
+        min-height: 140px;
+    }
+    .fighter-title-belt {
+        max-width: 100%;
     }
     .roster-grid {
         grid-template-columns: repeat(2, 1fr);

@@ -7,21 +7,25 @@
                  onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22><rect fill=%22%2312122a%22 width=%22300%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>?</text></svg>'">
         </div>
         <div class="fighter-hero-info">
-            <div class="fighter-name-row">
-                <h1 class="fighter-hero-name">{{ fighter_name }}</h1>
-                <div id="currentTitlesBadge" class="current-titles-badge"></div>
-            </div>
-            {% if blurb.get('nickname') %}
-            <p class="fighter-nickname">&ldquo;{{ blurb.nickname }}&rdquo;</p>
-            {% endif %}
-            {% if blurb.get('game') %}
-            <p class="fighter-game">{{ blurb.game }}</p>
-            {% endif %}
-            {% if blurb.get('bio') %}
-            <p class="fighter-bio">{{ blurb.bio }}</p>
-            {% endif %}
-            <div id="activeStreakRow" style="display:none;" class="active-streak-row">
-                <div id="activeStreakBadge"></div>
+            <div class="fighter-hero-top">
+                <div class="fighter-hero-copy">
+                    <div class="fighter-name-row">
+                        <h1 class="fighter-hero-name">{{ fighter_name }}</h1>
+                    </div>
+                    {% if blurb.get('nickname') %}
+                    <p class="fighter-nickname">&ldquo;{{ blurb.nickname }}&rdquo;</p>
+                    {% endif %}
+                    {% if blurb.get('game') %}
+                    <p class="fighter-game">{{ blurb.game }}</p>
+                    {% endif %}
+                    {% if blurb.get('bio') %}
+                    <p class="fighter-bio">{{ blurb.bio }}</p>
+                    {% endif %}
+                    <div id="activeStreakRow" style="display:none;" class="active-streak-row">
+                        <div id="activeStreakBadge"></div>
+                    </div>
+                </div>
+                <div id="currentTitlesShowcase" class="current-titles-showcase" style="display:none;"></div>
             </div>
             <div class="fighter-stat-cards" id="statCards">
                 <div class="stat-card glass-card">
@@ -68,4 +72,3 @@
         </div>
     </div>
 </section>
-
