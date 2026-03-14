@@ -15,7 +15,6 @@ function fighterToFilename(name) {
 }
 
 const _STAGE_OVERRIDES = { 'mushroom kingdom ii': 'mushroomkingdom2' };
-const _NON_TRANSPARENT_BELTS = new Set(['animal', 'melee', 'monster']);
 
 function stageToFilename(name) {
     const lower = name.toLowerCase();
@@ -63,8 +62,7 @@ function championshipToBeltFilename(name) {
 
 function championshipHasTransparentBelt(name) {
     const filename = championshipToBeltFilename(name);
-    if (!filename) return false;
-    return !_NON_TRANSPARENT_BELTS.has(filename);
+    return !!filename;
 }
 
 function championshipToBeltAsset(name) {
