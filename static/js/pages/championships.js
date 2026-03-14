@@ -1,6 +1,61 @@
 let champCurrentSeason = null;
 let champCurrentMonth = null;
 
+function renderChampionshipBeltIcon(champName) {
+    const beltAsset = championshipToBeltAsset(champName);
+    if (!beltAsset) {
+        return '<span class="champ-belt-icon champ-belt-icon-fallback" aria-hidden="true">🏆</span>';
+    }
+    return `
+        <button
+            type="button"
+            class="champ-belt-icon champ-belt-icon-image-wrap champ-belt-button"
+            data-belt-image="${beltAsset}"
+            data-belt-name="${champName.replace(/"/g, "&quot;")}"
+            aria-label="Open full-size ${champName} belt"
+        >
+            <img src="${beltAsset}" alt="${champName} belt" class="champ-belt-image" loading="lazy">
+        </button>
+    `;
+}
+
+function initBeltOverlay() {
+    const overlay = document.getElementById("champBeltOverlay");
+    const image = document.getElementById("champBeltOverlayImage");
+    const title = document.getElementById("champBeltOverlayTitle");
+    const meta = document.getElementById("champBeltOverlayMeta");
+    const closeButton = document.getElementById("champBeltOverlayClose");
+    if (!overlay || !image || !title || !meta || !closeButton) return;
+
+    const closeOverlay = () => {
+        overlay.style.display = "none";
+        overlay.setAttribute("aria-hidden", "true");
+        image.removeAttribute("src");
+        image.alt = "";
+    };
+
+    document.addEventListener("click", event => {
+        const trigger = event.target.closest(".champ-belt-button");
+        if (!trigger) return;
+        image.src = trigger.dataset.beltImage || "";
+        image.alt = `${trigger.dataset.beltName || "Championship"} belt`;
+        title.textContent = trigger.dataset.beltName || "Championship Belt";
+        meta.textContent = "Full-size title render";
+        overlay.style.display = "flex";
+        overlay.setAttribute("aria-hidden", "false");
+    });
+
+    closeButton.addEventListener("click", closeOverlay);
+    overlay.addEventListener("click", event => {
+        if (event.target === overlay) closeOverlay();
+    });
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && overlay.style.display !== "none") {
+            closeOverlay();
+        }
+    });
+}
+
 function splitReign(seasonWon, monthWon, seasonLost, monthLost) {
     const isCurrent = seasonLost == null;
     const endSeason = isCurrent ? champCurrentSeason : seasonLost;
@@ -61,7 +116,7 @@ function renderHistory(rows) {
         header.className = "champ-belt-header";
         header.innerHTML = `
             <div class="champ-belt-title-wrap">
-                <span class="champ-belt-icon">🏆</span>
+                ${renderChampionshipBeltIcon(champName)}
                 <div>
                     <div class="champ-timeline-label">${champName}</div>
                     <div class="champ-belt-subtitle">
@@ -381,6 +436,7 @@ function initEdgeScroll() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    initBeltOverlay();
     fetch("/api/championships")
         .then(r => r.json())
         .then(data => {

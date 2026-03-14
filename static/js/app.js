@@ -15,12 +15,62 @@ function fighterToFilename(name) {
 }
 
 const _STAGE_OVERRIDES = { 'mushroom kingdom ii': 'mushroomkingdom2' };
+const _NON_TRANSPARENT_BELTS = new Set(['animal', 'melee', 'monster']);
+
 function stageToFilename(name) {
     const lower = name.toLowerCase();
     if (_STAGE_OVERRIDES[lower]) return _STAGE_OVERRIDES[lower];
     // Strip diacritics (é→e, ō→o, etc.) then remove special chars
     const ascii = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     return ascii.toLowerCase().replace(/ /g, '').replace(/,/g, '').replace(/'/g, '').replace(/\(/g, '').replace(/\)/g, '').replace(/-/g, '').replace(/\./g, '');
+}
+
+function championshipToBeltFilename(name) {
+    if (!name) return null;
+
+    const normalized = String(name)
+        .toLowerCase()
+        .replace(/unified tag 1/g, 'unified tag')
+        .replace(/championship/g, '')
+        .replace(/title/g, '')
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const overrides = {
+        'animal': 'animal',
+        'brawl': 'brawl',
+        'chaos': 'chaos',
+        'hardcore': 'hardcore',
+        'human': 'human',
+        'melee': 'melee',
+        'monster': 'monster',
+        'smash bros': 'smashbros',
+        'smashbros': 'smashbros',
+        'special': 'special',
+        'tag': 'tagteam',
+        'tag team': 'tagteam',
+        'unified tag': 'tagteam',
+        'ultimate': 'ultimate',
+    };
+
+    for (const [needle, filename] of Object.entries(overrides)) {
+        if (normalized.includes(needle)) return filename;
+    }
+
+    return null;
+}
+
+function championshipHasTransparentBelt(name) {
+    const filename = championshipToBeltFilename(name);
+    if (!filename) return false;
+    return !_NON_TRANSPARENT_BELTS.has(filename);
+}
+
+function championshipToBeltAsset(name) {
+    const filename = championshipToBeltFilename(name);
+    if (!filename || !championshipHasTransparentBelt(name)) return null;
+    return `/static/assets/belts/${filename}.png`;
 }
 
 function debounce(fn, delay) {
