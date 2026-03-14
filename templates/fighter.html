@@ -15,5 +15,5 @@
 window.SSBStats = window.SSBStats || {};
 window.SSBStats.fighterPage = { name: {{ fighter_name | tojson }} };
 </script>
-<script src="{{ url_for('static', filename='js/pages/fighter.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/fighter.js') }}?v={{ static_v }}"></script>
 {% endblock %}
