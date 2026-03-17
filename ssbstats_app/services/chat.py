@@ -11,12 +11,19 @@ from ssbstats_app.services.content import get_autocomplete_data
 from ssbstats_app.utils import normalize_champ_name, serialize_value
 
 try:
+    from openai import OpenAI as OpenAIClient
+except ImportError:
+    OpenAIClient = None
+
+try:
     from groq import Groq as GroqClient
 except ImportError:
     GroqClient = None
 
 
+_GEMINI_CLIENT = None
 _GROQ_CLIENT = None
+_GEMINI_MODEL = "gemini-2.5-flash"
 _PLANNER_MODEL = "llama-3.3-70b-versatile"
 _DEFAULT_MIN_SAMPLE = 5
 _AGENT_PROMPT = render_agent_prompt()
@@ -35,6 +42,17 @@ _DANGEROUS_REQUEST_PATTERNS = [
 ]
 
 
+def get_gemini_client():
+    """Lazily initialize and return the Gemini client via OpenAI-compatible endpoint."""
+    global _GEMINI_CLIENT
+    if _GEMINI_CLIENT is None and OpenAIClient and os.getenv("GEMINI_API_KEY"):
+        _GEMINI_CLIENT = OpenAIClient(
+            api_key=os.getenv("GEMINI_API_KEY"),
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        )
+    return _GEMINI_CLIENT
+
+
 def get_groq_client():
     """Lazily initialize and return the Groq client, if configured."""
     global _GROQ_CLIENT
@@ -47,7 +65,7 @@ def guard_sql(sql):
     """Reject unsafe or overly complex LLM-generated SQL."""
     original_sql = sql.strip()
     sql_lower = original_sql.lower()
-    if not re.match(r"^\s*(select|with)\b", sql_lower):
+    if not re.match(r"^\s*(select|with|call)\b", sql_lower):
         return None, "Only SELECT queries are allowed."
     if ";" in original_sql[:-1]:
         return None, "Multiple SQL statements are not allowed."
@@ -58,8 +76,11 @@ def guard_sql(sql):
             return None, "Disallowed SQL pattern detected."
     if sql_lower.count("select") > 4:
         return None, "Query too complex."
-    if " limit " not in sql_lower:
-        return original_sql.rstrip(";") + " LIMIT 100", None
+    original_sql = original_sql.rstrip(";")
+    if re.match(r"^\s*call\b", sql_lower):
+        return original_sql, None
+    if not re.search(r"\blimit\b", sql_lower):
+        return original_sql + " LIMIT 100", None
     return original_sql, None
 
 
@@ -85,35 +106,18 @@ def answer_question(question, history):
     if blocked_reason:
         return {"answer": blocked_reason, "rows": [], "sql": "", "status": 200}
 
-    client = get_groq_client()
+    gemini = get_gemini_client()
+    client = gemini or get_groq_client()
     if not client:
-        return {"error": "Chat is not configured (missing GROQ_API_KEY).", "status": 503}
+        return {"error": "Chat is not configured (missing GEMINI_API_KEY or GROQ_API_KEY).", "status": 503}
+
+    model = _GEMINI_MODEL if gemini else _PLANNER_MODEL
 
     try:
-        agent_result = _schema_grounded_answer_question(client, question, history or [])
-        if agent_result:
-            return agent_result
-        state = build_chat_state(history or [])
-        plan = _plan_question(client, question, state)
-        if plan.get("needs_clarification"):
-            return {
-                "answer": plan.get("clarification_question") or "I need a little more detail to answer that correctly.",
-                "rows": [],
-                "sql": "",
-                "status": 200,
-            }
-
-        executed = _execute_planned_query(plan, question)
-        if executed is None:
-            return _legacy_sql_answer_question(client, question, history)
-
-        _validate_execution(plan, executed)
-        return {
-            "answer": _compose_answer(plan, executed, question),
-            "rows": executed.get("rows", []),
-            "sql": executed.get("sql", ""),
-            "status": 200,
-        }
+        result = _schema_grounded_answer_question(client, model, question, history or [])
+        if result:
+            return result
+        return _legacy_sql_answer_question(client, model, question, history)
     except Exception as exc:
         err_str = str(exc)
         if "429" in err_str or "rate_limit_exceeded" in err_str or "tokens per day" in err_str:
@@ -121,19 +125,19 @@ def answer_question(question, history):
         return {"error": f"Something went wrong: {exc}", "status": 500}
 
 
-def _plan_question(client, question, state):
-    """Use Groq to convert a natural-language question into a semantic stats plan."""
+def _plan_question(client, model, question, state):
+    """Use the LLM to convert a natural-language question into a semantic stats plan."""
     raw_plan = {}
     try:
         response = client.chat.completions.create(
-            model=_PLANNER_MODEL,
+            model=model,
             messages=[
                 {"role": "system", "content": _PLANNER_PROMPT},
                 {"role": "system", "content": f"Recent conversation state: {json.dumps(state)}"},
                 {"role": "user", "content": question},
             ],
             temperature=0,
-            max_tokens=500,
+            max_tokens=2048,
         )
         raw = response.choices[0].message.content.strip()
         if raw.startswith("```"):
@@ -144,7 +148,7 @@ def _plan_question(client, question, state):
     return _normalize_plan(raw_plan, question, state)
 
 
-def _schema_grounded_answer_question(client, question, history):
+def _schema_grounded_answer_question(client, model, question, history):
     """Run the SQL-first schema-grounded agent before any semantic fallback."""
     history = (history or [])[-3:]
     state = build_chat_state(history)
@@ -162,10 +166,10 @@ def _schema_grounded_answer_question(client, question, history):
 
     try:
         response = client.chat.completions.create(
-            model=_PLANNER_MODEL,
+            model=model,
             messages=messages,
             temperature=0,
-            max_tokens=700,
+            max_tokens=2048,
         )
         raw = response.choices[0].message.content.strip()
         if raw.startswith("```"):
@@ -192,25 +196,31 @@ def _schema_grounded_answer_question(client, question, history):
         return None
 
     try:
-        rows = select_view_dicts(sql)
+        if sql.strip().lower().startswith("call"):
+            rows = h2h_query_sql(sql)
+        else:
+            rows = select_view_dicts(sql)
     except Exception as db_err:
         current_app.logger.warning("[chat] schema agent SQL error: %s | SQL: %s", db_err, sql)
-        repaired = _repair_schema_sql(client, question, history, sql, str(db_err), state)
+        repaired = _repair_schema_sql(client, model, question, history, sql, str(db_err), state)
         if not repaired:
             return None
         sql = repaired
         try:
-            rows = select_view_dicts(sql)
+            if sql.strip().lower().startswith("call"):
+                rows = h2h_query_sql(sql)
+            else:
+                rows = select_view_dicts(sql)
         except Exception as db_err2:
             current_app.logger.warning("[chat] repaired schema agent SQL error: %s | SQL: %s", db_err2, sql)
             return None
 
     serialized = _serialize_rows(rows)
-    answer = _compose_schema_grounded_answer(client, question, sql, serialized)
+    answer = _compose_schema_grounded_answer(client, model, question, sql, serialized)
     return {"answer": answer, "rows": serialized, "sql": sql, "status": 200}
 
 
-def _repair_schema_sql(client, question, history, sql, error_text, state):
+def _repair_schema_sql(client, model, question, history, sql, error_text, state):
     """Ask the model to repair a failed read-only SQL query using the schema prompt."""
     messages = [
         {"role": "system", "content": _AGENT_PROMPT},
@@ -232,10 +242,10 @@ def _repair_schema_sql(client, question, history, sql, error_text, state):
         messages.append({"role": "assistant", "content": json.dumps({"sql": prior_sql, "result_preview": (item.get("rows", [])[:5])})})
     try:
         response = client.chat.completions.create(
-            model=_PLANNER_MODEL,
+            model=model,
             messages=messages,
             temperature=0,
-            max_tokens=700,
+            max_tokens=2048,
         )
         raw = response.choices[0].message.content.strip()
         if raw.startswith("```"):
@@ -250,7 +260,7 @@ def _repair_schema_sql(client, question, history, sql, error_text, state):
     return repaired_sql
 
 
-def _compose_schema_grounded_answer(client, question, sql, rows):
+def _compose_schema_grounded_answer(client, model, question, sql, rows):
     """Use the model to phrase a query result without mentioning SQL."""
     answer_messages = [
         {
@@ -268,10 +278,10 @@ def _compose_schema_grounded_answer(client, question, sql, rows):
     ]
     try:
         answer_resp = client.chat.completions.create(
-            model=_PLANNER_MODEL,
+            model=model,
             messages=answer_messages,
             temperature=0.1,
-            max_tokens=250,
+            max_tokens=1024,
         )
         return answer_resp.choices[0].message.content.strip()
     except Exception:
@@ -1015,7 +1025,7 @@ def _validate_execution(plan, executed):
             raise ValueError("Chat query returned an invalid opponent ranking shape.")
 
 
-def _legacy_sql_answer_question(client, question, history):
+def _legacy_sql_answer_question(client, model, question, history):
     """Fallback to the legacy SQL-generation path for unsupported questions."""
     history = (history or [])[-3:]
     messages = [{"role": "system", "content": _LEGACY_CHAT_SCHEMA}]
@@ -1028,10 +1038,10 @@ def _legacy_sql_answer_question(client, question, history):
     messages.append({"role": "user", "content": question})
 
     sql_resp = client.chat.completions.create(
-        model=_PLANNER_MODEL,
+        model=model,
         messages=messages,
         temperature=0,
-        max_tokens=512,
+        max_tokens=2048,
     )
     raw = sql_resp.choices[0].message.content.strip()
     if raw.startswith("```"):
@@ -1064,9 +1074,9 @@ def _legacy_sql_answer_question(client, question, history):
         {"role": "user", "content": f"Question: {question}\n\nQuery used: {sql}\n\nResult rows ({len(serialized)} rows): {json.dumps(serialized)}"},
     ]
     answer_resp = client.chat.completions.create(
-        model=_PLANNER_MODEL,
+        model=model,
         messages=answer_messages,
         temperature=0.2,
-        max_tokens=250,
+        max_tokens=1024,
     )
     return {"answer": answer_resp.choices[0].message.content.strip(), "rows": serialized, "sql": sql, "status": 200}

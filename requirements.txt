@@ -5,3 +5,4 @@ PyYAML
 gunicorn
 cryptography
 groq
+openai

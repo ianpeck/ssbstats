@@ -1,7 +1,34 @@
+import os
+import time
+from collections import defaultdict
+
 from flask import Blueprint, jsonify, request
 
 from ssbstats_app.repositories.seasons import get_all_seasons
 from ssbstats_app.services.chat import answer_question
+
+# --- chat rate limiting ---
+_CHAT_WINDOW = 60          # seconds
+_CHAT_LIMIT = 5            # max requests per window for public users
+_chat_hits = defaultdict(list)
+
+
+def _get_admin_ips():
+    raw = (os.getenv("ADMIN_ALLOWED_IPS") or "").strip()
+    return {ip.strip() for ip in raw.split(",") if ip.strip()} if raw else set()
+
+
+def _is_chat_rate_limited():
+    ip = request.remote_addr or "unknown"
+    now = time.time()
+    # prune old entries
+    _chat_hits[ip] = [t for t in _chat_hits[ip] if now - t < _CHAT_WINDOW]
+    if ip in _get_admin_ips():
+        return False
+    if len(_chat_hits[ip]) >= _CHAT_LIMIT:
+        return True
+    _chat_hits[ip].append(now)
+    return False
 from ssbstats_app.services.content import get_autocomplete_data
 from ssbstats_app.services.stats import (
     get_championships_payload,
@@ -176,6 +203,8 @@ def events():
 @api_bp.route("/chat", methods=["POST"])
 def chat():
     """Return an AI-generated answer for a natural-language stats question."""
+    if _is_chat_rate_limited():
+        return jsonify({"answer": "You're asking too many questions too fast — please wait a minute and try again.", "rows": [], "sql": ""}), 429
     payload = request.get_json(silent=True) or {}
     result = answer_question(payload.get("question", ""), payload.get("history", []))
     status = result.pop("status", 200)
