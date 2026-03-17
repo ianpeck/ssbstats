@@ -1,3 +1,4 @@
+console.log("chat.js v2 loaded");
 const chatInput = document.getElementById("chatInput");
 const chatButton = document.getElementById("chatSendBtn");
 const chatMessages = document.getElementById("chatMessages");
@@ -78,7 +79,12 @@ function sendQuestion() {
                 chatHistory.push({ question, sql: data.sql || "", rows: (data.rows || []).slice(0, 15) });
                 if (chatHistory.length > 3) chatHistory.shift();
 
-                let html = escHtml(data.answer || "No answer returned.");
+                let raw = data.answer || "No answer returned.";
+                let html = raw
+                    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+                    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+                    .replace(/\n/g, "<br>");
                 if (data.rows && data.rows.length > 1) html += buildTable(data.rows);
                 if (data.sql) {
                     html += `<details class="chat-sql-details"><summary>View query</summary><code class="chat-sql">${escHtml(data.sql)}</code></details>`;

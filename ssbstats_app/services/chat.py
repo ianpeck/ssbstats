@@ -268,6 +268,7 @@ def _compose_schema_grounded_answer(client, model, question, sql, rows):
             "content": (
                 "You are a friendly, concise sports stats analyst for a Super Smash Bros league. "
                 "Answer using the returned data only. Do not mention SQL or databases. "
+                "You may use **bold** for emphasis. Do not use bullet points or lists. "
                 "If there are no rows, say so plainly."
             ),
         },
@@ -1068,7 +1069,7 @@ def _legacy_sql_answer_question(client, model, question, history):
             "role": "system",
             "content": (
                 "You are a friendly, conversational sports stats assistant for a Super Smash Bros wrestling franchise. "
-                "Do not mention SQL or databases. Keep responses casual and natural."
+                "Do not mention SQL or databases. You may use **bold** for emphasis. Do not use bullet points or lists. Keep responses casual and natural."
             ),
         },
         {"role": "user", "content": f"Question: {question}\n\nQuery used: {sql}\n\nResult rows ({len(serialized)} rows): {json.dumps(serialized)}"},

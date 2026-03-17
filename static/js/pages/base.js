@@ -111,7 +111,10 @@
                     floatHistory.push({ question, sql: data.sql || "", rows: (data.rows || []).slice(0, 15) });
                     if (floatHistory.length > 3) floatHistory.shift();
 
-                    let html = floatEsc(data.answer || "No answer returned.");
+                    let html = floatEsc(data.answer || "No answer returned.")
+                        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+                        .replace(/\*(.+?)\*/g, "<em>$1</em>")
+                        .replace(/\n/g, "<br>");
                     if (data.rows && data.rows.length > 1) html += floatTable(data.rows);
                     floatAppend("ai", html, true);
                 }
