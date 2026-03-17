@@ -69,12 +69,12 @@ def guard_sql(sql):
         return None, "Only SELECT queries are allowed."
     if ";" in original_sql[:-1]:
         return None, "Multiple SQL statements are not allowed."
-    if len(original_sql) > 1200:
+    if len(original_sql) > 3000:
         return None, "Query too large."
     for banned in ["cross join", "information_schema", "sleep(", "benchmark(", "into outfile", "load_file", "union select"]:
         if banned in sql_lower:
             return None, "Disallowed SQL pattern detected."
-    if sql_lower.count("select") > 4:
+    if sql_lower.count("select") > 8:
         return None, "Query too complex."
     original_sql = original_sql.rstrip(";")
     if re.match(r"^\s*call\b", sql_lower):
@@ -137,7 +137,7 @@ def _plan_question(client, model, question, state):
                 {"role": "user", "content": question},
             ],
             temperature=0,
-            max_tokens=2048,
+            max_tokens=4096,
         )
         raw = response.choices[0].message.content.strip()
         if raw.startswith("```"):
@@ -169,7 +169,7 @@ def _schema_grounded_answer_question(client, model, question, history):
             model=model,
             messages=messages,
             temperature=0,
-            max_tokens=2048,
+            max_tokens=4096,
         )
         raw = response.choices[0].message.content.strip()
         if raw.startswith("```"):
@@ -245,7 +245,7 @@ def _repair_schema_sql(client, model, question, history, sql, error_text, state)
             model=model,
             messages=messages,
             temperature=0,
-            max_tokens=2048,
+            max_tokens=4096,
         )
         raw = response.choices[0].message.content.strip()
         if raw.startswith("```"):
@@ -266,9 +266,11 @@ def _compose_schema_grounded_answer(client, model, question, sql, rows):
         {
             "role": "system",
             "content": (
-                "You are a friendly, concise sports stats analyst for a Super Smash Bros league. "
+                "You are a sports stats analyst for a Super Smash Bros league. "
+                "Lead with the stats first, then add one short fun comment if appropriate. "
+                "Keep answers to 1-3 sentences max. Do not repeat data in different ways. "
                 "Answer using the returned data only. Do not mention SQL or databases. "
-                "You may use **bold** for emphasis. Do not use bullet points or lists. "
+                "You may use **bold** for fighter names. Do not use bullet points or lists. "
                 "If there are no rows, say so plainly."
             ),
         },
@@ -1042,7 +1044,7 @@ def _legacy_sql_answer_question(client, model, question, history):
         model=model,
         messages=messages,
         temperature=0,
-        max_tokens=2048,
+        max_tokens=4096,
     )
     raw = sql_resp.choices[0].message.content.strip()
     if raw.startswith("```"):
@@ -1069,7 +1071,8 @@ def _legacy_sql_answer_question(client, model, question, history):
             "role": "system",
             "content": (
                 "You are a friendly, conversational sports stats assistant for a Super Smash Bros wrestling franchise. "
-                "Do not mention SQL or databases. You may use **bold** for emphasis. Do not use bullet points or lists. Keep responses casual and natural."
+                "Do not mention SQL or databases. Lead with the stats, then one short fun comment. "
+                "Keep answers to 1-3 sentences max. You may use **bold** for fighter names. Do not use bullet points or lists."
             ),
         },
         {"role": "user", "content": f"Question: {question}\n\nQuery used: {sql}\n\nResult rows ({len(serialized)} rows): {json.dumps(serialized)}"},

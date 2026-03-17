@@ -128,6 +128,9 @@ SOURCE_SELECTION_RULES = [
     "If the question asks about every opponent against one fighter, use CareerStatsByOpponent.",
     "If the question asks about pre-fight or post-fight chronology, use CareerRunningStats, allwinstreaks/alllosingsteaks, or FightLog ordered by Season, Month, Week, Fight_ID.",
     "If the question asks about Elo changes, current Elo, average Elo, or peak Elo, use Elo joined to Fight or Results as needed.",
+    "A fighter's current Elo is their most recent elo_after value: SELECT fighter_name, elo_after FROM Elo WHERE result_id = (SELECT MAX(result_id) FROM Elo WHERE fighter_name = %s).",
+    "A fighter's career average Elo is AVG(elo_after) from the Elo table.",
+    "When comparing who is 'better' between fighters, include career stats (wins, losses, win %), career average Elo (AVG(elo_after)), current Elo (most recent elo_after), longest win streak, and championship record.",
 ]
 
 
