@@ -3,17 +3,13 @@ from concurrent.futures import ThreadPoolExecutor
 from ssbstats_app.repositories.base import nk, select_view_dicts, select_view_row
 from ssbstats_app.repositories.elo import get_elo_for_leaderboard, get_elo_for_leaderboard_by_season
 from ssbstats_app.repositories.lookups import get_canonical_name_map
-from ssbstats_app.repositories.power import CAREER_POWER_WEIGHTS, SEASON_POWER_WEIGHTS, SOS_CAREER_SQL, SOS_SEASON_SQL, apply_power_scores
-
-
-EVENT_COLS_LB = [
-    "Won_Tournament",
-    "Won_Royal_Rumble",
-    "Won_Scramble",
-    "Won_Smash_Series",
-    "Won_Money_In_The_Bank",
-    "Won_Smash_Bros",
-]
+from ssbstats_app.repositories.power import (
+    CAREER_POWER_WEIGHTS, SEASON_POWER_WEIGHTS,
+    SOS_CAREER_SQL, SOS_SEASON_SQL,
+    CHAMP_WINS_CAREER_SQL, CHAMP_WINS_SEASON_SQL,
+    POWER_EVENT_WEIGHTS, POWER_EVENT_COLS,
+    apply_power_scores,
+)
 
 
 def row_name(row):
@@ -29,27 +25,30 @@ def row_name(row):
 
 def get_leaderboard():
     """Return the all-time leaderboard enriched with accolade and Elo metrics."""
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    with ThreadPoolExecutor(max_workers=7) as pool:
         f_career = pool.submit(select_view_row, "SELECT * FROM careerstats ORDER BY Fighter_Name")
-        f_hol = pool.submit(select_view_dicts, "SELECT Fighter_Name, Months_With_Title, Months_With_Major, " + ", ".join(EVENT_COLS_LB) + " FROM holistic_view")
+        f_hol = pool.submit(select_view_dicts, "SELECT Fighter_Name, Months_With_Title, Months_With_Major, " + ", ".join(f"`{col}`" for col in POWER_EVENT_COLS) + " FROM holistic_view")
         f_titles = pool.submit(select_view_dicts, "SELECT Fighter_Name, COUNT(DISTINCT Championship_Name) as unique_titles FROM ChampionshipHistory GROUP BY Fighter_Name")
         f_tc = pool.submit(select_view_dicts, "SELECT * FROM triplecrown")
         f_elo = pool.submit(get_elo_for_leaderboard)
         f_sos = pool.submit(select_view_dicts, SOS_CAREER_SQL)
+        f_cw = pool.submit(select_view_dicts, CHAMP_WINS_CAREER_SQL)
         career_rows = f_career.result()
         try:
             holistic_all = f_hol.result()
         except Exception:
             try:
-                holistic_all = select_view_dicts("SELECT Fighter_Name, Months_With_Title, " + ", ".join(EVENT_COLS_LB) + " FROM holistic_view")
+                holistic_all = select_view_dicts("SELECT Fighter_Name, Months_With_Title, " + ", ".join(f"`{col}`" for col in POWER_EVENT_COLS) + " FROM holistic_view")
             except Exception:
                 holistic_all = []
         titles_rows = f_titles.result()
         tc_rows = f_tc.result() if not f_tc.exception() else []
         elo_by_fighter = f_elo.result() if not f_elo.exception() else {}
         sos_rows = f_sos.result() if not f_sos.exception() else []
+        cw_rows = f_cw.result() if not f_cw.exception() else []
 
     sos_by_fighter = {nk(row["Fighter_Name"]): float(row["sos"]) for row in sos_rows}
+    champ_by_fighter = {nk(row["Fighter_Name"]): int(row["champ_wins"]) for row in cw_rows}
     hol_by_fighter = {}
     for row in holistic_all:
         hol_by_fighter.setdefault(nk(row["Fighter_Name"]), []).append(row)
@@ -65,11 +64,8 @@ def get_leaderboard():
         hol = hol_by_fighter.get(nk(name), [])
         champ_months = sum(int(r.get("Months_With_Title") or 0) for r in hol)
         major_months = sum(int(r.get("Months_With_Major") or 0) for r in hol)
-        event_set = set()
-        for hol_row in hol:
-            for col in EVENT_COLS_LB:
-                if hol_row.get(col) not in (None, "", "None"):
-                    event_set.add(col)
+        won_events = [col for col in POWER_EVENT_COLS if any(r.get(col) not in (None, "", "None") for r in hol)]
+        ev_wins = sum(POWER_EVENT_WEIGHTS[col] for col in won_events)
         elo = elo_by_fighter.get(nk(name), {})
         fighters.append({
             "name": name,
@@ -79,7 +75,9 @@ def get_leaderboard():
             "total_fights": wins + losses,
             "champ_months": champ_months,
             "major_months": major_months,
-            "event_wins": len(event_set),
+            "champ_wins": champ_by_fighter.get(nk(name), 0),
+            "event_wins": ev_wins,
+            "event_count": len(won_events),
             "unique_titles": titles_by_fighter.get(nk(name), 0),
             "triple_crown": 1 if nk(name) in tc_fighters else 0,
             "current_elo": float(elo["current_elo"]) if elo.get("current_elo") is not None else None,
@@ -102,27 +100,30 @@ def get_leaderboard():
 
 def get_leaderboard_by_season(season):
     """Return leaderboard rows for a single season with season-scoped metrics."""
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    with ThreadPoolExecutor(max_workers=7) as pool:
         f_season = pool.submit(select_view_dicts, "SELECT * FROM CareerStatsBySeason WHERE Season = %s ORDER BY Fighter_Name", (season,))
-        f_hol = pool.submit(select_view_dicts, "SELECT Fighter_Name, Months_With_Title, Months_With_Major, " + ", ".join(EVENT_COLS_LB) + " FROM holistic_view WHERE Season = %s", (season,))
+        f_hol = pool.submit(select_view_dicts, "SELECT Fighter_Name, Months_With_Title, Months_With_Major, " + ", ".join(f"`{col}`" for col in POWER_EVENT_COLS) + " FROM holistic_view WHERE Season = %s", (season,))
         f_titles = pool.submit(select_view_dicts, "SELECT Fighter_Name, COUNT(DISTINCT Championship_Name) as unique_titles FROM ChampionshipHistory WHERE Season_Won <= %s AND (Season_Lost IS NULL OR Season_Lost >= %s) GROUP BY Fighter_Name", (season, season))
         f_elo = pool.submit(get_elo_for_leaderboard_by_season, season)
         f_canonical = pool.submit(get_canonical_name_map)
         f_sos = pool.submit(select_view_dicts, SOS_SEASON_SQL, (season,))
+        f_cw = pool.submit(select_view_dicts, CHAMP_WINS_SEASON_SQL, (season,))
         season_rows = f_season.result()
         canonical_map = f_canonical.result()
         try:
             holistic_all = f_hol.result()
         except Exception:
             try:
-                holistic_all = select_view_dicts("SELECT Fighter_Name, Months_With_Title, " + ", ".join(EVENT_COLS_LB) + " FROM holistic_view WHERE Season = %s", (season,))
+                holistic_all = select_view_dicts("SELECT Fighter_Name, Months_With_Title, " + ", ".join(f"`{col}`" for col in POWER_EVENT_COLS) + " FROM holistic_view WHERE Season = %s", (season,))
             except Exception:
                 holistic_all = []
         titles_rows = f_titles.result()
         elo_by_fighter = f_elo.result() if not f_elo.exception() else {}
         sos_rows = f_sos.result() if not f_sos.exception() else []
+        cw_rows = f_cw.result() if not f_cw.exception() else []
 
     sos_by_fighter = {nk(row["Fighter_Name"]): float(row["sos"]) for row in sos_rows}
+    champ_by_fighter = {nk(row["Fighter_Name"]): int(row["champ_wins"]) for row in cw_rows}
     hol_by_fighter = {}
     for row in holistic_all:
         hol_by_fighter.setdefault(nk(row["Fighter_Name"]), []).append(row)
@@ -138,11 +139,8 @@ def get_leaderboard_by_season(season):
         hol = hol_by_fighter.get(nk(name), [])
         champ_months = sum(int(r.get("Months_With_Title") or 0) for r in hol)
         major_months = sum(int(r.get("Months_With_Major") or 0) for r in hol)
-        event_set = set()
-        for hol_row in hol:
-            for col in EVENT_COLS_LB:
-                if hol_row.get(col) not in (None, "", "None"):
-                    event_set.add(col)
+        won_events = [col for col in POWER_EVENT_COLS if any(r.get(col) not in (None, "", "None") for r in hol)]
+        ev_wins = sum(POWER_EVENT_WEIGHTS[col] for col in won_events)
         elo = elo_by_fighter.get(nk(name), {})
         fighters.append({
             "name": name,
@@ -152,7 +150,9 @@ def get_leaderboard_by_season(season):
             "total_fights": wins + losses,
             "champ_months": champ_months,
             "major_months": major_months,
-            "event_wins": len(event_set),
+            "champ_wins": champ_by_fighter.get(nk(name), 0),
+            "event_wins": ev_wins,
+            "event_count": len(won_events),
             "unique_titles": titles_by_fighter.get(nk(name), 0),
             "triple_crown": 0,
             "peak_season_elo": float(elo["peak_season_elo"]) if elo.get("peak_season_elo") is not None else None,

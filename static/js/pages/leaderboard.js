@@ -116,7 +116,7 @@ function renderLeaderboard(data) {
             <td class="stat-cell">${fighter.total_fights ?? ""}</td>
             <td class="stat-cell">${fighter.major_months ?? 0}</td>
             <td class="stat-cell">${fighter.champ_months ?? 0}</td>
-            <td class="stat-cell">${fighter.event_wins != null ? fighter.event_wins + "/6" : ""}</td>
+            <td class="stat-cell">${fighter.event_count != null ? fighter.event_count + "/6" : ""}</td>
             <td class="stat-cell">${fighter.unique_titles ?? 0}</td>
             <td class="stat-cell ${eloClass(fighter[eloKey1])}">${fmtElo(fighter[eloKey1])}</td>
             <td class="stat-cell ${eloClass(fighter.avg_elo)}">${fmtElo(fighter.avg_elo)}</td>
