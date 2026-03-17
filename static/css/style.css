@@ -3740,6 +3740,16 @@ img {
     transform: scale(1.04);
 }
 
+.event-card-stage-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+}
+
 .event-card-body {
     padding: 1rem 1.1rem;
     display: flex;

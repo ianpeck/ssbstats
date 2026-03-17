@@ -30,19 +30,19 @@ EVENT_WEIGHTS = {
 }
 EVENT_COLS = list(EVENT_WEIGHTS.keys())
 
-# Season: ELO carries historical baggage — win%, titles, and SOS cover in-season performance better
+# Season: ELO carries historical baggage — win%, champ wins, and SOS cover in-season performance better
 SEASON_WEIGHTS = {
     'avg_elo':       0.00,
-    'wtitle_months': 0.45,
+    'champ_wins':    0.45,
     'event_wins':    0.10,
     'win_pct':       0.30,
     'sos':           0.15,
 }
 
-# Career: ELO + SOS cover quality/skill; win% is redundant with ELO over large samples
+# Career: ELO + champ wins cover quality/skill; win% is redundant with ELO over large samples
 CAREER_WEIGHTS = {
     'avg_elo':       0.45,
-    'wtitle_months': 0.45,
+    'champ_wins':    0.45,
     'event_wins':    0.10,
     'win_pct':       0.00,
     'sos':           0.00,
@@ -98,17 +98,17 @@ def print_ranking(fighters, title, weights, top_n=None):
     w = weights
     print(f"\n{'='*80}")
     print(f"  {title}")
-    print(f"  weights — ELO:{w['avg_elo']:.0%}  Titles:{w['wtitle_months']:.0%}  "
+    print(f"  weights — ELO:{w['avg_elo']:.0%}  ChampW:{w['champ_wins']:.0%}  "
           f"EvW:{w['event_wins']:.0%}  Win%:{w['win_pct']:.0%}  SOS:{w['sos']:.0%}")
     print(f"{'='*80}")
     print(f"  {'#':<3} {'Fighter':<22} {'Score':>6}  {'Avg ELO':>7}  "
-          f"{'WTitle':>6}  {'EvW':>5}  {'Win%':>6}  {'SOS':>7}")
-    print(f"  {'-'*76}")
+          f"{'ChpW':>4}  {'EvW':>5}  {'Win%':>6}  {'SOS':>7}")
+    print(f"  {'-'*74}")
     for i, f in enumerate(ranked, 1):
         print(
             f"  {i:<3} {f['name']:<22} {f['power_score']:>5.1f}   "
             f"{f['avg_elo']:>7.1f}  "
-            f"{f['wtitle_months']:>6}  "
+            f"{f['champ_wins']:>4}  "
             f"{f['event_wins']:>5.2f}  "
             f"{f['win_pct']:>5.1f}%  "
             f"{f['sos']:>7.1f}"
@@ -128,10 +128,23 @@ def main():
             "SELECT * FROM CareerStatsBySeason WHERE Season = %s", (season,))
 
         hol_rows = q(conn,
-            "SELECT Fighter_Name, Months_With_Title, Months_With_Major, " +
+            "SELECT Fighter_Name, " +
             ", ".join(EVENT_COLS) +
             " FROM holistic_view WHERE Season = %s", (season,))
         hol = {r['Fighter_Name']: r for r in hol_rows}
+
+        champ_rows = q(conn, """
+            SELECT fl.Fighter_Name,
+                   SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2 ELSE 1 END) AS champ_wins
+            FROM FightLog fl
+            JOIN (SELECT DISTINCT Championship_Name, Championship_Tier FROM ChampionshipHistory) ch
+              ON fl.Championship_Name = ch.Championship_Name
+            WHERE fl.Championship_Name IS NOT NULL AND fl.Championship_Name != ''
+              AND fl.Decision IN ('w', 'W')
+              AND fl.Season = %s
+            GROUP BY fl.Fighter_Name
+        """, (season,))
+        champ = {r['Fighter_Name']: int(r['champ_wins']) for r in champ_rows}
 
         elo_rows = q(conn, """
             SELECT e.fighter_name, ROUND(AVG(e.elo_after), 1) AS avg_elo
@@ -170,10 +183,6 @@ def main():
                 win_pct = 0.0
 
             h = hol.get(name, {})
-            major_m = int(h.get('Months_With_Major') or 0)
-            total_m = int(h.get('Months_With_Title') or 0)
-            minor_m = total_m - major_m
-            wtitle  = (major_m * 2) + minor_m
 
             ev_wins = sum(
                 EVENT_WEIGHTS[col] for col in EVENT_COLS
@@ -183,7 +192,7 @@ def main():
             fighters.append({
                 'name':          name,
                 'avg_elo':       elo.get(name, 1500.0),
-                'wtitle_months': wtitle,
+                'champ_wins':    champ.get(name, 0),
                 'event_wins':    ev_wins,
                 'win_pct':       win_pct,
                 'sos':           sos.get(name, 1500.0),
@@ -204,11 +213,21 @@ def main():
     )
     hol_career = q(conn,
         "SELECT Fighter_Name, "
-        "SUM(COALESCE(Months_With_Major, 0)) AS major_months, "
-        "SUM(COALESCE(Months_With_Title, 0)) AS champ_months, "
         f"({ev_expr}) AS event_wins "
         "FROM holistic_view GROUP BY Fighter_Name")
     hol_c = {r['Fighter_Name'].lower().strip(): r for r in hol_career}
+
+    champ_career = q(conn, """
+        SELECT fl.Fighter_Name,
+               SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2 ELSE 1 END) AS champ_wins
+        FROM FightLog fl
+        JOIN (SELECT DISTINCT Championship_Name, Championship_Tier FROM ChampionshipHistory) ch
+          ON fl.Championship_Name = ch.Championship_Name
+        WHERE fl.Championship_Name IS NOT NULL AND fl.Championship_Name != ''
+          AND fl.Decision IN ('w', 'W')
+        GROUP BY fl.Fighter_Name
+    """)
+    champ_c = {r['Fighter_Name'].lower().strip(): int(r['champ_wins']) for r in champ_career}
 
     elo_career = q(conn,
         "SELECT fighter_name, ROUND(AVG(elo_after), 1) AS avg_elo FROM Elo GROUP BY fighter_name")
@@ -234,10 +253,6 @@ def main():
             continue
         nk = name.lower().strip()
         h = hol_c.get(nk, {})
-        major_m = int(h.get('major_months') or 0)
-        total_m = int(h.get('champ_months') or 0)
-        minor_m = total_m - major_m
-        wtitle  = (major_m * 2) + minor_m
         ev_wins = float(h.get('event_wins') or 0)
         try:
             win_pct = float(str(row.get('win_pct') or '0').replace('%', ''))
@@ -246,7 +261,7 @@ def main():
         career_fighters.append({
             'name':          name,
             'avg_elo':       elo_c.get(nk, 1500.0),
-            'wtitle_months': wtitle,
+            'champ_wins':    champ_c.get(nk, 0),
             'event_wins':    ev_wins,
             'win_pct':       win_pct,
             'sos':           sos_c.get(nk, 1500.0),

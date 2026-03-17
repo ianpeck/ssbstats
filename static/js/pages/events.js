@@ -33,7 +33,7 @@ function renderEventCards(events) {
             card.className = "event-card glass-card";
             const stageFile = event.Location_Name ? stageToFilename(event.Location_Name) : "";
             const imgHTML = stageFile
-                ? `<div class="event-card-stage-wrap"><img src="/static/assets/stages/${stageFile}.png" alt="${event.Location_Name}" class="event-card-stage" onerror="this.parentElement.style.display='none'"></div>`
+                ? `<div class="event-card-stage-wrap"><img src="/static/assets/stages/${stageFile}.png" alt="${event.Location_Name}" class="event-card-stage" onerror="var p=this.parentElement;this.remove();p.classList.add('event-card-stage-fallback');p.textContent='${event.Location_Name.replace(/'/g, "\\'")}';"></div>`
                 : "";
             card.innerHTML = `
                 ${imgHTML}
