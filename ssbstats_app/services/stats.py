@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 
-from ssbstats_app.repositories import comparisons, events, fight_detail, fighters, fights, leaderboards, lookups, power, seasons
+from ssbstats_app.repositories import comparisons, elo, events, fight_detail, fighters, fights, leaderboards, lookups, power, seasons
 from ssbstats_app.utils import fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
 
 
@@ -175,22 +175,28 @@ def get_leaderboard_payload(season):
             awards = awards_future.result()
         for fighter in fighters:
             fighter["season_awards"] = awards.get((fighter.get("name") or "").lower(), [])
+        latest_season = lookups.get_latest_season()
+        show_titles = season_int == latest_season
     else:
         fighters = leaderboards.get_leaderboard()
+        show_titles = True
 
-    current_champs = lookups.get_current_champions()
-    for fighter in fighters:
-        fighter["titles"] = [normalize_champ_name(title) for title in current_champs.get((fighter.get("name") or "").lower(), [])]
+    if show_titles:
+        current_champs = lookups.get_current_champions()
+        for fighter in fighters:
+            fighter["titles"] = [normalize_champ_name(title) for title in current_champs.get((fighter.get("name") or "").lower(), [])]
     return fighters
 
 
 def get_season_payload(season_id):
     """Assemble the payload for a single season detail page."""
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    with ThreadPoolExecutor(max_workers=3) as pool:
         summary_future = pool.submit(seasons.get_season_summary, season_id)
         ps_future = pool.submit(power.get_season_power_scores, season_id)
+        elo_future = pool.submit(elo.get_elo_for_leaderboard_by_season, season_id)
         data = summary_future.result()
         ps_map = ps_future.result()
+        elo_map = elo_future.result()
 
     rankings = data.get("rankings", [])
     canonical_map = lookups.get_canonical_name_map()
@@ -210,7 +216,21 @@ def get_season_payload(season_id):
         ps = ps_map.get(row["Fighter_Name"].lower(), {})
         row["power_score"] = ps.get("power_score")
         row["power_rank"] = ps.get("power_rank")
+        elo_row = elo_map.get(row["Fighter_Name"].lower().strip(), {})
+        row["peak_season_elo"] = elo_row.get("peak_season_elo")
+        row["avg_elo"] = elo_row.get("avg_elo")
+        row["season_end_elo"] = elo_row.get("season_end_elo")
     data["rankings"] = rankings
+
+    # Include current champions only for the latest season
+    latest = lookups.get_latest_season()
+    if season_id == latest:
+        current_champs = lookups.get_current_champions()
+        data["current_champions"] = [
+            {"Fighter_Name": name, "Championship_Name": normalize_champ_name(title)}
+            for name, titles in current_champs.items()
+            for title in titles
+        ]
 
     for row in data.get("holistic", []):
         if row.get("Titles_Held"):

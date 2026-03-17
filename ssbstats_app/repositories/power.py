@@ -1,3 +1,4 @@
+import math
 from concurrent.futures import ThreadPoolExecutor
 
 from ssbstats_app.repositories.base import nk, select_view_dicts
@@ -37,7 +38,7 @@ SOS_ALL_SEASONS_SQL = """
 
 CHAMP_WINS_SEASON_SQL = """
     SELECT fl.Fighter_Name,
-           SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2 ELSE 1 END) AS champ_wins
+           SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2.2 ELSE 1 END) AS champ_wins
     FROM FightLog fl
     JOIN (SELECT DISTINCT Championship_Name, Championship_Tier FROM ChampionshipHistory) ch
       ON fl.Championship_Name = ch.Championship_Name
@@ -49,7 +50,7 @@ CHAMP_WINS_SEASON_SQL = """
 
 CHAMP_WINS_ALL_SEASONS_SQL = """
     SELECT fl.Fighter_Name, fl.Season AS season,
-           SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2 ELSE 1 END) AS champ_wins
+           SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2.2 ELSE 1 END) AS champ_wins
     FROM FightLog fl
     JOIN (SELECT DISTINCT Championship_Name, Championship_Tier FROM ChampionshipHistory) ch
       ON fl.Championship_Name = ch.Championship_Name
@@ -60,7 +61,7 @@ CHAMP_WINS_ALL_SEASONS_SQL = """
 
 CHAMP_WINS_CAREER_SQL = """
     SELECT fl.Fighter_Name,
-           SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2 ELSE 1 END) AS champ_wins
+           SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2.2 ELSE 1 END) AS champ_wins
     FROM FightLog fl
     JOIN (SELECT DISTINCT Championship_Name, Championship_Tier FROM ChampionshipHistory) ch
       ON fl.Championship_Name = ch.Championship_Name
@@ -72,68 +73,59 @@ CHAMP_WINS_CAREER_SQL = """
 SEASON_POWER_WEIGHTS = {
     "avg_elo": 0.00,
     "champ_wins": 0.45,
-    "event_wins": 0.10,
+    "event_wins": 0.05,
     "win_pct": 0.30,
-    "sos": 0.15,
+    "sos": 0.20,
 }
 
 CAREER_POWER_WEIGHTS = {
-    "avg_elo": 0.45,
+    "avg_elo": 0.50,
     "champ_wins": 0.45,
-    "event_wins": 0.10,
+    "event_wins": 0.05,
     "win_pct": 0.00,
     "sos": 0.00,
 }
 
 POWER_EVENT_WEIGHTS = {
-    "Won_Tournament":        0.25,
-    "Won_Royal_Rumble":      0.10,
-    "Won_Scramble":          0.20,
-    "Won_Smash_Series":      0.10,
-    "Won_Money_In_The_Bank": 0.10,
-    "Won_Smash_Bros":        0.25,
+    "Won_Tournament":        0.40,
+    "Won_Royal_Rumble":      0.05,
+    "Won_Scramble":          0.10,
+    "Won_Smash_Series":      0.05,
+    "Won_Money_In_The_Bank": 0.05,
+    "Won_Smash_Bros":        0.35,
 }
 POWER_EVENT_COLS = list(POWER_EVENT_WEIGHTS.keys())
 
 
-def ps_percentile(vals, value):
-    """Compute a 0-100 percentile rank for a value against a peer set."""
-    n = len(vals)
-    if n <= 1:
-        return 100.0
-    return sum(1 for item in vals if item < value) / (n - 1) * 100.0
-
-
-def apply_power_scores(fighters, weights):
-    """Apply weighted percentile metrics and power ranks to fighter rows."""
+def apply_power_scores(fighters, weights, all_time_maxes):
+    """Apply sqrt-normalized metric weights using all-time maxes as the ceiling."""
     if not fighters:
         return
 
     def to_float(value):
-        """Convert a percentage-like value into a float."""
         try:
             return float(str(value).replace("%", ""))
         except (ValueError, TypeError):
             return 0.0
 
     for fighter in fighters:
-        fighter["_ps_elo"] = float(fighter.get("avg_elo") or 1500)
-        fighter["_ps_cw"] = int(fighter.get("champ_wins") or 0)
-        fighter["_ps_ev"] = float(fighter.get("event_wins") or 0)
-        fighter["_ps_wp"] = to_float(fighter.get("win_pct", "0"))
-        fighter["_ps_sos"] = float(fighter.get("sos") or 1500)
-
-    ps_cols = ["_ps_elo", "_ps_cw", "_ps_ev", "_ps_wp", "_ps_sos"]
-    ws = [weights["avg_elo"], weights["champ_wins"], weights["event_wins"], weights["win_pct"], weights["sos"]]
-    for col in ps_cols:
-        vals = [fighter[col] for fighter in fighters]
-        for fighter in fighters:
-            fighter[col + "_pct"] = ps_percentile(vals, fighter[col])
-    for fighter in fighters:
-        fighter["power_score"] = round(sum(ws[i] * fighter[ps_cols[i] + "_pct"] for i in range(len(ps_cols))), 1)
-        for col in ps_cols:
-            del fighter[col]
-            del fighter[col + "_pct"]
+        score = 0.0
+        raw_vals = {
+            "avg_elo": float(fighter.get("avg_elo") or 1500),
+            "champ_wins": float(fighter.get("champ_wins") or 0),
+            "event_wins": float(fighter.get("event_wins") or 0),
+            "win_pct": to_float(fighter.get("win_pct", "0")),
+            "sos": float(fighter.get("sos") or 1500),
+        }
+        for metric, weight in weights.items():
+            if weight == 0:
+                continue
+            ceiling = all_time_maxes.get(metric, 1)
+            if ceiling <= 0:
+                ceiling = 1
+            normalized = min(math.sqrt(raw_vals[metric] / ceiling) * 100.0, 100.0)
+            score += weight * normalized
+        fighter["power_score"] = round(score, 1)
 
     ranked = sorted(fighters, key=lambda item: item["power_score"], reverse=True)
     for i, fighter in enumerate(ranked, 1):
@@ -163,13 +155,14 @@ def get_all_season_power_scores():
         hol[(int(row.get("Season") or 0), nk(row.get("Fighter_Name", "")))] = row
     elo = {(int(row.get("season") or 0), nk(row.get("fighter_name", ""))): float(row.get("avg_elo") or 1500) for row in elo_rows}
     sos = {(int(row.get("season") or 0), nk(row.get("Fighter_Name", ""))): float(row.get("sos") or 1500) for row in sos_rows}
-    champ = {(int(row.get("season") or 0), nk(row.get("Fighter_Name", ""))): int(row.get("champ_wins") or 0) for row in cw_rows}
+    champ = {(int(row.get("season") or 0), nk(row.get("Fighter_Name", ""))): float(row.get("champ_wins") or 0) for row in cw_rows}
 
     by_season = {}
     for row in season_rows:
         by_season.setdefault(int(row.get("Season") or 0), []).append(row)
 
-    result = {}
+    # Build all fighter records first to compute all-time maxes
+    all_season_fighters = {}
     for season, rows in by_season.items():
         fighters = []
         for row in rows:
@@ -186,7 +179,27 @@ def get_all_season_power_scores():
                 "win_pct": str(row.get("win_pct") or "0"),
                 "sos": sos.get((season, nk(name)), 1500.0),
             })
-        apply_power_scores(fighters, SEASON_POWER_WEIGHTS)
+        if fighters:
+            all_season_fighters[season] = fighters
+
+    # Compute all-time maxes across every season
+    all_time_maxes = {}
+    for metric in SEASON_POWER_WEIGHTS:
+        def to_float_val(value):
+            try:
+                return float(str(value).replace("%", ""))
+            except (ValueError, TypeError):
+                return 0.0
+        all_vals = [to_float_val(f[metric]) for fighters in all_season_fighters.values() for f in fighters]
+        all_time_maxes[metric] = max(all_vals) if all_vals else 1
+
+    # Score each season using the shared ceiling
+    result = {}
+    for season in by_season:
+        fighters = all_season_fighters.get(season)
+        if not fighters:
+            continue
+        apply_power_scores(fighters, SEASON_POWER_WEIGHTS, all_time_maxes)
         result[season] = {nk(fighter["name"]): {"power_score": fighter["power_score"], "power_rank": fighter["power_rank"]} for fighter in fighters}
     return result
 
@@ -214,7 +227,7 @@ def get_career_power_scores():
     hol_lookup = {nk(row["Fighter_Name"]): row for row in hol_rows}
     elo_lookup = {nk(row["fighter_name"]): float(row["avg_elo"]) for row in elo_rows}
     sos_lookup = {nk(row["Fighter_Name"]): float(row["sos"]) for row in sos_rows}
-    champ_lookup = {nk(row["Fighter_Name"]): int(row["champ_wins"]) for row in cw_rows}
+    champ_lookup = {nk(row["Fighter_Name"]): float(row["champ_wins"]) for row in cw_rows}
 
     fighters = []
     for row in career_rows:
@@ -230,7 +243,19 @@ def get_career_power_scores():
             "win_pct": str(row.get("win_pct") or "0"),
             "sos": sos_lookup.get(nk(name), 1500.0),
         })
-    apply_power_scores(fighters, CAREER_POWER_WEIGHTS)
+
+    # Career uses its own pool maxes
+    def to_float_val(value):
+        try:
+            return float(str(value).replace("%", ""))
+        except (ValueError, TypeError):
+            return 0.0
+    career_maxes = {}
+    for metric in CAREER_POWER_WEIGHTS:
+        vals = [to_float_val(f[metric]) for f in fighters]
+        career_maxes[metric] = max(vals) if vals else 1
+
+    apply_power_scores(fighters, CAREER_POWER_WEIGHTS, career_maxes)
     total = len(fighters)
     return {
         nk(fighter["name"]): {"power_score": fighter["power_score"], "power_rank": fighter["power_rank"], "total_fighters": total}

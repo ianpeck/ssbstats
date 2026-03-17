@@ -37,6 +37,12 @@ def get_all_brands():
     return select_list("SELECT * FROM Brand", 1)
 
 
+def get_latest_season():
+    """Return the most recent season ID."""
+    rows = select_list("SELECT MAX(Season_ID) FROM Season", 0)
+    return int(rows[0]) if rows else 0
+
+
 def get_current_champions():
     """Return current championships keyed by lowercase fighter name."""
     rows = select_view_dicts("SELECT * FROM CurrentChampions")

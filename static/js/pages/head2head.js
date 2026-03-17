@@ -169,9 +169,8 @@ function renderAll(d, mode) {
 
     renderScoreboard(d, isSeason ? { f1Season, f2Season } : null);
     renderStatsGrid({ fighter1: d1, fighter2: d2, h2h: d }, isSeason);
-    renderRadar({ fighter1: d1, fighter2: d2, roster_maxes: maxes });
+    renderRadar({ fighter1: d1, fighter2: d2, roster_maxes: maxes }, isSeason);
     renderMomentum({ fighter1: d1, fighter2: d2 }, isSeason);
-    document.getElementById('eloSection').style.display        = isSeason ? 'none' : '';
     document.getElementById('seasonsSection').style.display    = isSeason ? 'none' : '';
     document.getElementById('fightsSection').style.display     = isSeason ? 'none' : '';
     if (!isSeason) {
@@ -180,6 +179,7 @@ function renderAll(d, mode) {
         renderSeasons(d);
         renderFights(d);
     } else {
+        renderEloComparison(d, f1Season, f2Season);
         renderPowerScoreSeasonMode(d, f1Season, f2Season);
     }
 }
@@ -270,6 +270,12 @@ function renderStatsGrid(d, isSeason) {
     const f1TotalTitle = f1.holistic.reduce((s, r) => s + (parseInt(r.Months_With_Title)||0), 0);
     const f2TotalTitle = f2.holistic.reduce((s, r) => s + (parseInt(r.Months_With_Title)||0), 0);
     const evWon = (hol) => { const s = new Set(); hol.forEach(r => EVENT_COLS.forEach(c => { if (r[c] != null && r[c] !== '') s.add(c); })); return s.size; };
+    const titlesHeld = (fighter) => {
+        if (!isSeason) return fighter.unique_champs;
+        const s = new Set();
+        fighter.holistic.forEach(r => { if (r.Titles_Held) r.Titles_Held.split(',').forEach(t => { const v = t.trim(); if (v) s.add(v); }); });
+        return s.size;
+    };
 
     const wrLabel      = isSeason ? 'Season Win Rate'   : 'Career Win Rate';
     const recordLabel  = isSeason ? 'Season Record'     : 'Career Record';
@@ -306,7 +312,7 @@ function renderStatsGrid(d, isSeason) {
         ] : []),
         ['Major Title Reign',  f1TotalMajor + ' month' + (f1TotalMajor !== 1 ? 's' : ''), f2TotalMajor + ' month' + (f2TotalMajor !== 1 ? 's' : ''), 'num', f1TotalMajor, f2TotalMajor],
         ['Title Reign',        f1TotalTitle + ' month' + (f1TotalTitle !== 1 ? 's' : ''), f2TotalTitle + ' month' + (f2TotalTitle !== 1 ? 's' : ''), 'num', f1TotalTitle, f2TotalTitle],
-        ['Unique Titles Held', f1.unique_champs,                          f2.unique_champs,                          'num', f1.unique_champs, f2.unique_champs],
+        ['Unique Titles Held', titlesHeld(f1),                             titlesHeld(f2),                             'num', titlesHeld(f1), titlesHeld(f2)],
         ...(isSeason ? (() => {
             const f1aw = (f1.awards || []).map(a => '🏅 ' + a.name).join(', ') || '—';
             const f2aw = (f2.awards || []).map(a => '🏅 ' + a.name).join(', ') || '—';
@@ -342,8 +348,8 @@ function renderStatsGrid(d, isSeason) {
     }).join('') + '</tbody>';
 }
 
-// ── Career Fingerprint Radar ──────────────────────────────────
-function careerRawValues(fighter) {
+// ── Fingerprint Radar ─────────────────────────────────────────
+function radarRawValues(fighter) {
     const h = fighter.holistic;
     const wr = parseFloat(String(fighter.career.win_pct).replace('%','')) || 0;
     const totalMajor = h.reduce((s,r) => s+(parseInt(r.Months_With_Major)||0), 0);
@@ -351,7 +357,9 @@ function careerRawValues(fighter) {
     const wonSet = new Set();
     h.forEach(r => EVENT_COLS.forEach(c => { if (r[c]!=null && r[c]!=='') wonSet.add(c); }));
     const ev = wonSet.size;
-    const tc = fighter.unique_champs || 0;
+    const titleSet = new Set();
+    h.forEach(r => { if (r.Titles_Held) r.Titles_Held.split(',').forEach(t => { const v = t.trim(); if (v) titleSet.add(v); }); });
+    const tc = titleSet.size || fighter.unique_champs || 0;
     return { wr, totalMajor, totalTitle, ev, tc, wonSet, fighter };
 }
 
@@ -370,12 +378,21 @@ function careerRadarData(raw, maxWR, maxMajor, maxTitle, maxEv, maxTc) {
     };
 }
 
-function renderRadar(d) {
-    const raw1 = careerRawValues(d.fighter1);
-    const raw2 = careerRawValues(d.fighter2);
+function renderRadar(d, isSeason) {
+    const raw1 = radarRawValues(d.fighter1);
+    const raw2 = radarRawValues(d.fighter2);
     const m = d.roster_maxes;
     const r1 = careerRadarData(raw1, m.max_wr, m.max_major, m.max_title, m.max_ev, m.max_champs);
     const r2 = careerRadarData(raw2, m.max_wr, m.max_major, m.max_title, m.max_ev, m.max_champs);
+
+    // Update title
+    const radarCard = document.getElementById('compareRadar').closest('.compare-card');
+    if (radarCard) {
+        radarCard.querySelector('.analytics-chart-title').textContent = isSeason ? 'Season Fingerprint' : 'Career Fingerprint';
+        radarCard.querySelector('.analytics-chart-subtitle').textContent = isSeason
+            ? 'Normalized season performance across five dimensions'
+            : 'Normalized career performance across five dimensions';
+    }
 
     if (charts.radar) charts.radar.destroy();
     charts.radar = new Chart(document.getElementById('compareRadar').getContext('2d'), {
@@ -402,7 +419,7 @@ function renderRadar(d) {
                         if (axis === 'Major Title Reign') return `  ${s}: ${f.holistic.reduce((a,x) => a+(parseInt(x.Months_With_Major)||0), 0)} month(s)`;
                         if (axis === 'Title Reign') return `  ${s}: ${f.holistic.reduce((a,x) => a+(parseInt(x.Months_With_Title)||0), 0)} month(s)`;
                         if (axis === 'Event Wins') return `  ${s}: ${[...r.wonSet].map(c => EVENT_NAMES[c]).join(', ') || 'None'}`;
-                        if (axis === 'Unique Titles') return `  ${s}: ${f.unique_champs} title(s)`;
+                        if (axis === 'Unique Titles') return `  ${s}: ${r.tc} title(s)`;
                         return `  ${s}: ${it.raw.toFixed(0)}`;
                     }}
                 }
@@ -455,16 +472,35 @@ function renderMomentum(d, isSeason) {
 }
 
 // ── ELO Rating History ────────────────────────────────────────
-function renderEloComparison(d) {
-    const f1hist = d.fighter1.elo_history || [];
-    const f2hist = d.fighter2.elo_history || [];
+function renderEloComparison(d, f1Season, f2Season) {
+    const isSeason = f1Season != null;
+    let f1hist = d.fighter1.elo_history || [];
+    let f2hist = d.fighter2.elo_history || [];
+
+    if (isSeason) {
+        f1hist = f1hist.filter(r => String(r.season) === String(f1Season));
+        f2hist = f2hist.filter(r => String(r.season) === String(f2Season));
+    }
+
+    // Update title/subtitle
+    const titleEl = document.getElementById('eloSection').querySelector('.analytics-chart-title');
+    const subEl   = document.getElementById('eloSection').querySelector('.analytics-chart-subtitle');
+    if (isSeason) {
+        titleEl.textContent = 'Season ELO Rating History';
+        subEl.textContent   = 'ELO trajectory within the selected season — each point is a fight';
+    } else {
+        titleEl.textContent = 'ELO Rating History';
+        subEl.textContent   = 'Career ELO trajectory over time — each point is a fight';
+    }
 
     const toPoints = arr => arr.map(r => ({ x: r.fight_id, y: r.elo_after, season: r.season, month: r.month }));
     const f1pts = toPoints(f1hist);
     const f2pts = toPoints(f2hist);
 
     const allFightIds = [...f1pts.map(p => p.x), ...f2pts.map(p => p.x)];
-    if (!allFightIds.length) return;
+    const eloSection = document.getElementById('eloSection');
+    if (!allFightIds.length) { eloSection.style.display = 'none'; return; }
+    eloSection.style.display = '';
 
     const minX = Math.min(...allFightIds);
     const maxX = Math.max(...allFightIds);

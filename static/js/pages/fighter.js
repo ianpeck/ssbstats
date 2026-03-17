@@ -681,192 +681,53 @@ function renderPowerScoreTable(bySeasonMap) {
     </table>`;
 }
 
-// ── Stats Charts ──────────────────────────────────────────────
+// ── Stats Tables ──────────────────────────────────────────────
+function renderStatsTable(wrapId, rows, labelKey, winsKey, lossesKey, pctKey, sortByTotal) {
+    const wrap = document.getElementById(wrapId);
+    if (!rows.length) { wrap.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">No data</p>'; return; }
+    const data = sortByTotal
+        ? [...rows].sort((a,b) => (parseInt(b[winsKey])||0)+(parseInt(b[lossesKey])||0) - (parseInt(a[winsKey])||0) - (parseInt(a[lossesKey])||0))
+        : rows;
+    const pctClass = v => { const n = parseFloat(String(v).replace('%','')) || 0; return n >= 60 ? 'pct-high' : n < 40 ? 'pct-low' : 'pct-mid'; };
+    const html = data.map(r => {
+        const w = parseInt(r[winsKey]) || 0;
+        const l = parseInt(r[lossesKey]) || 0;
+        const pct = r[pctKey] || '0.00%';
+        return `<tr>
+            <td>${r[labelKey]}</td>
+            <td class="stat-cell">${w}</td>
+            <td class="stat-cell">${l}</td>
+            <td class="stat-cell ${pctClass(pct)}">${pct}</td>
+        </tr>`;
+    }).join('');
+    wrap.innerHTML = `<table class="ps-season-table fighter-record-table">
+        <thead><tr><th></th><th>W</th><th>L</th><th>Win%</th></tr></thead>
+        <tbody>${html}</tbody>
+    </table>`;
+}
+
 function renderSeasonChart(data) {
-    if (!data.length) return;
-    const labels = data.map(r => 'S' + r.season);
-    const wins   = data.map(r => parseInt(r.wins)   || 0);
-    const losses = data.map(r => parseInt(r.losses)  || 0);
-    const pcts   = data.map(r => parseFloat(String(r.win_pct).replace('%','')) || 0);
-    new Chart(document.getElementById('seasonChart').getContext('2d'), {
-        type: 'bar',
-        data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 4 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
-        ]},
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-                y: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
-                x: { grid:{display:false}, ticks:{color:'#607cff', font:{size:13,weight:'bold'}} }
-            },
-            plugins: {
-                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
-                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
-                    callbacks: { afterTitle: (its) => `Win Rate: ${pcts[its[0].dataIndex].toFixed(1)}%` }
-                }
-            },
-            animation: { duration: 700 }
-        }
-    });
+    renderStatsTable('seasonTableWrap', data.map(r => ({...r, label: 'S' + r.season})), 'label', 'wins', 'losses', 'win_pct', false);
 }
 
 function renderFightTypeChart(data) {
-    if (!data.length) return;
-    const sorted = [...data].sort((a,b) => (parseInt(b.wins)||0)+(parseInt(b.losses)||0) - (parseInt(a.wins)||0) - (parseInt(a.losses)||0));
-    const labels = sorted.map(r => r.type);
-    const wins   = sorted.map(r => parseInt(r.wins)   || 0);
-    const losses = sorted.map(r => parseInt(r.losses)  || 0);
-    const h = Math.max(200, labels.length * 34);
-    document.getElementById('fightTypeChartWrap').style.height = h + 'px';
-    new Chart(document.getElementById('fightTypeChart').getContext('2d'), {
-        type: 'bar',
-        data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 3 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 3 },
-        ]},
-        options: {
-            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            scales: {
-                x: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
-                y: { grid:{display:false}, ticks:{color:'#b0b8d1', font:{size:11}} }
-            },
-            plugins: {
-                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
-                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
-                    callbacks: { afterTitle: (its) => `Win Rate: ${sorted[its[0].dataIndex].win_pct}` }
-                }
-            },
-            animation: { duration: 700 }
-        }
-    });
+    renderStatsTable('fightTypeTableWrap', data, 'type', 'wins', 'losses', 'win_pct', true);
 }
 
 function renderBrandChart(data) {
-    if (!data.length) return;
-    const labels = data.map(r => r.brand);
-    const wins   = data.map(r => parseInt(r.wins)   || 0);
-    const losses = data.map(r => parseInt(r.losses)  || 0);
-    const pcts   = data.map(r => parseFloat(String(r.win_pct).replace('%','')) || 0);
-    const h = Math.max(200, labels.length * 34);
-    document.getElementById('brandChartWrap').style.height = h + 'px';
-    new Chart(document.getElementById('brandChart').getContext('2d'), {
-        type: 'bar',
-        data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 4 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
-        ]},
-        options: {
-            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            scales: {
-                x: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
-                y: { grid:{display:false}, ticks:{color:'#b0b8d1', font:{size:12}} }
-            },
-            plugins: {
-                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
-                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
-                    callbacks: { afterTitle: (its) => `Win Rate: ${pcts[its[0].dataIndex].toFixed(1)}%` }
-                }
-            },
-            animation: { duration: 700 }
-        }
-    });
+    renderStatsTable('brandTableWrap', data, 'brand', 'wins', 'losses', 'win_pct', true);
 }
 
 function renderPPVChart(data) {
-    if (!data.length) return;
-    const sorted = [...data].sort((a,b) => (parseInt(b.wins)||0)+(parseInt(b.losses)||0) - (parseInt(a.wins)||0) - (parseInt(a.losses)||0));
-    const labels = sorted.map(r => r.ppv);
-    const wins   = sorted.map(r => parseInt(r.wins)   || 0);
-    const losses = sorted.map(r => parseInt(r.losses)  || 0);
-    const canvas = document.getElementById('ppvChart');
-    canvas.width  = Math.max(700, labels.length * 90);
-    canvas.height = 260;
-    new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 4 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
-        ]},
-        options: {
-            responsive: false, maintainAspectRatio: false,
-            scales: {
-                y: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
-                x: { grid:{display:false}, ticks:{color:'#b0b8d1', font:{size:11}, maxRotation:35} }
-            },
-            plugins: {
-                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
-                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
-                    callbacks: { afterTitle: (its) => `Win Rate: ${sorted[its[0].dataIndex].win_pct}` }
-                }
-            },
-            animation: { duration: 700 }
-        }
-    });
+    renderStatsTable('ppvTableWrap', data, 'ppv', 'wins', 'losses', 'win_pct', true);
 }
 
 function renderLocationChart(data) {
-    if (!data.length) return;
-    const sorted = [...data].sort((a,b) => (parseInt(b.wins)||0)+(parseInt(b.losses)||0) - (parseInt(a.wins)||0) - (parseInt(a.losses)||0));
-    const labels = sorted.map(r => r.location);
-    const wins   = sorted.map(r => parseInt(r.wins)   || 0);
-    const losses = sorted.map(r => parseInt(r.losses)  || 0);
-    const canvas = document.getElementById('locationChart');
-    canvas.width  = Math.max(700, labels.length * 90);
-    canvas.height = 260;
-    new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 4 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
-        ]},
-        options: {
-            responsive: false, maintainAspectRatio: false,
-            scales: {
-                y: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
-                x: { grid:{display:false}, ticks:{color:'#b0b8d1', font:{size:11}, maxRotation:35} }
-            },
-            plugins: {
-                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
-                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
-                    callbacks: { afterTitle: (its) => `Win Rate: ${sorted[its[0].dataIndex].win_pct}` }
-                }
-            },
-            animation: { duration: 700 }
-        }
-    });
+    renderStatsTable('locationTableWrap', data, 'location', 'wins', 'losses', 'win_pct', true);
 }
 
 function renderChampionshipChart(data) {
-    if (!data.length) return;
-    const sorted = [...data].sort((a,b) => (parseInt(b.Wins)||0)+(parseInt(b.Losses)||0) - (parseInt(a.Wins)||0) - (parseInt(a.Losses)||0));
-    const labels = sorted.map(r => r.Championship_Name);
-    const wins   = sorted.map(r => parseInt(r.Wins)   || 0);
-    const losses = sorted.map(r => parseInt(r.Losses)  || 0);
-    const canvas = document.getElementById('champByChampChart');
-    canvas.width  = Math.max(700, labels.length * 90);
-    canvas.height = 260;
-    new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: { labels, datasets: [
-            { label: 'Wins',   data: wins,   backgroundColor: 'rgba(74,222,128,0.82)', borderRadius: 4 },
-            { label: 'Losses', data: losses, backgroundColor: 'rgba(248,113,113,0.75)', borderRadius: 4 },
-        ]},
-        options: {
-            responsive: false, maintainAspectRatio: false,
-            scales: {
-                y: { grid:{color:'rgba(96,124,255,0.08)'}, ticks:{color:'#b0b8d1'}, beginAtZero:true },
-                x: { grid:{display:false}, ticks:{color:'#b0b8d1', font:{size:11}, maxRotation:35} }
-            },
-            plugins: {
-                legend: { position:'top', labels:{padding:12, font:{size:12,family:'Inter'}, color:'#b0b8d1'} },
-                tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
-                    callbacks: { afterTitle: (its) => `Win Rate: ${sorted[its[0].dataIndex]['Win Percentage']}` }
-                }
-            },
-            animation: { duration: 700 }
-        }
-    });
+    renderStatsTable('champTableWrap', data, 'Championship_Name', 'Wins', 'Losses', 'Win Percentage', true);
 }
 
 function fillTable(tbodyId, rows, keys) {

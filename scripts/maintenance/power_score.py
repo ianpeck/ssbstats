@@ -2,16 +2,17 @@
 """Power Score: composite fighter ranking by season.
 
 Metrics & weights:
-  Titles  — Weighted title months  (major month = 2pts, minor month = 1pt)
+  ChampW  — Weighted championship match wins (major win = 2pts, minor = 1pt)
   Win%    — Season/career win percentage
   ELO     — Avg ELO (season avg or career avg)
-  Events  — Tournament/rumble/series/etc wins
+  Events  — Tournament/rumble/series/etc wins (weighted)
   SOS     — Avg ELO of opponents beaten (strength of schedule)
 
-Each metric is percentile-ranked among all fighters in that season,
+Each metric is raw-normalized against the all-time max for that metric,
 then multiplied by its weight to produce the 0–100 composite score.
 """
 
+import math
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -21,12 +22,12 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(dotenv_path=ROOT_DIR / 'secrets.env')
 
 EVENT_WEIGHTS = {
-    'Won_Tournament':       0.25,
-    'Won_Royal_Rumble':     0.10,
-    'Won_Scramble':         0.20,
-    'Won_Smash_Series':     0.10,
-    'Won_Money_In_The_Bank': 0.10,
-    'Won_Smash_Bros':       0.25,
+    'Won_Tournament':       0.40,
+    'Won_Royal_Rumble':     0.05,
+    'Won_Scramble':         0.10,
+    'Won_Smash_Series':     0.05,
+    'Won_Money_In_The_Bank': 0.05,
+    'Won_Smash_Bros':       0.35,
 }
 EVENT_COLS = list(EVENT_WEIGHTS.keys())
 
@@ -34,16 +35,16 @@ EVENT_COLS = list(EVENT_WEIGHTS.keys())
 SEASON_WEIGHTS = {
     'avg_elo':       0.00,
     'champ_wins':    0.45,
-    'event_wins':    0.10,
+    'event_wins':    0.05,
     'win_pct':       0.30,
-    'sos':           0.15,
+    'sos':           0.20,
 }
 
 # Career: ELO + champ wins cover quality/skill; win% is redundant with ELO over large samples
 CAREER_WEIGHTS = {
-    'avg_elo':       0.45,
+    'avg_elo':       0.50,
     'champ_wins':    0.45,
-    'event_wins':    0.10,
+    'event_wins':    0.05,
     'win_pct':       0.00,
     'sos':           0.00,
 }
@@ -71,23 +72,21 @@ def q(conn, sql, params=None):
     return [dict(zip(cols, row)) for row in cur.fetchall()]
 
 
-def percentile_rank(vals, v):
-    """0–100 percentile: what fraction of peers does v beat?"""
-    n = len(vals)
-    if n <= 1:
-        return 100.0
-    below = sum(1 for x in vals if x < v)
-    return (below / (n - 1)) * 100.0
-
-
-def apply_power_scores(fighters, weights):
-    """Apply percentile-based metric weights to each fighter record."""
-    for metric in weights:
-        vals = [f[metric] for f in fighters]
-        for f in fighters:
-            f[f'{metric}_pct'] = percentile_rank(vals, f[metric])
+def apply_power_scores(fighters, weights, all_time_maxes):
+    """Apply raw-normalized metric weights using all-time maxes as the ceiling."""
     for f in fighters:
-        f['power_score'] = sum(weights[m] * f[f'{m}_pct'] for m in weights)
+        score = 0.0
+        for metric, weight in weights.items():
+            if weight == 0:
+                continue
+            ceiling = all_time_maxes.get(metric, 1)
+            if ceiling <= 0:
+                ceiling = 1
+            raw = f[metric]
+            normalized = min(math.sqrt(raw / ceiling) * 100.0, 100.0)
+            f[f'{metric}_norm'] = normalized
+            score += weight * normalized
+        f['power_score'] = score
 
 
 def print_ranking(fighters, title, weights, top_n=None):
@@ -102,13 +101,13 @@ def print_ranking(fighters, title, weights, top_n=None):
           f"EvW:{w['event_wins']:.0%}  Win%:{w['win_pct']:.0%}  SOS:{w['sos']:.0%}")
     print(f"{'='*80}")
     print(f"  {'#':<3} {'Fighter':<22} {'Score':>6}  {'Avg ELO':>7}  "
-          f"{'ChpW':>4}  {'EvW':>5}  {'Win%':>6}  {'SOS':>7}")
+          f"{'ChpW':>5}  {'EvW':>5}  {'Win%':>6}  {'SOS':>7}")
     print(f"  {'-'*74}")
     for i, f in enumerate(ranked, 1):
         print(
             f"  {i:<3} {f['name']:<22} {f['power_score']:>5.1f}   "
             f"{f['avg_elo']:>7.1f}  "
-            f"{f['champ_wins']:>4}  "
+            f"{f['champ_wins']:>5.2f}  "
             f"{f['event_wins']:>5.2f}  "
             f"{f['win_pct']:>5.1f}%  "
             f"{f['sos']:>7.1f}"
@@ -122,8 +121,10 @@ def main():
     seasons = [r['Season'] for r in q(conn,
         "SELECT DISTINCT Season FROM CareerStatsBySeason ORDER BY Season")]
 
+    # ── Collect all fighters across all seasons first to find all-time maxes ──
+    all_season_fighters = {}  # season -> list of fighter dicts
+
     for season in seasons:
-        # --- raw data pulls ---
         season_rows = q(conn,
             "SELECT * FROM CareerStatsBySeason WHERE Season = %s", (season,))
 
@@ -135,7 +136,7 @@ def main():
 
         champ_rows = q(conn, """
             SELECT fl.Fighter_Name,
-                   SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2 ELSE 1 END) AS champ_wins
+                   SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2.2 ELSE 1 END) AS champ_wins
             FROM FightLog fl
             JOIN (SELECT DISTINCT Championship_Name, Championship_Tier FROM ChampionshipHistory) ch
               ON fl.Championship_Name = ch.Championship_Name
@@ -144,7 +145,7 @@ def main():
               AND fl.Season = %s
             GROUP BY fl.Fighter_Name
         """, (season,))
-        champ = {r['Fighter_Name']: int(r['champ_wins']) for r in champ_rows}
+        champ = {r['Fighter_Name']: float(r['champ_wins']) for r in champ_rows}
 
         elo_rows = q(conn, """
             SELECT e.fighter_name, ROUND(AVG(e.elo_after), 1) AS avg_elo
@@ -155,7 +156,6 @@ def main():
         """, (season,))
         elo = {r['fighter_name']: float(r['avg_elo']) for r in elo_rows}
 
-        # SOS: avg ELO of opponents beaten this season
         sos_rows = q(conn, """
             SELECT r_win.Fighter_Name, AVG(e_loss.elo_before) AS avg_beaten_elo
             FROM Results r_win
@@ -170,7 +170,6 @@ def main():
         """, (season,))
         sos = {r['Fighter_Name']: float(r['avg_beaten_elo']) for r in sos_rows}
 
-        # --- build fighter records ---
         fighters = []
         for row in season_rows:
             name = row.get('Fighter_Name') or row.get('fighter_name') or ''
@@ -183,7 +182,6 @@ def main():
                 win_pct = 0.0
 
             h = hol.get(name, {})
-
             ev_wins = sum(
                 EVENT_WEIGHTS[col] for col in EVENT_COLS
                 if h.get(col) not in (None, '', 'None')
@@ -198,13 +196,24 @@ def main():
                 'sos':           sos.get(name, 1500.0),
             })
 
+        if fighters:
+            all_season_fighters[season] = fighters
+
+    # ── Compute all-time maxes across every season ──
+    all_time_maxes = {}
+    for metric in SEASON_WEIGHTS:
+        all_vals = [f[metric] for fighters in all_season_fighters.values() for f in fighters]
+        all_time_maxes[metric] = max(all_vals) if all_vals else 1
+
+    # ── Score each season using the shared ceiling ──
+    for season in seasons:
+        fighters = all_season_fighters.get(season)
         if not fighters:
             continue
-
-        apply_power_scores(fighters, SEASON_WEIGHTS)
+        apply_power_scores(fighters, SEASON_WEIGHTS, all_time_maxes)
         print_ranking(fighters, f"SEASON {season}  —  TOP 5", SEASON_WEIGHTS, top_n=5)
 
-    # --- career aggregate ---
+    # ── Career aggregate ──
     career_rows = q(conn, "SELECT Fighter_Name, `Win Percentage` AS win_pct FROM careerstats")
 
     ev_expr = ' + '.join(
@@ -219,7 +228,7 @@ def main():
 
     champ_career = q(conn, """
         SELECT fl.Fighter_Name,
-               SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2 ELSE 1 END) AS champ_wins
+               SUM(CASE WHEN ch.Championship_Tier = 'Major' THEN 2.2 ELSE 1 END) AS champ_wins
         FROM FightLog fl
         JOIN (SELECT DISTINCT Championship_Name, Championship_Tier FROM ChampionshipHistory) ch
           ON fl.Championship_Name = ch.Championship_Name
@@ -227,13 +236,12 @@ def main():
           AND fl.Decision IN ('w', 'W')
         GROUP BY fl.Fighter_Name
     """)
-    champ_c = {r['Fighter_Name'].lower().strip(): int(r['champ_wins']) for r in champ_career}
+    champ_c = {r['Fighter_Name'].lower().strip(): float(r['champ_wins']) for r in champ_career}
 
     elo_career = q(conn,
         "SELECT fighter_name, ROUND(AVG(elo_after), 1) AS avg_elo FROM Elo GROUP BY fighter_name")
     elo_c = {r['fighter_name'].lower().strip(): float(r['avg_elo']) for r in elo_career}
 
-    # Career SOS: avg ELO of all opponents ever beaten
     sos_career_rows = q(conn, """
         SELECT r_win.Fighter_Name, AVG(e_loss.elo_before) AS avg_beaten_elo
         FROM Results r_win
@@ -268,7 +276,11 @@ def main():
         })
 
     if career_fighters:
-        apply_power_scores(career_fighters, CAREER_WEIGHTS)
+        career_maxes = {}
+        for metric in CAREER_WEIGHTS:
+            vals = [f[metric] for f in career_fighters]
+            career_maxes[metric] = max(vals) if vals else 1
+        apply_power_scores(career_fighters, CAREER_WEIGHTS, career_maxes)
         print_ranking(career_fighters, "CAREER POWER SCORE  —  ALL TIME", CAREER_WEIGHTS)
 
     conn.close()

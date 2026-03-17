@@ -1169,6 +1169,13 @@ img {
     border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 .ps-season-table tbody tr:last-child td { border-bottom: none; }
+.fighter-record-table td:first-child { font-weight: 600; color: var(--text-primary); }
+.fighter-record-table .stat-cell { text-align: center; }
+.fighter-record-table th:not(:first-child) { text-align: center; }
+.stats-card-full .fighter-record-table { display: block; }
+.stats-card-full .fighter-record-table tbody { display: block; max-height: 360px; overflow-y: auto; }
+.stats-card-full .fighter-record-table thead,
+.stats-card-full .fighter-record-table tbody tr { display: table; width: 100%; table-layout: fixed; }
 .ps-score-cell { font-weight: 700; font-family: var(--font-heading); }
 .ps-rank-cell  { color: var(--text-secondary); font-size: 0.85rem; }
 .ps-tier-5 { color: #34d399; }

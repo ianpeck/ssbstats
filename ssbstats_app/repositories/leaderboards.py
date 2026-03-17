@@ -4,11 +4,10 @@ from ssbstats_app.repositories.base import nk, select_view_dicts, select_view_ro
 from ssbstats_app.repositories.elo import get_elo_for_leaderboard, get_elo_for_leaderboard_by_season
 from ssbstats_app.repositories.lookups import get_canonical_name_map
 from ssbstats_app.repositories.power import (
-    CAREER_POWER_WEIGHTS, SEASON_POWER_WEIGHTS,
     SOS_CAREER_SQL, SOS_SEASON_SQL,
     CHAMP_WINS_CAREER_SQL, CHAMP_WINS_SEASON_SQL,
     POWER_EVENT_WEIGHTS, POWER_EVENT_COLS,
-    apply_power_scores,
+    get_career_power_scores, get_season_power_scores,
 )
 
 
@@ -86,15 +85,13 @@ def get_leaderboard():
             "sos": sos_by_fighter.get(nk(name), 1500.0),
         })
 
-    def parse_pct(pct):
-        """Parse a percentage string into a sortable float."""
-        try:
-            return float(str(pct).replace("%", ""))
-        except (ValueError, TypeError):
-            return 0.0
+    career_scores = get_career_power_scores()
+    for fighter in fighters:
+        ps = career_scores.get(nk(fighter["name"]), {})
+        fighter["power_score"] = ps.get("power_score")
+        fighter["power_rank"] = ps.get("power_rank")
 
-    fighters.sort(key=lambda fighter: parse_pct(fighter["win_pct"]), reverse=True)
-    apply_power_scores(fighters, CAREER_POWER_WEIGHTS)
+    fighters.sort(key=lambda fighter: (fighter.get("power_score") or 0), reverse=True)
     return fighters
 
 
@@ -161,13 +158,11 @@ def get_leaderboard_by_season(season):
             "sos": sos_by_fighter.get(nk(name), 1500.0),
         })
 
-    def parse_pct(pct):
-        """Parse a percentage string into a sortable float."""
-        try:
-            return float(str(pct).replace("%", ""))
-        except (ValueError, TypeError):
-            return 0.0
+    season_scores = get_season_power_scores(season)
+    for fighter in fighters:
+        ps = season_scores.get(nk(fighter["name"]), {})
+        fighter["power_score"] = ps.get("power_score")
+        fighter["power_rank"] = ps.get("power_rank")
 
-    fighters.sort(key=lambda fighter: parse_pct(fighter["win_pct"]), reverse=True)
-    apply_power_scores(fighters, SEASON_POWER_WEIGHTS)
+    fighters.sort(key=lambda fighter: (fighter.get("power_score") or 0), reverse=True)
     return fighters

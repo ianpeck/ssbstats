@@ -12,6 +12,7 @@ const eventMap = [
 let currentSeason = null;
 let _srData       = [];   // cached enriched rows for sort
 let _srSort       = { key: 'power_score', dir: 'desc' };
+let _latestSeason = null;
 
 function updateSeasonURL() {
     const params = new URLSearchParams();
@@ -24,6 +25,7 @@ function updateSeasonURL() {
 
 document.addEventListener('DOMContentLoaded', function() {
     const pills = document.querySelectorAll('.season-pill');
+    if (pills.length) _latestSeason = parseInt(pills[pills.length - 1].dataset.season);
     pills.forEach(pill => {
         pill.addEventListener('click', function() {
             pills.forEach(p => p.classList.remove('active'));
@@ -90,7 +92,7 @@ function loadSeason(season) {
             renderEvents(data.holistic || []);
             renderAwards(data.awards || []);
             renderChampTimeline(data.champ_history || []);
-            renderRankings(data.rankings || [], data.holistic || [], data.champ_history || [], data.awards || []);
+            renderRankings(data.rankings || [], data.holistic || [], data.champ_history || [], data.awards || [], data.current_champions || []);
             renderSeasonSummary(season, data.rankings || [], data.holistic || [], data.champ_history || [], data.awards || []);
         })
         .catch(() => {
@@ -303,11 +305,11 @@ function renderChampTimeline(rows) {
 
 const _SR_EVENT_COLS = ['Won_Tournament','Won_Royal_Rumble','Won_Scramble','Won_Smash_Series','Won_Money_In_The_Bank','Won_Smash_Bros'];
 
-function renderRankings(rows, holistic, champHistory, awards) {
+function renderRankings(rows, holistic, champHistory, awards, currentChampions) {
     // Build holistic stats map
     const holisticMap = {};
     (holistic || []).forEach(row => {
-        const name = row.Fighter_Name || row.fighter_name || '';
+        const name = (row.Fighter_Name || row.fighter_name || '').toLowerCase();
         if (!holisticMap[name]) holisticMap[name] = { champ_months: 0, major_months: 0, event_wins: new Set() };
         holisticMap[name].champ_months += parseInt(row.Months_With_Title || 0) || 0;
         holisticMap[name].major_months += parseInt(row.Months_With_Major || 0) || 0;
@@ -318,12 +320,20 @@ function renderRankings(rows, holistic, champHistory, awards) {
         });
     });
 
-    // Build titles held map
+    // Build titles held map from champ history (for "Titles Held" count column)
     const titlesMap = {};
     (champHistory || []).forEach(row => {
-        const name = row.Fighter_Name || row.fighter_name || '';
+        const name = (row.Fighter_Name || row.fighter_name || '').toLowerCase();
         if (!titlesMap[name]) titlesMap[name] = new Set();
         if (row.Championship_Name) titlesMap[name].add(row.Championship_Name);
+    });
+
+    // Build current champions map (for badge display on latest season only)
+    const currentChampsMap = {};
+    (currentChampions || []).forEach(row => {
+        const name = (row.Fighter_Name || '').toLowerCase();
+        if (!currentChampsMap[name]) currentChampsMap[name] = [];
+        if (row.Championship_Name) currentChampsMap[name].push(row.Championship_Name);
     });
 
     // Build awards map: fighter → [award_name, ...] (lowercase keys for case-insensitive lookup)
@@ -342,18 +352,24 @@ function renderRankings(rows, holistic, champHistory, awards) {
         const losses = parseInt(row.Losses || row.losses || 0);
         const pct = row['Win Percentage'] || row.Win_Pct || row.win_pct || row['W/L %'] || '0.00%';
         const pctVal = parseFloat(String(pct).replace('%', '')) || 0;
-        const hol = holisticMap[name] || { champ_months: 0, major_months: 0, event_wins: new Set() };
+        const nk = name.toLowerCase();
+        const hol = holisticMap[nk] || { champ_months: 0, major_months: 0, event_wins: new Set() };
         const ps = row.power_score != null ? parseFloat(row.power_score) : null;
+        const titleSet = titlesMap[nk];
         return {
             name, wins, losses, pct, pctVal,
             fights: wins + losses,
             major_months: hol.major_months,
             champ_months: hol.champ_months,
             event_wins: hol.event_wins.size,
-            titles: titlesMap[name] ? titlesMap[name].size : 0,
+            titles: titleSet ? titleSet.size : 0,
+            title_names: currentChampsMap[nk] || [],
             season_awards: awardsMap[name.toLowerCase()] || [],
             power_score: ps,
             power_rank: row.power_rank != null ? parseInt(row.power_rank) : null,
+            peak_season_elo: row.peak_season_elo != null ? parseFloat(row.peak_season_elo) : null,
+            avg_elo: row.avg_elo != null ? parseFloat(row.avg_elo) : null,
+            season_end_elo: row.season_end_elo != null ? parseFloat(row.season_end_elo) : null,
         };
     });
 
@@ -373,12 +389,15 @@ function _renderSortedRankings() {
 
     const tbody = document.getElementById('seasonRankingsTbody');
     tbody.innerHTML = '';
+    const fmtElo = v => (v != null ? v.toFixed(1) : '--');
+    const eloClass = v => (v == null ? '' : v >= 1600 ? 'pct-high' : v < 1400 ? 'pct-low' : '');
     sorted.forEach((f, i) => {
         const pctClass = f.pctVal >= 60 ? 'pct-high' : f.pctVal < 40 ? 'pct-low' : 'pct-mid';
         const rankClass = i < 3 ? `rank-${i + 1}` : '';
         const filename = fighterToFilename(f.name);
         const ps = f.power_score;
         const psClass = getPowerScoreClass(ps);
+        const titleBadges = f.title_names.map(t => `<span class="lb-champ-tag">👑 ${t}</span>`).join('');
         const awardBadges = f.season_awards.map(a => `<span class="lb-award-tag">🏅 ${a}</span>`).join('');
 
         const tr = document.createElement('tr');
@@ -389,7 +408,7 @@ function _renderSortedRankings() {
                      onerror="this.style.display='none'">
                 <div class="fighter-cell-inner">
                     <a href="/fighter/${encodeURIComponent(f.name)}" class="fighter-link">${f.name}</a>
-                    ${awardBadges}
+                    ${titleBadges}${awardBadges}
                 </div>
             </td>
             <td class="stat-cell power-col ${psClass}">${ps != null ? `<span class="ps-dot"></span>${ps.toFixed(1)}` : '--'}</td>
@@ -401,6 +420,9 @@ function _renderSortedRankings() {
             <td class="stat-cell">${f.champ_months}</td>
             <td class="stat-cell">${f.event_wins > 0 ? f.event_wins + '/6' : '—'}</td>
             <td class="stat-cell">${f.titles || '—'}</td>
+            <td class="stat-cell ${eloClass(f.peak_season_elo)}">${fmtElo(f.peak_season_elo)}</td>
+            <td class="stat-cell ${eloClass(f.avg_elo)}">${fmtElo(f.avg_elo)}</td>
+            <td class="stat-cell ${eloClass(f.season_end_elo)}">${fmtElo(f.season_end_elo)}</td>
         `;
         tbody.appendChild(tr);
     });
