@@ -51,14 +51,15 @@ CAREER_POWER_WEIGHTS = {
     "sos": 0.10,
 }
 
-POWER_EVENT_COLS = [
-    "Won_Tournament",
-    "Won_Royal_Rumble",
-    "Won_Scramble",
-    "Won_Smash_Series",
-    "Won_Money_In_The_Bank",
-    "Won_Smash_Bros",
-]
+POWER_EVENT_WEIGHTS = {
+    "Won_Tournament":        0.25,
+    "Won_Royal_Rumble":      0.10,
+    "Won_Scramble":          0.20,
+    "Won_Smash_Series":      0.10,
+    "Won_Money_In_The_Bank": 0.10,
+    "Won_Smash_Bros":        0.25,
+}
+POWER_EVENT_COLS = list(POWER_EVENT_WEIGHTS.keys())
 
 
 def ps_percentile(vals, value):
@@ -86,7 +87,7 @@ def apply_power_scores(fighters, weights):
         tot = int(fighter.get("champ_months") or 0)
         fighter["_ps_elo"] = float(fighter.get("avg_elo") or 1500)
         fighter["_ps_wtm"] = maj + tot
-        fighter["_ps_ev"] = int(fighter.get("event_wins") or 0)
+        fighter["_ps_ev"] = float(fighter.get("event_wins") or 0)
         fighter["_ps_wp"] = to_float(fighter.get("win_pct", "0"))
         fighter["_ps_sos"] = float(fighter.get("sos") or 1500)
 
@@ -141,7 +142,7 @@ def get_all_season_power_scores():
             if not name:
                 continue
             hol_row = hol.get((season, nk(name)), {})
-            ev = sum(1 for col in POWER_EVENT_COLS if hol_row.get(col) not in (None, "", "None"))
+            ev = sum(POWER_EVENT_WEIGHTS[col] for col in POWER_EVENT_COLS if hol_row.get(col) not in (None, "", "None"))
             fighters.append({
                 "name": name,
                 "avg_elo": elo.get((season, nk(name)), 1500.0),
@@ -163,7 +164,7 @@ def get_season_power_scores(season):
 
 def get_career_power_scores():
     """Return career power scores keyed by lowercase fighter name."""
-    ev_expr = " + ".join(f"SUM(CASE WHEN `{col}` IS NOT NULL AND `{col}` != '' THEN 1 ELSE 0 END)" for col in POWER_EVENT_COLS)
+    ev_expr = " + ".join(f"SUM(CASE WHEN `{col}` IS NOT NULL AND `{col}` != '' THEN {POWER_EVENT_WEIGHTS[col]} ELSE 0 END)" for col in POWER_EVENT_COLS)
     with ThreadPoolExecutor(max_workers=4) as pool:
         f_c = pool.submit(select_view_dicts, "SELECT Fighter_Name, `Win Percentage` AS win_pct FROM careerstats")
         f_h = pool.submit(select_view_dicts, "SELECT Fighter_Name, SUM(COALESCE(Months_With_Major, 0)) AS major_months, SUM(COALESCE(Months_With_Title, 0)) AS champ_months, " + f"({ev_expr}) AS event_wins " + "FROM holistic_view GROUP BY Fighter_Name")
@@ -189,7 +190,7 @@ def get_career_power_scores():
             "avg_elo": elo_lookup.get(nk(name), 1500.0),
             "champ_months": int(hol_row.get("champ_months") or 0),
             "major_months": int(hol_row.get("major_months") or 0),
-            "event_wins": int(hol_row.get("event_wins") or 0),
+            "event_wins": float(hol_row.get("event_wins") or 0),
             "win_pct": str(row.get("win_pct") or "0"),
             "sos": sos_lookup.get(nk(name), 1500.0),
         })

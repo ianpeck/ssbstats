@@ -20,10 +20,15 @@ import pymysql
 ROOT_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(dotenv_path=ROOT_DIR / 'secrets.env')
 
-EVENT_COLS = [
-    'Won_Tournament', 'Won_Royal_Rumble', 'Won_Scramble',
-    'Won_Smash_Series', 'Won_Money_In_The_Bank', 'Won_Smash_Bros',
-]
+EVENT_WEIGHTS = {
+    'Won_Tournament':       0.25,
+    'Won_Royal_Rumble':     0.10,
+    'Won_Scramble':         0.20,
+    'Won_Smash_Series':     0.10,
+    'Won_Money_In_The_Bank': 0.10,
+    'Won_Smash_Bros':       0.25,
+}
+EVENT_COLS = list(EVENT_WEIGHTS.keys())
 
 # Season: ELO carries historical baggage — win%, titles, and SOS cover in-season performance better
 SEASON_WEIGHTS = {
@@ -97,14 +102,14 @@ def print_ranking(fighters, title, weights, top_n=None):
           f"EvW:{w['event_wins']:.0%}  Win%:{w['win_pct']:.0%}  SOS:{w['sos']:.0%}")
     print(f"{'='*80}")
     print(f"  {'#':<3} {'Fighter':<22} {'Score':>6}  {'Avg ELO':>7}  "
-          f"{'WTitle':>6}  {'EvW':>3}  {'Win%':>6}  {'SOS':>7}")
-    print(f"  {'-'*74}")
+          f"{'WTitle':>6}  {'EvW':>5}  {'Win%':>6}  {'SOS':>7}")
+    print(f"  {'-'*76}")
     for i, f in enumerate(ranked, 1):
         print(
             f"  {i:<3} {f['name']:<22} {f['power_score']:>5.1f}   "
             f"{f['avg_elo']:>7.1f}  "
             f"{f['wtitle_months']:>6}  "
-            f"{f['event_wins']:>3}  "
+            f"{f['event_wins']:>5.2f}  "
             f"{f['win_pct']:>5.1f}%  "
             f"{f['sos']:>7.1f}"
         )
@@ -171,7 +176,7 @@ def main():
             wtitle  = (major_m * 2) + minor_m
 
             ev_wins = sum(
-                1 for col in EVENT_COLS
+                EVENT_WEIGHTS[col] for col in EVENT_COLS
                 if h.get(col) not in (None, '', 'None')
             )
 
@@ -194,7 +199,7 @@ def main():
     career_rows = q(conn, "SELECT Fighter_Name, `Win Percentage` AS win_pct FROM careerstats")
 
     ev_expr = ' + '.join(
-        f"SUM(CASE WHEN `{c}` IS NOT NULL AND `{c}` != '' THEN 1 ELSE 0 END)"
+        f"SUM(CASE WHEN `{c}` IS NOT NULL AND `{c}` != '' THEN {EVENT_WEIGHTS[c]} ELSE 0 END)"
         for c in EVENT_COLS
     )
     hol_career = q(conn,
@@ -233,7 +238,7 @@ def main():
         total_m = int(h.get('champ_months') or 0)
         minor_m = total_m - major_m
         wtitle  = (major_m * 2) + minor_m
-        ev_wins = int(h.get('event_wins') or 0)
+        ev_wins = float(h.get('event_wins') or 0)
         try:
             win_pct = float(str(row.get('win_pct') or '0').replace('%', ''))
         except (ValueError, TypeError):
