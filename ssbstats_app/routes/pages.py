@@ -12,7 +12,7 @@ from ssbstats_app.services.scheduling import (
     get_schedule_admin_payload,
     update_scheduled_match_from_form,
 )
-from ssbstats_app.services.stats import build_index_payload, get_fight_detail_payload, get_fights_page_filters
+from ssbstats_app.services.stats import build_index_payload, get_event_detail_payload, get_fight_detail_payload, get_fights_page_filters
 from ssbstats_app.utils import fighter_to_filename
 
 
@@ -95,6 +95,15 @@ def championships():
 def events():
     """Render the PPV and event history page shell."""
     return render_template("events.html")
+
+
+@pages_bp.route("/events/<slug>")
+def event_detail(slug):
+    """Render the dedicated event detail page."""
+    payload = get_event_detail_payload(slug)
+    if payload is None:
+        abort(404)
+    return render_template("event_detail.html", event=payload)
 
 
 @pages_bp.route("/about")

@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 
 from ssbstats_app.repositories import comparisons, elo, events, fight_detail, fighters, fights, leaderboards, lookups, power, seasons
-from ssbstats_app.utils import fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
+from ssbstats_app.utils import event_to_slug, fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
 
 
 def build_index_payload():
@@ -719,4 +719,78 @@ def get_championships_payload():
 def get_events_payload():
     """Return serialized PPV and event history rows."""
     rows = events.get_all_ppvs()
-    return [{key: serialize_value(value) for key, value in row.items()} for row in rows]
+    payload = []
+    for row in rows:
+        serialized = {key: serialize_value(value) for key, value in row.items()}
+        serialized["ppv_slug"] = event_to_slug(serialized.get("PPV_Name"))
+        payload.append(serialized)
+    return payload
+
+
+def _event_weighted_win_pct(wins, losses, prior=0.5, strength=4):
+    """Return a sample-aware weighted win percentage."""
+    total = wins + losses
+    if total <= 0:
+        return 0.0
+    return ((wins + (prior * strength)) / (total + strength)) * 100
+
+
+def get_event_detail_payload(slug):
+    """Assemble the analytics payload for one all-time PPV event page."""
+    rows = get_events_payload()
+    base = next((row for row in rows if row.get("ppv_slug") == slug), None)
+    if not base:
+        return None
+
+    ppv_name = base.get("PPV_Name")
+    summary = events.get_event_summary(ppv_name)
+    if not summary:
+        return None
+
+    records_raw = events.get_event_fighter_records(ppv_name)
+    upsets_raw = events.get_event_biggest_upsets(ppv_name)
+    editions_raw = events.get_event_editions(ppv_name)
+    fights_raw = fights.get_fight_log({"ppv": ppv_name}, page=1, per_page=200)
+
+    fighter_records = []
+    for row in records_raw:
+        wins = int(row.get("wins") or 0)
+        losses = int(row.get("losses") or 0)
+        total = wins + losses
+        win_pct = (wins / total * 100) if total else 0.0
+        fighter_records.append(
+            {
+                "fighter_name": row.get("Fighter_Name"),
+                "filename": fighter_to_filename(row.get("Fighter_Name") or ""),
+                "wins": wins,
+                "losses": losses,
+                "total": total,
+                "win_pct": round(win_pct, 2),
+                "weighted_win_pct": round(_event_weighted_win_pct(wins, losses), 2),
+            }
+        )
+
+    qualified = [row for row in fighter_records if row["total"] >= 2]
+    best_records = sorted(qualified, key=lambda row: (row["weighted_win_pct"], row["total"], row["wins"]), reverse=True)[:8]
+    worst_records = sorted(qualified, key=lambda row: (row["weighted_win_pct"], -row["total"], -row["wins"]))[:8]
+    most_active = sorted(fighter_records, key=lambda row: (row["total"], row["wins"]), reverse=True)[:8]
+
+    summary_serialized = {key: serialize_value(value) for key, value in summary.items()}
+    summary_serialized["ppv_slug"] = slug
+    summary_serialized["logo_filename"] = stage_to_filename(ppv_name or "")
+
+    return {
+        "event": summary_serialized,
+        "biggest_upsets": [{key: serialize_value(value) for key, value in row.items()} for row in upsets_raw],
+        "best_records": best_records,
+        "worst_records": worst_records,
+        "most_active": most_active,
+        "editions": [{key: serialize_value(value) for key, value in row.items()} for row in editions_raw],
+        "fights": [
+            {
+                **{key: serialize_value(value) for key, value in fight.items() if key != "fighters"},
+                "fighters": [{key: serialize_value(value) for key, value in fighter.items()} for fighter in fight["fighters"]],
+            }
+            for fight in fights_raw
+        ],
+    }

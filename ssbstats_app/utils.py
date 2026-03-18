@@ -37,6 +37,11 @@ def stage_to_filename(name):
     return normalized.lower().replace(" ", "").replace(",", "").replace("'", "").replace("(", "").replace(")", "").replace("-", "").replace(".", "")
 
 
+def event_to_slug(name):
+    """Map an event name to a stable URL slug."""
+    return stage_to_filename(name or "")
+
+
 def normalize_champ_name(value):
     """Normalize championship names for cleaner display in the UI."""
     if value is None:

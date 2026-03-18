@@ -6,6 +6,10 @@ function ppvToFilename(name) {
     return stageToFilename(name);
 }
 
+function eventDetailHref(event) {
+    return `/events/${event.ppv_slug}`;
+}
+
 function renderEventCards(events) {
     const container = document.getElementById("seasonGroups");
     container.innerHTML = "";
@@ -44,15 +48,26 @@ function renderEventCards(events) {
             card.innerHTML = `
                 ${imgHTML}
                 <div class="event-card-body">
-                    <div class="event-card-name">${event.PPV_Name}</div>
+                    <div class="event-card-name-row">
+                        <div class="event-card-name">${event.PPV_Name}</div>
+                        <a href="${eventDetailHref(event)}" class="event-card-title-link" aria-label="Open all-time event page for ${event.PPV_Name}" title="Open all-time event page">All-time</a>
+                    </div>
                     <div class="event-card-meta">Season ${event.Season} &bull; Month ${event.Month}${event.Location_Name ? ` &bull; ${event.Location_Name}` : ""}</div>
                     <div class="event-card-stats">
                         <span class="event-stat">${event.fight_count} fight${event.fight_count != 1 ? "s" : ""}</span>
                         ${parseInt(event.title_fights) > 0 ? `<span class="event-stat event-stat-title">👑 ${event.title_fights} title match${event.title_fights != 1 ? "es" : ""}</span>` : ""}
                     </div>
-                    <div class="event-card-action">View Card &rsaquo;</div>
+                    <button type="button" class="event-card-action">View Card</button>
                 </div>
             `;
+            const titleLink = card.querySelector(".event-card-title-link");
+            if (titleLink) titleLink.addEventListener("click", event => event.stopPropagation());
+            const actionButton = card.querySelector(".event-card-action");
+            if (actionButton) actionButton.addEventListener("click", event => {
+                event.stopPropagation();
+                openEvent(event.currentTarget.__eventData);
+            });
+            if (actionButton) actionButton.__eventData = event;
             card.addEventListener("click", () => openEvent(event));
             grid.appendChild(card);
         });
