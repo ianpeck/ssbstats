@@ -707,7 +707,108 @@ function renderStatsTable(wrapId, rows, labelKey, winsKey, lossesKey, pctKey, so
 }
 
 function renderSeasonChart(data) {
-    renderStatsTable('seasonTableWrap', data.map(r => ({...r, label: 'S' + r.season})), 'label', 'wins', 'losses', 'win_pct', false);
+    const wrap = document.getElementById('seasonTableWrap');
+    if (!data.length) { wrap.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">No data</p>'; return; }
+
+    const sorted = [...data].sort((a, b) => parseInt(a.season) - parseInt(b.season));
+    const labels = sorted.map(r => 'S' + r.season);
+    const wins = sorted.map(r => parseInt(r.wins) || 0);
+    const losses = sorted.map(r => parseInt(r.losses) || 0);
+    const pcts = sorted.map(r => parseFloat(String(r.win_pct).replace('%', '')) || 0);
+
+    wrap.innerHTML = '<canvas id="seasonComboChart"></canvas>';
+    const ctx = document.getElementById('seasonComboChart').getContext('2d');
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Wins',
+                    data: wins,
+                    backgroundColor: 'rgba(34,197,94,0.7)',
+                    borderColor: 'rgba(34,197,94,1)',
+                    borderWidth: 1,
+                    borderRadius: 3,
+                    stack: 'record',
+                    order: 2,
+                },
+                {
+                    label: 'Losses',
+                    data: losses,
+                    backgroundColor: 'rgba(239,68,68,0.7)',
+                    borderColor: 'rgba(239,68,68,1)',
+                    borderWidth: 1,
+                    borderRadius: 3,
+                    stack: 'record',
+                    order: 2,
+                },
+                {
+                    label: 'Win %',
+                    data: pcts,
+                    type: 'line',
+                    yAxisID: 'yPct',
+                    borderColor: 'rgba(96,124,255,1)',
+                    backgroundColor: 'rgba(96,124,255,0.15)',
+                    pointBackgroundColor: 'rgba(96,124,255,1)',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    borderWidth: 2.5,
+                    tension: 0.3,
+                    fill: false,
+                    order: 1,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 2.2,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    labels: { color: 'rgba(255,255,255,0.7)', font: { size: 11 }, usePointStyle: true, pointStyle: 'circle', padding: 16 }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15,15,35,0.95)',
+                    titleColor: '#fff',
+                    bodyColor: 'rgba(255,255,255,0.85)',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => {
+                            if (ctx.dataset.label === 'Win %') return `Win %: ${ctx.raw.toFixed(1)}%`;
+                            return `${ctx.dataset.label}: ${ctx.raw}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 } },
+                    grid: { color: 'rgba(255,255,255,0.04)' }
+                },
+                y: {
+                    stacked: true,
+                    title: { display: true, text: 'Matches', color: 'rgba(255,255,255,0.45)', font: { size: 11 } },
+                    ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 10 }, stepSize: 1 },
+                    grid: { color: 'rgba(255,255,255,0.04)' },
+                    beginAtZero: true,
+                },
+                yPct: {
+                    position: 'right',
+                    title: { display: true, text: 'Win %', color: 'rgba(96,124,255,0.7)', font: { size: 11 } },
+                    ticks: { color: 'rgba(96,124,255,0.7)', font: { size: 10 }, callback: v => v + '%' },
+                    grid: { drawOnChartArea: false },
+                    min: 0,
+                    max: 100,
+                }
+            }
+        }
+    });
 }
 
 function renderFightTypeChart(data) {
@@ -722,9 +823,113 @@ function renderPPVChart(data) {
     renderStatsTable('ppvTableWrap', data, 'ppv', 'wins', 'losses', 'win_pct', true);
 }
 
-function renderLocationChart(data) {
-    renderStatsTable('locationTableWrap', data, 'location', 'wins', 'losses', 'win_pct', true);
+function stageHeatColor(pct) {
+    if (pct >= 75) return '#16a34a';
+    if (pct >= 60) return '#65a30d';
+    if (pct >= 45) return '#ca8a04';
+    if (pct >= 30) return '#ea580c';
+    return '#dc2626';
 }
+
+function renderLocationChart(data) {
+    const wrap = document.getElementById('locationHeatmapWrap');
+    if (!data.length) { wrap.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">No data</p>'; return; }
+
+    const parsed = data.map(r => {
+        const w = parseInt(r.wins) || 0;
+        const l = parseInt(r.losses) || 0;
+        return { name: r.location, w, l, total: w + l, pct: parseFloat(String(r.win_pct).replace('%', '')) || 0 };
+    }).sort((a, b) => b.total - a.total);
+
+    const totalFights = parsed.reduce((s, r) => s + r.total, 0);
+
+    // Squarified treemap layout
+    function squarify(items, x, y, width, height) {
+        const rects = [];
+        if (!items.length || width <= 0 || height <= 0) return rects;
+        const totalVal = items.reduce((s, i) => s + i.total, 0);
+        if (totalVal <= 0) return rects;
+
+        let remaining = [...items];
+        let cx = x, cy = y, cw = width, ch = height;
+
+        while (remaining.length) {
+            const isWide = cw >= ch;
+            const side = isWide ? ch : cw;
+            const areaLeft = remaining.reduce((s, i) => s + i.total, 0);
+            const scaleFactor = (cw * ch) / areaLeft;
+
+            let row = [remaining[0]];
+            let rowArea = remaining[0].total * scaleFactor;
+            let bestAspect = Math.max(side * side * remaining[0].total * scaleFactor / (rowArea * rowArea), (rowArea * rowArea) / (side * side * remaining[0].total * scaleFactor));
+
+            for (let i = 1; i < remaining.length; i++) {
+                const newArea = rowArea + remaining[i].total * scaleFactor;
+                const worstNew = row.concat(remaining[i]).reduce((worst, item) => {
+                    const a = item.total * scaleFactor;
+                    const rowLen = newArea / side;
+                    const itemLen = a / rowLen;
+                    const aspect = Math.max(rowLen / itemLen, itemLen / rowLen);
+                    return Math.max(worst, aspect);
+                }, 0);
+                if (worstNew < bestAspect) {
+                    row.push(remaining[i]);
+                    rowArea = newArea;
+                    bestAspect = worstNew;
+                } else break;
+            }
+
+            remaining = remaining.slice(row.length);
+            const rowLen = rowArea / side;
+
+            let offset = 0;
+            for (const item of row) {
+                const itemArea = item.total * scaleFactor;
+                const itemLen = itemArea / rowLen;
+                if (isWide) {
+                    rects.push({ ...item, rx: cx, ry: cy + offset, rw: rowLen, rh: itemLen });
+                } else {
+                    rects.push({ ...item, rx: cx + offset, ry: cy, rw: itemLen, rh: rowLen });
+                }
+                offset += itemLen;
+            }
+
+            if (isWide) { cx += rowLen; cw -= rowLen; }
+            else { cy += rowLen; ch -= rowLen; }
+        }
+        return rects;
+    }
+
+    const containerW = 800;
+    const containerH = 420;
+    const rects = squarify(parsed, 0, 0, containerW, containerH);
+
+    const tiles = rects.map(r => {
+        const color = stageHeatColor(r.pct);
+        const showLabel = r.rw > 40 && r.rh > 28;
+        const showRecord = r.rw > 50 && r.rh > 40;
+        const fontSize = Math.max(0.55, Math.min(0.85, r.rw / 90));
+        const imgSrc = `/static/assets/stages/${stageToFilename(r.name)}.png`;
+        return `<div class="treemap-tile" style="left:${r.rx / containerW * 100}%;top:${r.ry / containerH * 100}%;width:${r.rw / containerW * 100}%;height:${r.rh / containerH * 100}%;" title="${r.name}\n${r.w}W-${r.l}L (${r.pct.toFixed(1)}%)">
+            <img class="treemap-img" src="${imgSrc}" alt="" onerror="this.style.display='none'">
+            <div class="treemap-overlay" style="background:${color}"></div>
+            ${showLabel ? `<span class="treemap-label" style="font-size:${fontSize}rem">${r.name}</span>` : ''}
+            ${showRecord ? `<span class="treemap-record">${r.w}-${r.l}</span>` : ''}
+        </div>`;
+    }).join('');
+
+    wrap.innerHTML = `
+        <div class="stage-bubble-legend" style="padding:10px 16px;">
+            <span class="stage-legend-item"><span class="stage-legend-dot" style="background:#16a34a"></span>75%+</span>
+            <span class="stage-legend-item"><span class="stage-legend-dot" style="background:#65a30d"></span>60-74%</span>
+            <span class="stage-legend-item"><span class="stage-legend-dot" style="background:#ca8a04"></span>45-59%</span>
+            <span class="stage-legend-item"><span class="stage-legend-dot" style="background:#ea580c"></span>30-44%</span>
+            <span class="stage-legend-item"><span class="stage-legend-dot" style="background:#dc2626"></span>&lt;30%</span>
+        </div>
+        <div class="treemap-container">${tiles}</div>
+    `;
+}
+
 
 function renderChampionshipChart(data) {
     renderStatsTable('champTableWrap', data, 'Championship_Name', 'Wins', 'Losses', 'Win Percentage', true);
