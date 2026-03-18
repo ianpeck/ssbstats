@@ -1,6 +1,11 @@
 let allEvents = [];
 let activeSeason = "";
 
+function ppvToFilename(name) {
+    if (!name) return "";
+    return stageToFilename(name);
+}
+
 function renderEventCards(events) {
     const container = document.getElementById("seasonGroups");
     container.innerHTML = "";
@@ -31,9 +36,10 @@ function renderEventCards(events) {
         bySeason[season].forEach(event => {
             const card = document.createElement("div");
             card.className = "event-card glass-card";
-            const stageFile = event.Location_Name ? stageToFilename(event.Location_Name) : "";
-            const imgHTML = stageFile
-                ? `<div class="event-card-stage-wrap"><img src="/static/assets/stages/${stageFile}.png" alt="${event.Location_Name}" class="event-card-stage" onerror="var p=this.parentElement;this.remove();p.classList.add('event-card-stage-fallback');p.textContent='${event.Location_Name.replace(/'/g, "\\'")}';"></div>`
+            const ppvFile = ppvToFilename(event.PPV_Name);
+            const fallbackLabel = (event.PPV_Name || "PPV Event").replace(/'/g, "\\'");
+            const imgHTML = ppvFile
+                ? `<div class="event-card-stage-wrap event-card-stage-wrap--logo"><img src="/static/assets/ppv/${ppvFile}.png" alt="${event.PPV_Name}" class="event-card-stage event-card-stage--logo" onerror="var p=this.parentElement;this.remove();p.classList.add('event-card-stage-fallback');p.textContent='${fallbackLabel}';"></div>`
                 : "";
             card.innerHTML = `
                 ${imgHTML}
