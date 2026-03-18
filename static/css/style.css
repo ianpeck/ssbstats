@@ -1176,6 +1176,272 @@ img {
 .stats-card-full .fighter-record-table tbody { display: block; max-height: 360px; overflow-y: auto; }
 .stats-card-full .fighter-record-table thead,
 .stats-card-full .fighter-record-table tbody tr { display: table; width: 100%; table-layout: fixed; }
+
+.ppv-performance-intro {
+    padding: 0 20px 8px;
+}
+
+.ppv-performance-intro-copy {
+    display: inline-block;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.ppv-performance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+    padding: 0 20px 18px;
+}
+
+.ppv-performance-grid--belt {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.ppv-performance-tile {
+    border: 1px solid var(--ppv-border, rgba(255,255,255,0.08));
+    border-radius: 14px;
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)),
+        linear-gradient(135deg, var(--ppv-tint, transparent), transparent 70%);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        inset 0 0 0 999px var(--ppv-tint, transparent);
+}
+
+.ppv-performance-tile--low-sample {
+    opacity: 0.82;
+}
+
+.ppv-performance-logo-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 55%),
+        linear-gradient(135deg, rgba(18, 24, 38, 0.96), rgba(10, 14, 24, 0.98));
+}
+
+.ppv-performance-logo-wrap--belt {
+    aspect-ratio: 4 / 3;
+}
+
+.ppv-performance-logo-wrap--fallback {
+    padding: 0.9rem;
+}
+
+.ppv-performance-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0.4rem;
+    transform: translateY(3%) scale(1.15);
+    transform-origin: center;
+    position: relative;
+    z-index: 1;
+}
+
+.ppv-performance-logo--belt {
+    padding: 0.8rem;
+    transform: scale(1.08);
+}
+
+.ppv-performance-overlay {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)),
+        linear-gradient(135deg, var(--ppv-tint, transparent), transparent 65%);
+    opacity: 1;
+}
+
+.ppv-performance-pct {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.92);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.28);
+    background: rgba(7, 10, 18, 0.32);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 999px;
+    padding: 0.2rem 0.45rem;
+}
+
+.ppv-performance-meta {
+    padding: 0.8rem 0.85rem 0.9rem;
+}
+
+.ppv-performance-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.25;
+    margin-bottom: 0.25rem;
+}
+
+.ppv-performance-record {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.ppv-performance-record span {
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 0.3rem;
+}
+
+.ppv-performance-fallback {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    line-height: 1.25;
+}
+
+.format-spotlight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 0.9rem;
+}
+
+.format-spotlight-card {
+    border: 1px solid var(--format-border, rgba(255,255,255,0.08));
+    border-radius: 14px;
+    padding: 0.9rem 0.95rem;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)),
+        linear-gradient(135deg, var(--format-tint, transparent), transparent 72%);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        inset 0 0 0 999px var(--format-tint, transparent);
+}
+
+.format-spotlight-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 0.65rem;
+}
+
+.format-spotlight-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.format-spotlight-pct {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.format-spotlight-bar {
+    height: 9px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.07);
+    margin-bottom: 0.6rem;
+}
+
+.format-spotlight-bar-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--format-border, rgba(255,255,255,0.2)), rgba(255,255,255,0.95));
+}
+
+.format-spotlight-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.format-table-note {
+    margin: 0 0 0.8rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.fighter-record-table-compact th:first-child,
+.fighter-record-table-compact td:first-child {
+    width: 42%;
+}
+
+.brand-performance-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.brand-performance-card {
+    border: 1px solid var(--brand-border, rgba(255,255,255,0.08));
+    border-radius: 14px;
+    padding: 0.95rem 1rem;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)),
+        linear-gradient(135deg, var(--brand-tint, transparent), transparent 72%);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        inset 0 0 0 999px var(--brand-tint, transparent);
+}
+
+.brand-performance-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 0.7rem;
+}
+
+.brand-performance-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.brand-performance-pct {
+    font-size: 0.96rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.brand-performance-bar {
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.07);
+    margin-bottom: 0.7rem;
+}
+
+.brand-performance-bar-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--brand-border, rgba(255,255,255,0.2)), rgba(255,255,255,0.95));
+}
+
+.brand-performance-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
 /* Stage Treemap */
 .stage-bubble-legend {
     display: flex;
@@ -1184,6 +1450,24 @@ img {
     flex-wrap: wrap;
     font-size: 0.76rem;
     color: var(--text-secondary);
+}
+.stage-heatmap-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px 16px 8px;
+    align-items: center;
+}
+.stage-heatmap-search {
+    min-width: 0;
+}
+.stage-heatmap-input {
+    width: 100%;
+}
+.stage-heatmap-result {
+    grid-column: 1 / -1;
+    font-size: 0.82rem;
+    color: var(--text-muted);
 }
 .stage-legend-item {
     display: flex;
@@ -1211,7 +1495,7 @@ img {
     justify-content: center;
     overflow: hidden;
     cursor: default;
-    transition: z-index 0s;
+    transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease, z-index 0s;
     border: 1px solid rgba(0,0,0,0.4);
     box-sizing: border-box;
 }
@@ -1234,6 +1518,14 @@ img {
 .treemap-tile:hover {
     z-index: 2;
     border-color: rgba(255,255,255,0.4);
+}
+.treemap-tile-highlighted {
+    z-index: 4;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.92), 0 0 0 2px rgba(96,124,255,0.35);
+    transform: scale(1.02);
+}
+.treemap-tile-dimmed {
+    opacity: 0.28;
 }
 .treemap-label {
     position: relative;

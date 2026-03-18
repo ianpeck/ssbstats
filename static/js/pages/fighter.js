@@ -812,15 +812,219 @@ function renderSeasonChart(data) {
 }
 
 function renderFightTypeChart(data) {
-    renderStatsTable('fightTypeTableWrap', data, 'type', 'wins', 'losses', 'win_pct', true);
+    const wrap = document.getElementById('fightTypeTableWrap');
+    if (!data.length) {
+        wrap.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">No data</p>';
+        return;
+    }
+
+    const parsed = normalizePerformanceRows(data, 'type', 'wins', 'losses', 'win_pct');
+    const featured = parsed.slice(0, 4);
+    const rows = parsed.map(row => `
+        <tr>
+            <td>${escapeHtml(row.name)}</td>
+            <td class="stat-cell">${row.wins}</td>
+            <td class="stat-cell">${row.losses}</td>
+            <td class="stat-cell">${row.total}</td>
+            <td class="stat-cell">${row.pct.toFixed(2)}%</td>
+        </tr>
+    `).join('');
+
+    const cards = featured.map(row => `
+        <article class="format-spotlight-card" style="--format-tint:${ppvHeatColor(row.pct)};--format-border:${ppvHeatBorder(row.pct)};">
+            <div class="format-spotlight-top">
+                <div class="format-spotlight-name">${escapeHtml(row.name)}</div>
+                <div class="format-spotlight-pct">${row.pct.toFixed(0)}%</div>
+            </div>
+            <div class="format-spotlight-bar">
+                <div class="format-spotlight-bar-fill" style="width:${row.pct}%;"></div>
+            </div>
+            <div class="format-spotlight-meta">
+                <span>${row.wins}-${row.losses}</span>
+                <span>${row.total} fights</span>
+            </div>
+        </article>
+    `).join('');
+
+    wrap.innerHTML = `
+        <div class="format-spotlight-grid">${cards}</div>
+        <div class="format-table-note">Most-used formats are highlighted above. Full breakdown stays below for exact record lookup.</div>
+        <table class="ps-season-table fighter-record-table fighter-record-table-compact">
+            <thead><tr><th>Format</th><th>W</th><th>L</th><th>Total</th><th>Win%</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
 }
 
 function renderBrandChart(data) {
-    renderStatsTable('brandTableWrap', data, 'brand', 'wins', 'losses', 'win_pct', true);
+    const wrap = document.getElementById('brandTableWrap');
+    if (!data.length) {
+        wrap.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">No data</p>';
+        return;
+    }
+
+    const parsed = normalizePerformanceRows(data, 'brand', 'wins', 'losses', 'win_pct');
+    const cards = parsed.map(row => `
+        <article class="brand-performance-card" style="--brand-tint:${ppvHeatColor(row.pct)};--brand-border:${ppvHeatBorder(row.pct)};">
+            <div class="brand-performance-header">
+                <div class="brand-performance-name">${escapeHtml(row.name)}</div>
+                <div class="brand-performance-pct">${row.pct.toFixed(0)}%</div>
+            </div>
+            <div class="brand-performance-bar">
+                <div class="brand-performance-bar-fill" style="width:${row.pct}%;"></div>
+            </div>
+            <div class="brand-performance-meta">
+                <span>${row.wins}-${row.losses}</span>
+                <span>${row.total} fight${row.total !== 1 ? 's' : ''}</span>
+            </div>
+        </article>
+    `).join('');
+
+    wrap.innerHTML = `<div class="brand-performance-grid">${cards}</div>`;
 }
 
 function renderPPVChart(data) {
-    renderStatsTable('ppvTableWrap', data, 'ppv', 'wins', 'losses', 'win_pct', true);
+    renderPPVLogoGrid(data);
+}
+
+function normalizePerformanceRows(data, nameKey, winsKey, lossesKey, pctKey) {
+    return [...data]
+        .map(row => {
+            const wins = parseInt(row[winsKey]) || 0;
+            const losses = parseInt(row[lossesKey]) || 0;
+            const total = wins + losses;
+            const pct = parseFloat(String(row[pctKey]).replace('%', '')) || 0;
+            return {
+                name: row[nameKey],
+                wins,
+                losses,
+                total,
+                pct,
+            };
+        })
+        .sort((a, b) => b.total - a.total || b.pct - a.pct || (a.name || '').localeCompare(b.name || ''));
+}
+
+function ppvHeatColor(pct) {
+    if (pct >= 75) return 'rgba(34, 197, 94, 0.16)';
+    if (pct >= 60) return 'rgba(132, 204, 22, 0.15)';
+    if (pct >= 45) return 'rgba(250, 204, 21, 0.14)';
+    if (pct >= 30) return 'rgba(249, 115, 22, 0.15)';
+    return 'rgba(239, 68, 68, 0.16)';
+}
+
+function ppvHeatBorder(pct) {
+    if (pct >= 75) return 'rgba(34, 197, 94, 0.42)';
+    if (pct >= 60) return 'rgba(132, 204, 22, 0.38)';
+    if (pct >= 45) return 'rgba(250, 204, 21, 0.34)';
+    if (pct >= 30) return 'rgba(249, 115, 22, 0.36)';
+    return 'rgba(239, 68, 68, 0.4)';
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function normalizeLookupValue(value) {
+    return String(value ?? '').trim().toLowerCase();
+}
+
+function renderPPVLogoGrid(data) {
+    const wrap = document.getElementById('ppvLogoGridWrap');
+    if (!wrap) return;
+    if (!data.length) {
+        wrap.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">No data</p>';
+        return;
+    }
+
+    const parsed = normalizePerformanceRows(data, 'ppv', 'wins', 'losses', 'win_pct').map(item => ({
+        ...item,
+        file: stageToFilename(item.name || ''),
+    }));
+
+    const tiles = parsed.map(item => {
+        const tileClass = item.total < 3 ? 'ppv-performance-tile ppv-performance-tile--low-sample' : 'ppv-performance-tile';
+        const heat = ppvHeatColor(item.pct);
+        const border = ppvHeatBorder(item.pct);
+        const safeName = escapeHtml(item.name);
+        return `
+            <article class="${tileClass}" style="--ppv-tint:${heat};--ppv-border:${border};" title="${safeName}: ${item.wins}-${item.losses} (${item.pct.toFixed(1)}%)">
+                <div class="ppv-performance-logo-wrap">
+                    <img
+                        src="/static/assets/ppv/${item.file}.png"
+                        alt="${safeName}"
+                        class="ppv-performance-logo"
+                        loading="lazy"
+                        onerror="this.style.display='none';this.parentElement.classList.add('ppv-performance-logo-wrap--fallback');this.parentElement.innerHTML='<span class=&quot;ppv-performance-fallback&quot;>${safeName}</span>';"
+                    >
+                    <div class="ppv-performance-overlay" style="background:${heat};"></div>
+                    <div class="ppv-performance-pct">${item.pct.toFixed(0)}%</div>
+                </div>
+                <div class="ppv-performance-meta">
+                    <div class="ppv-performance-name">${safeName}</div>
+                    <div class="ppv-performance-record">${item.wins}-${item.losses} <span>${item.total} fight${item.total !== 1 ? 's' : ''}</span></div>
+                </div>
+            </article>
+        `;
+    }).join('');
+
+    wrap.innerHTML = `
+        <div class="ppv-performance-intro">
+            <span class="ppv-performance-intro-copy">A soft green-to-red tint shows how strong the fighter has been at each PPV. Lower-sample events are slightly softened.</span>
+        </div>
+        <div class="ppv-performance-grid">${tiles}</div>
+    `;
+}
+
+function renderChampionshipChart(data) {
+    renderChampionshipBeltGrid(data);
+}
+
+function renderChampionshipBeltGrid(data) {
+    const wrap = document.getElementById('champLogoGridWrap');
+    if (!wrap) return;
+    if (!data.length) {
+        wrap.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">No data</p>';
+        return;
+    }
+
+    const parsed = normalizePerformanceRows(data, 'Championship_Name', 'Wins', 'Losses', 'Win Percentage');
+    const tiles = parsed.map(item => {
+        const tileClass = item.total < 3 ? 'ppv-performance-tile ppv-performance-tile--low-sample ppv-performance-tile--belt' : 'ppv-performance-tile ppv-performance-tile--belt';
+        const heat = ppvHeatColor(item.pct);
+        const border = ppvHeatBorder(item.pct);
+        const safeName = escapeHtml(item.name);
+        const asset = championshipToBeltAsset(item.name);
+        const media = asset
+            ? `<img src="${asset}" alt="${safeName}" class="ppv-performance-logo ppv-performance-logo--belt" loading="lazy">`
+            : `<span class="ppv-performance-fallback">${safeName}</span>`;
+
+        return `
+            <article class="${tileClass}" style="--ppv-tint:${heat};--ppv-border:${border};" title="${safeName}: ${item.wins}-${item.losses} (${item.pct.toFixed(1)}%)">
+                <div class="ppv-performance-logo-wrap ppv-performance-logo-wrap--belt">
+                    ${media}
+                    <div class="ppv-performance-overlay"></div>
+                    <div class="ppv-performance-pct">${item.pct.toFixed(0)}%</div>
+                </div>
+                <div class="ppv-performance-meta">
+                    <div class="ppv-performance-name">${safeName}</div>
+                    <div class="ppv-performance-record">${item.wins}-${item.losses} <span>${item.total} title fight${item.total !== 1 ? 's' : ''}</span></div>
+                </div>
+            </article>
+        `;
+    }).join('');
+
+    wrap.innerHTML = `
+        <div class="ppv-performance-intro">
+            <span class="ppv-performance-intro-copy">Each belt tile uses a soft green-to-red tint to show how well the fighter has performed in matches for that championship.</span>
+        </div>
+        <div class="ppv-performance-grid ppv-performance-grid--belt">${tiles}</div>
+    `;
 }
 
 function stageHeatColor(pct) {
@@ -838,10 +1042,15 @@ function renderLocationChart(data) {
     const parsed = data.map(r => {
         const w = parseInt(r.wins) || 0;
         const l = parseInt(r.losses) || 0;
-        return { name: r.location, w, l, total: w + l, pct: parseFloat(String(r.win_pct).replace('%', '')) || 0 };
+        return {
+            name: r.location,
+            key: normalizeLookupValue(r.location),
+            w,
+            l,
+            total: w + l,
+            pct: parseFloat(String(r.win_pct).replace('%', '')) || 0,
+        };
     }).sort((a, b) => b.total - a.total);
-
-    const totalFights = parsed.reduce((s, r) => s + r.total, 0);
 
     // Squarified treemap layout
     function squarify(items, x, y, width, height) {
@@ -910,15 +1119,24 @@ function renderLocationChart(data) {
         const showRecord = r.rw > 50 && r.rh > 40;
         const fontSize = Math.max(0.55, Math.min(0.85, r.rw / 90));
         const imgSrc = `/static/assets/stages/${stageToFilename(r.name)}.png`;
-        return `<div class="treemap-tile" style="left:${r.rx / containerW * 100}%;top:${r.ry / containerH * 100}%;width:${r.rw / containerW * 100}%;height:${r.rh / containerH * 100}%;" title="${r.name}\n${r.w}W-${r.l}L (${r.pct.toFixed(1)}%)">
+        return `<div class="treemap-tile" data-location-key="${escapeHtml(r.key)}" style="left:${r.rx / containerW * 100}%;top:${r.ry / containerH * 100}%;width:${r.rw / containerW * 100}%;height:${r.rh / containerH * 100}%;" title="${escapeHtml(r.name)}\n${r.w}W-${r.l}L (${r.pct.toFixed(1)}%)">
             <img class="treemap-img" src="${imgSrc}" alt="" onerror="this.style.display='none'">
             <div class="treemap-overlay" style="background:${color}"></div>
-            ${showLabel ? `<span class="treemap-label" style="font-size:${fontSize}rem">${r.name}</span>` : ''}
+            ${showLabel ? `<span class="treemap-label" style="font-size:${fontSize}rem">${escapeHtml(r.name)}</span>` : ''}
             ${showRecord ? `<span class="treemap-record">${r.w}-${r.l}</span>` : ''}
         </div>`;
     }).join('');
 
+    const stageLookup = new Map(parsed.map(item => [item.key, item]));
+
     wrap.innerHTML = `
+        <div class="stage-heatmap-controls">
+            <div class="autocomplete-wrapper stage-heatmap-search">
+                <input type="text" id="stageHeatmapSearch" class="fighter-input stage-heatmap-input" placeholder="Search a stage..." autocomplete="off">
+                <div class="autocomplete-dropdown"></div>
+            </div>
+            <div id="stageHeatmapResult" class="stage-heatmap-result">Search for a stage to highlight it and see the record.</div>
+        </div>
         <div class="stage-bubble-legend" style="padding:10px 16px;">
             <span class="stage-legend-item"><span class="stage-legend-dot" style="background:#16a34a"></span>75%+</span>
             <span class="stage-legend-item"><span class="stage-legend-dot" style="background:#65a30d"></span>60-74%</span>
@@ -928,12 +1146,54 @@ function renderLocationChart(data) {
         </div>
         <div class="treemap-container">${tiles}</div>
     `;
+
+    const input = document.getElementById('stageHeatmapSearch');
+    const result = document.getElementById('stageHeatmapResult');
+    const tileNodes = [...wrap.querySelectorAll('.treemap-tile')];
+    setupAutocomplete(input, 'locations');
+
+    function clearHighlight() {
+        tileNodes.forEach(tile => tile.classList.remove('treemap-tile-highlighted', 'treemap-tile-dimmed'));
+        result.textContent = 'Search for a stage to highlight it and see the record.';
+    }
+
+    function focusStage(rawValue) {
+        const key = normalizeLookupValue(rawValue);
+        if (!key) {
+            clearHighlight();
+            return;
+        }
+
+        const match = stageLookup.get(key);
+        tileNodes.forEach(tile => {
+            const isMatch = tile.dataset.locationKey === key;
+            tile.classList.toggle('treemap-tile-highlighted', isMatch);
+            tile.classList.toggle('treemap-tile-dimmed', !!match && !isMatch);
+            if (isMatch) tile.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        });
+
+        if (!match) {
+            result.textContent = `No recorded fights for this fighter at ${rawValue}.`;
+            return;
+        }
+
+        result.textContent = `${match.name}: ${match.w}-${match.l} record across ${match.total} fight${match.total !== 1 ? 's' : ''} (${match.pct.toFixed(1)}% win rate).`;
+    }
+
+    input.addEventListener('change', event => focusStage(event.target.value));
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') focusStage(event.target.value);
+        if (event.key === 'Escape') {
+            input.value = '';
+            clearHighlight();
+        }
+    });
+    input.addEventListener('blur', () => {
+        input.value = '';
+        clearHighlight();
+    });
 }
 
-
-function renderChampionshipChart(data) {
-    renderStatsTable('champTableWrap', data, 'Championship_Name', 'Wins', 'Losses', 'Win Percentage', true);
-}
 
 function fillTable(tbodyId, rows, keys) {
     const tbody = document.getElementById(tbodyId);
