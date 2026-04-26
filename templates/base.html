@@ -55,6 +55,13 @@
                     <span>Fight Logs</span>
                 </a>
 
+                {% if streaming_enabled %}
+                <a href="/gamecast" class="nav-link {% if request.path.startswith('/gamecast') %}active{% endif %}">
+                    <i data-lucide="radio"></i>
+                    <span>Gamecast</span>
+                </a>
+                {% endif %}
+
                 <a href="/about" class="nav-link {% if request.path == '/about' %}active{% endif %}">
                     <i data-lucide="info"></i>
                     <span>About</span>

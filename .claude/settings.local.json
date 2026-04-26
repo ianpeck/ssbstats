@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe -m streaming_jobs.synthesizer.main \"Bowser\" \"Pichu\" \"Bowser\" --duration 30 --seed 42 --tick-rate 5)",
+      "Bash(.venv/Scripts/python.exe -m pip install PyYAML --quiet)",
+      "Bash(.venv/Scripts/python.exe -m streaming_jobs.synthesizer.main \"Bowser\" \"Pichu\" \"Pichu\" --duration 60 --seed 7 --tick-rate 5)",
+      "Bash(.venv/Scripts/python.exe -m streaming_jobs.synthesizer.main \"Mario\" \"Luigi\" \"Luigi\" --duration 60 --seed 99 --tick-rate 5)",
+      "Bash(.venv/Scripts/python.exe -m pip install confluent-kafka --quiet)",
+      "Bash(.venv/Scripts/python.exe -c \"import confluent_kafka; print\\('confluent-kafka', confluent_kafka.version\\(\\)\\)\")",
+      "Bash(.venv/Scripts/python.exe -m pip list)",
+      "Bash(ls -la *.lock pyproject.toml uv.lock)",
+      "Bash(.venv/Scripts/python.exe --version)",
+      "Bash(.venv/Scripts/python.exe -m pip install -r requirements.txt --quiet)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(.venv/Scripts/python.exe -m streaming_jobs.picker.main --sink stdout)"
+    ]
+  }
+}

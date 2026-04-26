@@ -37,8 +37,15 @@ def create_app():
             "static_v": _STATIC_VERSION,
             "admin_ip_allowed": admin_ip_allowed,
             "admin_logged_in": bool(session.get("is_admin")),
+            "streaming_enabled": os.getenv("LOCAL_STREAMING", "0") == "1",
         }
 
     app.register_blueprint(pages_bp)
     app.register_blueprint(api_bp)
+
+    if os.getenv("LOCAL_STREAMING", "0") == "1":
+        # Local-only Gamecast — never registered in production.
+        from ssbstats_app.streaming.gamecast import gamecast_bp
+        app.register_blueprint(gamecast_bp)
+
     return app

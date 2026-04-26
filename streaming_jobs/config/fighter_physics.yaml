@@ -1,0 +1,91 @@
+# Fighter physics for the local-only match telemetry synthesizer.
+# Weights from Smash Ultimate (Bowser=135 heaviest, Pichu=62 lightest).
+# Names MUST match the Fighter_Name values in the SmashBros DB.
+#
+# Each fighter only needs to override what differs from `defaults`.
+# This file is consumed by streaming_jobs/synthesizer/ and never by the prod app.
+
+defaults:
+  weight: 100
+  damage_range: [2, 25]   # per-hit damage roll (inclusive)
+  fall_speed: 1.0         # reserved for future use (combo vulnerability, recovery)
+  starting_stocks: 3
+  ko_curve:
+    threshold: 235        # damage where KO probability starts rising sharply (medium-weight typical KO%)
+    steepness: 0.045      # gentler curve allows occasional early KOs (short matches)
+
+fighters:
+  Banjo & Kazooie:  { weight: 106 }
+  Bayonetta:        { weight: 81 }
+  Bowser:           { weight: 135 }
+  Bowser Jr.:       { weight: 108 }
+  Captain Falcon:   { weight: 104 }
+  Chrom:            { weight: 95 }
+  Cloud:            { weight: 100 }
+  Corrin:           { weight: 98 }
+  Daisy:            { weight: 89 }
+  Dark Pit:         { weight: 96 }
+  Dark Samus:       { weight: 108 }
+  Diddy Kong:       { weight: 90 }
+  DK:               { weight: 127 }
+  Dr. Mario:        { weight: 98 }
+  Duck Hunt:        { weight: 86 }
+  Erdrick:          { weight: 101 }   # Smash slot for Hero
+  Falco:            { weight: 82 }
+  Fox:              { weight: 77 }
+  Ganondorf:        { weight: 118 }
+  Greninja:         { weight: 88 }
+  Ice Climbers:     { weight: 92 }
+  Ike:              { weight: 107 }
+  Incineroar:       { weight: 116 }
+  Inkling:          { weight: 94 }
+  Isabelle:         { weight: 88 }
+  Jigglypuff:       { weight: 68 }
+  Joker:            { weight: 93 }
+  Ken:              { weight: 103 }
+  King Dedede:      { weight: 127 }
+  King K. Rool:     { weight: 133 }
+  Kirby:            { weight: 79 }
+  Link:             { weight: 104 }
+  Little Mac:       { weight: 87 }
+  Lucario:          { weight: 92 }
+  Lucas:            { weight: 94 }
+  Lucina:           { weight: 90 }
+  Luigi:            { weight: 97 }
+  Mario:            { weight: 98 }
+  Marth:            { weight: 90 }
+  Mega Man:         { weight: 102 }
+  Meta Knight:      { weight: 80 }
+  Mewtwo:           { weight: 79 }
+  Mr Game & Watch:  { weight: 75 }
+  Ness:             { weight: 94 }
+  Olimar:           { weight: 79 }
+  Pac-Man:          { weight: 95 }
+  Palutena:         { weight: 91 }
+  Peach:            { weight: 89 }
+  Pichu:            { weight: 62 }
+  Pikachu:          { weight: 79 }
+  Piranha Plant:    { weight: 112 }
+  Pit:              { weight: 96 }
+  Pokemon Trainer:  { weight: 96 }    # avg of Squirtle (75) / Ivysaur (96) / Charizard (116) — refine if you ever rotate active pokemon per stock
+  ROB:              { weight: 106 }
+  Richter Belmont:  { weight: 107 }
+  Ridley:           { weight: 107 }
+  Robin:            { weight: 95 }
+  Rosalina & Luma:  { weight: 82 }
+  Roy:              { weight: 95 }
+  Ryu:              { weight: 103 }
+  Samus:            { weight: 108 }
+  Sheik:            { weight: 78 }
+  Shulk:            { weight: 97 }
+  Simon Belmont:    { weight: 107 }
+  Snake:            { weight: 106 }
+  Sonic:            { weight: 86 }
+  Toon Link:        { weight: 91 }
+  Villager:         { weight: 92 }
+  Wario:            { weight: 107 }
+  Wii Fit Trainer:  { weight: 96 }
+  Wolf:             { weight: 92 }
+  Yoshi:            { weight: 104 }
+  Young Link:       { weight: 88 }
+  Zelda:            { weight: 85 }

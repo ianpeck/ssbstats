@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}Live Gamecast — SSB Stats{% endblock %}
+
+{% block content %}
+<style>
+    .gc-shell { max-width: 1200px; margin: 0 auto; padding: 24px 20px 60px; }
+
+    .gc-topbar {
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
+    }
+    .gc-meta-pill {
+        background: rgba(255,255,255,0.06); padding: 6px 12px; border-radius: 999px;
+        font-size: 12px; opacity: 0.85;
+    }
+    .gc-btn {
+        background: linear-gradient(135deg, #4a90ff, #2a60cc); color: #fff; border: none;
+        padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;
+        font-family: 'Inter', sans-serif; font-size: 14px;
+    }
+    .gc-btn:disabled { opacity: 0.4; cursor: wait; }
+
+    /* Matchup header */
+    .gc-matchup {
+        display: grid; grid-template-columns: 1fr 200px 1fr; gap: 16px; align-items: stretch;
+        margin-bottom: 14px;
+    }
+    .gc-fcard {
+        background: linear-gradient(160deg, rgba(20,30,50,0.85), rgba(8,15,28,0.95));
+        border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+        padding: 18px; display: flex; gap: 16px; align-items: center;
+        position: relative; overflow: hidden;
+    }
+    .gc-fa { border-left: 4px solid #6cf; }
+    .gc-fb { border-right: 4px solid #f97; flex-direction: row-reverse; text-align: right; }
+    .gc-portrait {
+        width: 96px; height: 96px; border-radius: 50%; object-fit: cover;
+        background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1);
+    }
+    .gc-fmeta { flex: 1; min-width: 0; }
+    .gc-fname { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 700; line-height: 1.1; }
+    .gc-felo { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; opacity: 0.85; }
+    .gc-fb .gc-felo { justify-content: flex-end; }
+    .gc-elo-num { font-family: 'Orbitron', sans-serif; font-weight: 600; font-size: 20px; color: #ffd76a; }
+    .gc-elo-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.6; }
+    .gc-elo-delta { font-size: 12px; opacity: 0.75; }
+
+    .gc-vs {
+        background: rgba(20,30,50,0.7); border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px; padding: 16px 12px; text-align: center;
+        display: flex; flex-direction: column; justify-content: center; gap: 8px;
+    }
+    .gc-vs-text { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: 800; }
+    .gc-vs-meta { font-size: 11px; opacity: 0.7; line-height: 1.4; }
+    .gc-clock { font-family: 'Orbitron', sans-serif; font-size: 28px; color: #6cf; }
+
+    /* Big status cards */
+    .gc-status-row {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px;
+    }
+    .gc-status-card {
+        background: rgba(20,30,50,0.6); border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px; padding: 18px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .gc-status-card.is-fa { border-top: 3px solid #6cf; }
+    .gc-status-card.is-fb { border-top: 3px solid #f97; }
+    .gc-stock-big {
+        font-family: 'Orbitron', sans-serif; font-size: 36px; letter-spacing: 8px;
+    }
+    .gc-stock-big .gone { opacity: 0.2; }
+    .gc-damage-big {
+        font-family: 'Orbitron', sans-serif; font-size: 44px; font-weight: 700;
+    }
+    .gc-damage-big.high { color: #ff8866; }
+    .gc-damage-big.danger { color: #ff4444; text-shadow: 0 0 14px rgba(255,68,68,0.6); }
+
+    /* Section card */
+    .gc-card {
+        background: rgba(20,30,45,0.6); border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 14px; padding: 18px; margin-bottom: 14px;
+    }
+    .gc-card-title {
+        font-family: 'Orbitron', sans-serif; font-size: 14px; letter-spacing: 1px;
+        text-transform: uppercase; opacity: 0.85; margin-bottom: 12px;
+    }
+    .gc-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 720px) { .gc-grid-2 { grid-template-columns: 1fr; } }
+
+    /* Win prob chart */
+    #gcProbChart { max-height: 220px; width: 100% !important; }
+    .gc-prob-current { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; opacity: 0.85; }
+    .gc-prob-current .a { color: #6cf; }
+    .gc-prob-current .b { color: #f97; }
+
+    /* Per-stock damage history */
+    .gc-stockhist .row {
+        display: flex; justify-content: space-between; padding: 10px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px;
+    }
+    .gc-stockhist .row:last-child { border-bottom: 0; }
+    .gc-stockhist .lbl { opacity: 0.7; }
+    .gc-stockhist .pct { font-family: 'Orbitron', sans-serif; font-weight: 600; }
+    .gc-stockhist .pct.clutch { color: #ff8866; }
+    .gc-stockhist .pct.danger { color: #ff4444; }
+    .gc-stockhist .empty { opacity: 0.4; padding: 12px; font-size: 13px; }
+
+    /* Event ticker */
+    .gc-events { max-height: 220px; overflow-y: auto; }
+    .gc-event-row {
+        padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.06);
+        font-size: 13px; display: flex; gap: 10px;
+    }
+    .gc-event-kind {
+        font-family: 'Orbitron', sans-serif; font-size: 10px;
+        padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1);
+    }
+    .gc-event-kind.clutch_ko { background: rgba(255, 68, 68, 0.25); color: #ffaaaa; }
+    .gc-event-kind.speed_kill { background: rgba(255, 200, 0, 0.25); color: #ffe680; }
+
+    /* Banners */
+    .gc-stock-lost-banner {
+        position: fixed; top: 100px; left: 50%; transform: translateX(-50%) translateY(-30px);
+        background: linear-gradient(135deg, #ff4444, #cc1133); color: #fff;
+        padding: 14px 28px; border-radius: 10px; font-family: 'Orbitron', sans-serif;
+        font-weight: 800; letter-spacing: 2px; font-size: 22px;
+        box-shadow: 0 8px 32px rgba(255,68,68,0.4); z-index: 100;
+        opacity: 0; transition: opacity 250ms ease, transform 250ms ease; pointer-events: none;
+    }
+    .gc-stock-lost-banner.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .gc-sudden-banner {
+        position: fixed; top: 100px; left: 50%; transform: translateX(-50%);
+        background: linear-gradient(135deg, #ff4444, #aa0033); color: #fff;
+        padding: 12px 28px; border-radius: 8px; font-family: 'Orbitron', sans-serif;
+        font-weight: 800; letter-spacing: 4px; font-size: 16px;
+        box-shadow: 0 0 30px rgba(255,68,68,0.7); z-index: 90;
+        display: none; animation: gcSdPulse 1.5s infinite;
+    }
+    @keyframes gcSdPulse {
+        0%, 100% { box-shadow: 0 0 24px rgba(255,68,68,0.5); }
+        50%      { box-shadow: 0 0 44px rgba(255,68,68,0.9); }
+    }
+
+    .gc-status-line { font-size: 12px; opacity: 0.55; margin-top: 8px; text-align: center; }
+</style>
+
+<div class="gc-shell">
+    <div class="gc-topbar">
+        <div class="gc-meta-pill" id="gcMatchPill">No match running — click Start to begin</div>
+        <button id="gcStart" class="gc-btn">Start a Match</button>
+    </div>
+
+    <!-- Matchup header -->
+    <div class="gc-matchup">
+        <div class="gc-fcard gc-fa">
+            <img class="gc-portrait" id="gcPortraitA" alt="">
+            <div class="gc-fmeta">
+                <div class="gc-fname" id="gcNameA">Fighter A</div>
+                <div class="gc-felo">
+                    <span class="gc-elo-label">ELO</span>
+                    <span class="gc-elo-num" id="gcEloA">—</span>
+                    <span class="gc-elo-delta" id="gcEloDeltaA"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="gc-vs">
+            <div class="gc-vs-text">VS</div>
+            <div class="gc-clock" id="gcClock">0:00</div>
+            <div class="gc-vs-meta" id="gcContext">—</div>
+        </div>
+
+        <div class="gc-fcard gc-fb">
+            <img class="gc-portrait" id="gcPortraitB" alt="">
+            <div class="gc-fmeta">
+                <div class="gc-fname" id="gcNameB">Fighter B</div>
+                <div class="gc-felo">
+                    <span class="gc-elo-num" id="gcEloB">—</span>
+                    <span class="gc-elo-label">ELO</span>
+                    <span class="gc-elo-delta" id="gcEloDeltaB"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Big status -->
+    <div class="gc-status-row">
+        <div class="gc-status-card is-fa">
+            <div class="gc-stock-big" id="gcStocksA">●●●</div>
+            <div class="gc-damage-big" id="gcDamageA">0%</div>
+        </div>
+        <div class="gc-status-card is-fb">
+            <div class="gc-damage-big" id="gcDamageB">0%</div>
+            <div class="gc-stock-big" id="gcStocksB">●●●</div>
+        </div>
+    </div>
+
+    <!-- Win probability chart -->
+    <div class="gc-card">
+        <div class="gc-card-title">Win Probability — ELO baseline blended with live state</div>
+        <div class="gc-prob-current">
+            <span class="a"><span id="gcProbLabelA">Fighter A</span> — <span id="gcProbValA">50%</span></span>
+            <span class="b"><span id="gcProbLabelB">Fighter B</span> — <span id="gcProbValB">50%</span></span>
+        </div>
+        <canvas id="gcProbChart"></canvas>
+    </div>
+
+    <!-- Per-stock damage history -->
+    <div class="gc-grid-2">
+        <div class="gc-card">
+            <div class="gc-card-title"><span id="gcStockHistTitleA">Fighter A</span> — stocks lost</div>
+            <div class="gc-stockhist" id="gcStockHistA">
+                <div class="empty">No stocks lost yet</div>
+            </div>
+        </div>
+        <div class="gc-card">
+            <div class="gc-card-title"><span id="gcStockHistTitleB">Fighter B</span> — stocks lost</div>
+            <div class="gc-stockhist" id="gcStockHistB">
+                <div class="empty">No stocks lost yet</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event ticker -->
+    <div class="gc-card">
+        <div class="gc-card-title">Notable Events</div>
+        <div class="gc-events" id="gcEvents">
+            <div class="gc-event-row" style="opacity:0.4;">No events yet — start a match.</div>
+        </div>
+        <div class="gc-status-line" id="gcStatus">Stream: connecting…</div>
+    </div>
+</div>
+
+<div class="gc-stock-lost-banner" id="gcStockLostBanner"></div>
+<div class="gc-sudden-banner" id="gcSuddenBanner">⚡ SUDDEN DEATH ⚡</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/gamecast.js') }}?v={{ static_v }}"></script>
+{% endblock %}
