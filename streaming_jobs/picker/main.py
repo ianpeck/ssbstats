@@ -78,6 +78,7 @@ def pick_match(season: int | None = None, ppv: str | None = None) -> dict:
             fw.Fighter_Name      AS winner,
             fl.Fighter_Name      AS loser,
             fw.Match_Result      AS winner_match_result,
+            fl.Match_Result      AS loser_match_result,
             ROUND(ew.elo_before, 1) AS winner_elo_before,
             ROUND(ew.elo_after, 1)  AS winner_elo_after,
             ROUND(el.elo_before, 1) AS loser_elo_before,
@@ -106,9 +107,10 @@ def pick_match(season: int | None = None, ppv: str | None = None) -> dict:
     fight_type = row["fight_type"]
     total_stocks = STOCK_FIGHT_TYPES[fight_type]
     winner_match_result = int(row["winner_match_result"] or 0)
+    loser_match_result = int(row["loser_match_result"] or 0)
 
     is_sudden_death = winner_match_result == 0
-    winner_stocks_remaining = winner_match_result if winner_match_result > 0 else 1
+    winner_stocks_remaining = winner_match_result if winner_match_result > 0 else 0
 
     return {
         "match_id": str(uuid.uuid4())[:8],
@@ -129,6 +131,7 @@ def pick_match(season: int | None = None, ppv: str | None = None) -> dict:
         "winner_stocks_remaining": winner_stocks_remaining,
         "is_sudden_death": is_sudden_death,
         "winner_match_result": winner_match_result,
+        "loser_match_result": loser_match_result,
         # ELO snapshot at the moment of this fight — used for baseline win prob.
         # `_a` = fighter_a (the winner), `_b` = fighter_b (the loser)
         "elo": {

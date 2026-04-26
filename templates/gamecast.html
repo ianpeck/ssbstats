@@ -1,155 +1,537 @@
 {% extends "base.html" %}
-{% block title %}Live Gamecast — SSB Stats{% endblock %}
+{% block title %}Live Gamecast &mdash; SSB Stats{% endblock %}
 
 {% block content %}
 <style>
-    .gc-shell { max-width: 1200px; margin: 0 auto; padding: 24px 20px 60px; }
+    .gc-shell {
+        --gc-a: #6ee7ff;
+        --gc-a-soft: rgba(110, 231, 255, 0.16);
+        --gc-b: #ff9f7a;
+        --gc-b-soft: rgba(255, 159, 122, 0.16);
+        --gc-panel: rgba(18, 18, 18, 0.78);
+        max-width: 1220px;
+        margin: 0 auto;
+        padding: 18px 0 56px;
+    }
 
     .gc-topbar {
-        display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 16px;
     }
-    .gc-meta-pill {
-        background: rgba(255,255,255,0.06); padding: 6px 12px; border-radius: 999px;
-        font-size: 12px; opacity: 0.85;
-    }
-    .gc-btn {
-        background: linear-gradient(135deg, #4a90ff, #2a60cc); color: #fff; border: none;
-        padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;
-        font-family: 'Inter', sans-serif; font-size: 14px;
-    }
-    .gc-btn:disabled { opacity: 0.4; cursor: wait; }
 
-    /* Matchup header */
+    .gc-meta-pill {
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        padding: 9px 14px;
+        font-size: 0.85rem;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(var(--glass-blur));
+    }
+
+    .gc-btn {
+        min-height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: var(--accent);
+        color: #fff;
+        border: 1px solid var(--accent);
+        padding: 10px 18px;
+        border-radius: var(--radius-sm);
+        font-weight: 700;
+        cursor: pointer;
+        font-family: var(--font-body);
+        font-size: 0.9rem;
+        box-shadow: 0 0 18px var(--accent-glow);
+        transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+        white-space: nowrap;
+    }
+
+    .gc-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .gc-btn:hover:not(:disabled) {
+        background: var(--accent-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 0 28px var(--accent-glow);
+    }
+
+    .gc-btn:disabled {
+        opacity: 0.45;
+        cursor: wait;
+        transform: none;
+    }
+
     .gc-matchup {
-        display: grid; grid-template-columns: 1fr 200px 1fr; gap: 16px; align-items: stretch;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 184px minmax(0, 1fr);
+        gap: 14px;
+        align-items: stretch;
         margin-bottom: 14px;
     }
+
+    .gc-fcard,
+    .gc-vs,
+    .gc-status-card,
+    .gc-card {
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)),
+            var(--gc-panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(var(--glass-blur));
+    }
+
     .gc-fcard {
-        background: linear-gradient(160deg, rgba(20,30,50,0.85), rgba(8,15,28,0.95));
-        border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
-        padding: 18px; display: flex; gap: 16px; align-items: center;
-        position: relative; overflow: hidden;
+        padding: 18px;
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
     }
-    .gc-fa { border-left: 4px solid #6cf; }
-    .gc-fb { border-right: 4px solid #f97; flex-direction: row-reverse; text-align: right; }
+
+    .gc-fcard::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .gc-fa {
+        border-left: 3px solid var(--gc-a);
+    }
+
+    .gc-fa::before {
+        background: linear-gradient(110deg, var(--gc-a-soft), transparent 46%);
+    }
+
+    .gc-fb {
+        border-right: 3px solid var(--gc-b);
+        flex-direction: row-reverse;
+        text-align: right;
+    }
+
+    .gc-fb::before {
+        background: linear-gradient(250deg, var(--gc-b-soft), transparent 46%);
+    }
+
     .gc-portrait {
-        width: 96px; height: 96px; border-radius: 50%; object-fit: cover;
-        background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1);
+        width: 104px;
+        height: 104px;
+        border-radius: var(--radius-sm);
+        object-fit: contain;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--border-strong);
+        padding: 8px;
+        filter: drop-shadow(0 10px 18px rgba(0,0,0,0.45));
+        position: relative;
+        z-index: 1;
     }
-    .gc-fmeta { flex: 1; min-width: 0; }
-    .gc-fname { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 700; line-height: 1.1; }
-    .gc-felo { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; opacity: 0.85; }
-    .gc-fb .gc-felo { justify-content: flex-end; }
-    .gc-elo-num { font-family: 'Orbitron', sans-serif; font-weight: 600; font-size: 20px; color: #ffd76a; }
-    .gc-elo-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.6; }
-    .gc-elo-delta { font-size: 12px; opacity: 0.75; }
+
+    .gc-fmeta {
+        flex: 1;
+        min-width: 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    .gc-fname {
+        font-family: var(--font-heading);
+        font-size: clamp(1.2rem, 2vw, 1.65rem);
+        font-weight: 800;
+        line-height: 1.05;
+    }
+
+    .gc-felo {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-top: 8px;
+        color: var(--text-secondary);
+    }
+
+    .gc-fb .gc-felo {
+        justify-content: flex-end;
+    }
+
+    .gc-elo-num {
+        font-family: var(--font-heading);
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--warning);
+    }
+
+    .gc-elo-label {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+
+    .gc-elo-delta {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
 
     .gc-vs {
-        background: rgba(20,30,50,0.7); border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 14px; padding: 16px 12px; text-align: center;
-        display: flex; flex-direction: column; justify-content: center; gap: 8px;
+        padding: 16px 12px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
     }
-    .gc-vs-text { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: 800; }
-    .gc-vs-meta { font-size: 11px; opacity: 0.7; line-height: 1.4; }
-    .gc-clock { font-family: 'Orbitron', sans-serif; font-size: 28px; color: #6cf; }
 
-    /* Big status cards */
+    .gc-vs-text {
+        font-family: var(--font-heading);
+        font-size: 1.35rem;
+        font-weight: 900;
+        color: var(--text-secondary);
+    }
+
+    .gc-clock {
+        font-family: var(--font-heading);
+        font-size: 2rem;
+        color: var(--accent-light);
+        text-shadow: 0 0 18px var(--accent-glow);
+    }
+
+    .gc-vs-meta {
+        font-size: 0.74rem;
+        color: var(--text-secondary);
+        line-height: 1.45;
+    }
+
     .gc-status-row {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
     }
+
     .gc-status-card {
-        background: rgba(20,30,50,0.6); border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 14px; padding: 18px; display: flex; justify-content: space-between; align-items: center;
+        min-height: 92px;
+        padding: 16px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    .gc-status-card.is-fa { border-top: 3px solid #6cf; }
-    .gc-status-card.is-fb { border-top: 3px solid #f97; }
+
+    .gc-status-card.is-fa {
+        border-top: 2px solid var(--gc-a);
+    }
+
+    .gc-status-card.is-fb {
+        border-top: 2px solid var(--gc-b);
+    }
+
     .gc-stock-big {
-        font-family: 'Orbitron', sans-serif; font-size: 36px; letter-spacing: 8px;
+        font-family: var(--font-heading);
+        font-size: clamp(1.45rem, 4vw, 2.25rem);
+        letter-spacing: 6px;
+        color: var(--text-primary);
+        white-space: nowrap;
     }
-    .gc-stock-big .gone { opacity: 0.2; }
+
+    .gc-stock-big .gone {
+        opacity: 0.2;
+    }
+
     .gc-damage-big {
-        font-family: 'Orbitron', sans-serif; font-size: 44px; font-weight: 700;
+        font-family: var(--font-heading);
+        font-size: clamp(2rem, 5vw, 3rem);
+        font-weight: 800;
+        color: var(--text-primary);
     }
-    .gc-damage-big.high { color: #ff8866; }
-    .gc-damage-big.danger { color: #ff4444; text-shadow: 0 0 14px rgba(255,68,68,0.6); }
 
-    /* Section card */
+    .gc-damage-big.high {
+        color: var(--warning);
+    }
+
+    .gc-damage-big.danger {
+        color: var(--danger);
+        text-shadow: 0 0 18px rgba(248,113,113,0.45);
+    }
+
     .gc-card {
-        background: rgba(20,30,45,0.6); border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 14px; padding: 18px; margin-bottom: 14px;
+        padding: 18px;
+        margin-bottom: 14px;
     }
+
     .gc-card-title {
-        font-family: 'Orbitron', sans-serif; font-size: 14px; letter-spacing: 1px;
-        text-transform: uppercase; opacity: 0.85; margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-heading);
+        font-size: 0.86rem;
+        text-transform: uppercase;
+        color: var(--accent-light);
+        margin-bottom: 12px;
     }
-    .gc-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media (max-width: 720px) { .gc-grid-2 { grid-template-columns: 1fr; } }
 
-    /* Win prob chart */
-    #gcProbChart { max-height: 220px; width: 100% !important; }
-    .gc-prob-current { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; opacity: 0.85; }
-    .gc-prob-current .a { color: #6cf; }
-    .gc-prob-current .b { color: #f97; }
+    .gc-card-title svg {
+        width: 17px;
+        height: 17px;
+    }
 
-    /* Per-stock damage history */
+    .gc-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+
+    .gc-prob-card {
+        padding: 20px;
+    }
+
+    .gc-prob-current {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        font-size: 0.88rem;
+        margin-bottom: 12px;
+        color: var(--text-secondary);
+    }
+
+    .gc-prob-current .a,
+    .gc-prob-current .b {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .gc-prob-current .a {
+        color: var(--gc-a);
+    }
+
+    .gc-prob-current .b {
+        color: var(--gc-b);
+        text-align: right;
+    }
+
+    #gcProbValA,
+    #gcProbValB {
+        font-family: var(--font-heading);
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--text-primary);
+    }
+
+    .gc-chart-wrap {
+        height: 260px;
+        position: relative;
+        border: 1px solid rgba(96,124,255,0.1);
+        border-radius: var(--radius-sm);
+        background:
+            linear-gradient(180deg, rgba(255,255,255,0.026), rgba(255,255,255,0.008)),
+            rgba(0,0,0,0.12);
+        padding: 12px;
+    }
+
+    #gcProbChart {
+        height: 100% !important;
+        width: 100% !important;
+    }
+
     .gc-stockhist .row {
-        display: flex; justify-content: space-between; padding: 10px 12px;
-        border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        font-size: 0.86rem;
     }
-    .gc-stockhist .row:last-child { border-bottom: 0; }
-    .gc-stockhist .lbl { opacity: 0.7; }
-    .gc-stockhist .pct { font-family: 'Orbitron', sans-serif; font-weight: 600; }
-    .gc-stockhist .pct.clutch { color: #ff8866; }
-    .gc-stockhist .pct.danger { color: #ff4444; }
-    .gc-stockhist .empty { opacity: 0.4; padding: 12px; font-size: 13px; }
 
-    /* Event ticker */
-    .gc-events { max-height: 220px; overflow-y: auto; }
+    .gc-stockhist .row:last-child {
+        border-bottom: 0;
+    }
+
+    .gc-stockhist .lbl {
+        color: var(--text-secondary);
+    }
+
+    .gc-stockhist .pct {
+        font-family: var(--font-heading);
+        font-weight: 700;
+    }
+
+    .gc-stockhist .pct.clutch {
+        color: var(--warning);
+    }
+
+    .gc-stockhist .pct.danger {
+        color: var(--danger);
+    }
+
+    .gc-stockhist .empty {
+        color: var(--text-muted);
+        padding: 12px;
+        font-size: 0.86rem;
+    }
+
+    .gc-events {
+        max-height: 220px;
+        overflow-y: auto;
+    }
+
     .gc-event-row {
-        padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.06);
-        font-size: 13px; display: flex; gap: 10px;
+        padding: 9px 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        font-size: 0.86rem;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        color: var(--text-secondary);
     }
-    .gc-event-kind {
-        font-family: 'Orbitron', sans-serif; font-size: 10px;
-        padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1);
-    }
-    .gc-event-kind.clutch_ko { background: rgba(255, 68, 68, 0.25); color: #ffaaaa; }
-    .gc-event-kind.speed_kill { background: rgba(255, 200, 0, 0.25); color: #ffe680; }
 
-    /* Banners */
-    .gc-stock-lost-banner {
-        position: fixed; top: 100px; left: 50%; transform: translateX(-50%) translateY(-30px);
-        background: linear-gradient(135deg, #ff4444, #cc1133); color: #fff;
-        padding: 14px 28px; border-radius: 10px; font-family: 'Orbitron', sans-serif;
-        font-weight: 800; letter-spacing: 2px; font-size: 22px;
-        box-shadow: 0 8px 32px rgba(255,68,68,0.4); z-index: 100;
-        opacity: 0; transition: opacity 250ms ease, transform 250ms ease; pointer-events: none;
+    .gc-event-kind {
+        font-family: var(--font-heading);
+        font-size: 0.62rem;
+        padding: 3px 7px;
+        border-radius: 4px;
+        background: rgba(255,255,255,0.08);
+        color: var(--text-primary);
     }
-    .gc-stock-lost-banner.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .gc-event-kind.clutch_ko {
+        background: rgba(248, 113, 113, 0.22);
+        color: #fecaca;
+    }
+
+    .gc-event-kind.speed_kill {
+        background: rgba(251, 191, 36, 0.2);
+        color: #fde68a;
+    }
+
+    .gc-stock-lost-banner {
+        position: fixed;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-30px);
+        background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+        color: #fff;
+        padding: 14px 28px;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-heading);
+        font-weight: 800;
+        font-size: 1.25rem;
+        box-shadow: 0 8px 32px rgba(248,113,113,0.35);
+        z-index: 100;
+        opacity: 0;
+        transition: opacity 250ms ease, transform 250ms ease;
+        pointer-events: none;
+    }
+
+    .gc-stock-lost-banner.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 
     .gc-sudden-banner {
-        position: fixed; top: 100px; left: 50%; transform: translateX(-50%);
-        background: linear-gradient(135deg, #ff4444, #aa0033); color: #fff;
-        padding: 12px 28px; border-radius: 8px; font-family: 'Orbitron', sans-serif;
-        font-weight: 800; letter-spacing: 4px; font-size: 16px;
-        box-shadow: 0 0 30px rgba(255,68,68,0.7); z-index: 90;
-        display: none; animation: gcSdPulse 1.5s infinite;
-    }
-    @keyframes gcSdPulse {
-        0%, 100% { box-shadow: 0 0 24px rgba(255,68,68,0.5); }
-        50%      { box-shadow: 0 0 44px rgba(255,68,68,0.9); }
+        position: fixed;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, var(--danger), #991b1b);
+        color: #fff;
+        padding: 12px 28px;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-heading);
+        font-weight: 800;
+        font-size: 1rem;
+        box-shadow: 0 0 30px rgba(248,113,113,0.65);
+        z-index: 90;
+        display: none;
+        animation: gcSdPulse 1.5s infinite;
     }
 
-    .gc-status-line { font-size: 12px; opacity: 0.55; margin-top: 8px; text-align: center; }
+    @keyframes gcSdPulse {
+        0%, 100% { box-shadow: 0 0 24px rgba(248,113,113,0.45); }
+        50% { box-shadow: 0 0 44px rgba(248,113,113,0.85); }
+    }
+
+    .gc-status-line {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        margin-top: 10px;
+        text-align: center;
+    }
+
+    @media (max-width: 900px) {
+        .gc-matchup {
+            grid-template-columns: 1fr;
+        }
+
+        .gc-vs {
+            min-height: 120px;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .gc-shell {
+            padding-top: 10px;
+        }
+
+        .gc-topbar,
+        .gc-status-row,
+        .gc-grid-2 {
+            grid-template-columns: 1fr;
+        }
+
+        .gc-btn {
+            width: 100%;
+        }
+
+        .gc-fcard,
+        .gc-fb {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .gc-fb .gc-felo,
+        .gc-felo {
+            justify-content: center;
+        }
+
+        .gc-status-card.is-fb {
+            flex-direction: row-reverse;
+        }
+
+        .gc-prob-current {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .gc-prob-current .b {
+            text-align: left;
+        }
+
+        .gc-chart-wrap {
+            height: 230px;
+        }
+    }
 </style>
 
 <div class="gc-shell">
     <div class="gc-topbar">
-        <div class="gc-meta-pill" id="gcMatchPill">No match running — click Start to begin</div>
-        <button id="gcStart" class="gc-btn">Start a Match</button>
+        <div class="gc-meta-pill" id="gcMatchPill">No match running &mdash; click Start to begin</div>
+        <button id="gcStart" class="gc-btn"><i data-lucide="radio"></i><span>Start a Match</span></button>
     </div>
 
-    <!-- Matchup header -->
     <div class="gc-matchup">
         <div class="gc-fcard gc-fa">
             <img class="gc-portrait" id="gcPortraitA" alt="">
@@ -157,7 +539,7 @@
                 <div class="gc-fname" id="gcNameA">Fighter A</div>
                 <div class="gc-felo">
                     <span class="gc-elo-label">ELO</span>
-                    <span class="gc-elo-num" id="gcEloA">—</span>
+                    <span class="gc-elo-num" id="gcEloA">&mdash;</span>
                     <span class="gc-elo-delta" id="gcEloDeltaA"></span>
                 </div>
             </div>
@@ -166,7 +548,7 @@
         <div class="gc-vs">
             <div class="gc-vs-text">VS</div>
             <div class="gc-clock" id="gcClock">0:00</div>
-            <div class="gc-vs-meta" id="gcContext">—</div>
+            <div class="gc-vs-meta" id="gcContext">&mdash;</div>
         </div>
 
         <div class="gc-fcard gc-fb">
@@ -174,7 +556,7 @@
             <div class="gc-fmeta">
                 <div class="gc-fname" id="gcNameB">Fighter B</div>
                 <div class="gc-felo">
-                    <span class="gc-elo-num" id="gcEloB">—</span>
+                    <span class="gc-elo-num" id="gcEloB">&mdash;</span>
                     <span class="gc-elo-label">ELO</span>
                     <span class="gc-elo-delta" id="gcEloDeltaB"></span>
                 </div>
@@ -182,56 +564,54 @@
         </div>
     </div>
 
-    <!-- Big status -->
     <div class="gc-status-row">
         <div class="gc-status-card is-fa">
-            <div class="gc-stock-big" id="gcStocksA">●●●</div>
+            <div class="gc-stock-big" id="gcStocksA">&#9679;&#9679;&#9679;</div>
             <div class="gc-damage-big" id="gcDamageA">0%</div>
         </div>
         <div class="gc-status-card is-fb">
             <div class="gc-damage-big" id="gcDamageB">0%</div>
-            <div class="gc-stock-big" id="gcStocksB">●●●</div>
+            <div class="gc-stock-big" id="gcStocksB">&#9679;&#9679;&#9679;</div>
         </div>
     </div>
 
-    <!-- Win probability chart -->
-    <div class="gc-card">
-        <div class="gc-card-title">Win Probability — ELO baseline blended with live state</div>
+    <div class="gc-card gc-prob-card">
+        <div class="gc-card-title"><i data-lucide="activity"></i><span>Win Probability</span></div>
         <div class="gc-prob-current">
-            <span class="a"><span id="gcProbLabelA">Fighter A</span> — <span id="gcProbValA">50%</span></span>
-            <span class="b"><span id="gcProbLabelB">Fighter B</span> — <span id="gcProbValB">50%</span></span>
+            <span class="a"><span id="gcProbLabelA">Fighter A</span><span id="gcProbValA">50%</span></span>
+            <span class="b"><span id="gcProbLabelB">Fighter B</span><span id="gcProbValB">50%</span></span>
         </div>
-        <canvas id="gcProbChart"></canvas>
+        <div class="gc-chart-wrap">
+            <canvas id="gcProbChart"></canvas>
+        </div>
     </div>
 
-    <!-- Per-stock damage history -->
     <div class="gc-grid-2">
         <div class="gc-card">
-            <div class="gc-card-title"><span id="gcStockHistTitleA">Fighter A</span> — stocks lost</div>
+            <div class="gc-card-title"><i data-lucide="list-minus"></i><span id="gcStockHistTitleA">Fighter A</span><span>stocks lost</span></div>
             <div class="gc-stockhist" id="gcStockHistA">
                 <div class="empty">No stocks lost yet</div>
             </div>
         </div>
         <div class="gc-card">
-            <div class="gc-card-title"><span id="gcStockHistTitleB">Fighter B</span> — stocks lost</div>
+            <div class="gc-card-title"><i data-lucide="list-minus"></i><span id="gcStockHistTitleB">Fighter B</span><span>stocks lost</span></div>
             <div class="gc-stockhist" id="gcStockHistB">
                 <div class="empty">No stocks lost yet</div>
             </div>
         </div>
     </div>
 
-    <!-- Event ticker -->
     <div class="gc-card">
-        <div class="gc-card-title">Notable Events</div>
+        <div class="gc-card-title"><i data-lucide="sparkles"></i><span>Notable Events</span></div>
         <div class="gc-events" id="gcEvents">
-            <div class="gc-event-row" style="opacity:0.4;">No events yet — start a match.</div>
+            <div class="gc-event-row" style="opacity:0.4;">No events yet &mdash; start a match.</div>
         </div>
-        <div class="gc-status-line" id="gcStatus">Stream: connecting…</div>
+        <div class="gc-status-line" id="gcStatus">Stream: connecting...</div>
     </div>
 </div>
 
 <div class="gc-stock-lost-banner" id="gcStockLostBanner"></div>
-<div class="gc-sudden-banner" id="gcSuddenBanner">⚡ SUDDEN DEATH ⚡</div>
+<div class="gc-sudden-banner" id="gcSuddenBanner">SUDDEN DEATH</div>
 
 {% endblock %}
 

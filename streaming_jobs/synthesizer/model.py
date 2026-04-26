@@ -80,14 +80,14 @@ def hit_probability(
     # Panic-dodge: high-damage fighters become harder to hit (they're playing
     # defensively to avoid the KO). Caps at 60% of base hit chance at 200%+.
     panic_factor = max(0.6, 1.0 - max(0.0, defender.damage - 100.0) * 0.004)
-    base = 0.10 * proximity * defender_factor * cooldown * panic_factor
+    base = 0.115 * proximity * defender_factor * cooldown * panic_factor
     return min(0.78, base + attacker_bias)
 
 
 def random_action(rng: random.Random) -> Action:
     return rng.choices(
         [Action.IDLE, Action.MOVE, Action.ATTACK, Action.DODGE, Action.RECOVER],
-        weights=[0.33, 0.44, 0.09, 0.09, 0.05],
+        weights=[0.33, 0.43, 0.10, 0.09, 0.05],
     )[0]
 
 

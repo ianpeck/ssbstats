@@ -28,18 +28,18 @@ class StockTarget:
     """Constraint that pins the simulator to a real fight's outcome.
 
     For a normal match: winner ends at exactly `winner_stocks_remaining`, loser at 0.
-    For sudden death: both fighters get all stocks taken (a double KO on the last
-    stock), then both spawn at 1 stock with 300% damage; winner takes the SD KO
-    and ends at 1 stock.
+    For sudden death: both fighters get all normal stocks taken (a double KO on
+    the last stock), then both spawn into a temporary 1-stock 300% phase. The
+    historical final score remains 0-0.
     """
     total_stocks: int                 # 1, 3, or 5 from the fight type
-    winner_stocks_remaining: int      # 1..total_stocks; for SD pass 1 (the SD stock)
+    winner_stocks_remaining: int      # 1..total_stocks, or 0 for sudden death
     is_sudden_death: bool
 
     @classmethod
     def from_match_result(cls, total_stocks: int, winner_match_result: int) -> "StockTarget":
         if winner_match_result == 0:
-            return cls(total_stocks=total_stocks, winner_stocks_remaining=1, is_sudden_death=True)
+            return cls(total_stocks=total_stocks, winner_stocks_remaining=0, is_sudden_death=True)
         return cls(
             total_stocks=total_stocks,
             winner_stocks_remaining=int(winner_match_result),
@@ -116,7 +116,7 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
     # Adaptive bias: whichever fighter is "behind" on their target death count
     # gets a small advantage. This keeps the simulation converging without making
     # the winner feel dominant when they shouldn't be.
-    base_bias = 0.09
+    base_bias = 0.11
     # Per-match KO multiplier - biased a little by score closeness. Close games
     # can run slightly higher percent than stomps, but this must stay modest or
     # the stream starts showing non-Smash-looking 230%+ normal stocks.
@@ -124,11 +124,12 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
         closeness = 1.0
     else:
         closeness = (target.total_stocks - target.winner_stocks_remaining) / target.total_stocks
-    # closeness=0 (3-0): mult ~ 0.90..0.98
-    # closeness=0.33 (3-1): mult ~ 0.94..1.02
-    # closeness=0.67 (3-2): mult ~ 0.98..1.06
-    # closeness=1.0 (SD):  mult ~ 1.02..1.10 before the explicit 300% SD phase
-    match_ko_mult = 0.90 + closeness * 0.12 + rng.random() * 0.08
+    # closeness=0 (3-0): mult ~ 0.94..1.00
+    # closeness=0.33 (3-1): mult ~ 0.93..0.99
+    # closeness=0.67 (3-2): mult ~ 0.91..0.97
+    # closeness=1.0 (SD):  mult ~ 0.90..0.96 before the explicit 300% SD phase
+    match_ko_mult = 0.94 - closeness * 0.04 + rng.random() * 0.06
+    closeout_after_sec = 210.0 + closeness * 45.0
     tick_period = 1.0 / cfg.tick_rate_hz
     hard_cap_ticks = int(15 * 60 * cfg.tick_rate_hz)   # 15 minutes - safety net
 
@@ -208,7 +209,7 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
             force_attack_for = loser
         elif winner_still_needs_deaths:
             force_attack_for = loser
-        elif elapsed_for_ramp_pre > 225:  # past 3.75 min - close out aggressively
+        elif elapsed_for_ramp_pre > closeout_after_sec:
             if sd_phase:
                 force_attack_for = winner
             else:
@@ -326,6 +327,8 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
 
         # --- Match end: loser at 0 stocks ---
         if loser.stocks == 0:
+            if target.is_sudden_death:
+                winner.stocks = 0
             yield emit(last_event="match_over")
             return
 

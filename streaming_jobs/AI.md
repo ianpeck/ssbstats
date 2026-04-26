@@ -115,7 +115,8 @@ fight type.** This is the single most important thing to get right.
 - Winner's `Match_Result` > 0 → **stocks remaining at end of match**.
   - Example: 3-stock fight, winner row has `Match_Result = 2` → final score "3-1"
     (loser's 3 stocks all KO'd, winner had 2 left).
-- Winner's `Match_Result` = 0 → **sudden death win** (see below).
+- Winner's `Match_Result` = 0 and loser's `Match_Result` = 0 → **sudden
+  death win** (see below). Historical final score displays as "0-0".
 - Loser's `Match_Result` is mostly 0. Negative values exist for losers but the
   picker ignores them — loser always ends at 0 stocks.
 
@@ -141,10 +142,10 @@ just a normal match where the winner happened to end at 0 stocks.
    (`last_event = "double_ko"`, both `stocks = 0`).
 3. SD setup: both fighters reset to **1 stock at exactly 300% damage**, recentered
    on stage (`last_event = "sudden_death_start"`, `phase = "sudden_death"`).
-4. Continue normal action loop. Winner is hard-protected from any KO. Loser
-   takes the next clean KO. **No respawn happens in SD** (loser hits 0 stocks
-   and the existing `if defender.stocks > 0: reset_after_ko()` guard skips).
-5. Emit `match_over`.
+4. Continue normal action loop with a temporary 1-stock SD state. Winner is
+   hard-protected from any KO. Loser takes the next clean KO.
+5. Before `match_over`, set the winner's displayed stocks back to 0 too. The
+   300% stock is only the tiebreaker phase; the historical result is still 0-0.
 
 The `phase` field on `TickEvent` flips from `"normal"` to `"sudden_death"`
 permanently at step 3 — UI uses this to flash the red banner.
@@ -187,12 +188,12 @@ synthesizer's data model assumes 1v1 throughout.
 @dataclass(frozen=True)
 class StockTarget:
     total_stocks: int            # 1, 3, or 5 (from fight type)
-    winner_stocks_remaining: int # 1..total_stocks; for SD this is 1 (the SD stock)
+    winner_stocks_remaining: int # 1..total_stocks; 0 for SD final score
     is_sudden_death: bool
 
     @classmethod
     def from_match_result(cls, total_stocks, winner_match_result):
-        # winner_match_result == 0 → sudden death; else → stocks remaining
+        # winner_match_result == 0 → sudden death final 0-0; else → stocks remaining
 ```
 
 ```python
@@ -467,20 +468,27 @@ for each fighter at the picked fight). The page computes win probability as:
 
 ```
 elo_prior  = 1 / (1 + 10^((opp_elo - my_elo) / 400))           # standard ELO formula
-state_prob = logistic(0.6 * stock_diff + 0.005 * -damage_diff) # current-state estimate
-weight     = 0.15 + (stocks_consumed / total_stocks_at_risk) * 0.77
+death_pct  = max(145, min(225, 90 + fighter_weight))
+progress   = clamp(damage / death_pct, 0, 1)
+pressure   = 0.68 * progress + 0.24 * smoothstep(progress)
+eff_stocks = stocks - pressure
+state_prob = logistic(2.3 * (my_eff_stocks - opp_eff_stocks))
+weight     = 0.45 + (effective_stocks_consumed / total_stocks_at_risk) * 0.5
 final      = (1 - weight) * elo_prior + weight * state_prob
 ```
 
 So:
-- **Match start**: weight ≈ 0.15 → ELO dominates. The line opens at the prior.
-- **Mid-match**: weight ≈ 0.55 → blend of both.
-- **End of match**: weight ≈ 0.92 → state dominates. Wherever the stocks are
-  going, the line follows.
+- **Match start**: weight is about 0.45, so ELO matters but live state can move
+  the line immediately.
+- **Damage tug-of-war**: all damage counts as partial stock pressure starting
+  at 0%, so 0% vs 70% moves the line. The curve accelerates as a fighter gets
+  near their character-specific death percent.
+- **Stock loss**: when the stock actually drops, the line gets a small additional
+  bump instead of one giant delayed jump.
+- **Match over**: the winner is pinned to 100% and the loser to 0%.
 
-This produces the right narrative: an underdog winning early shifts the line
-slightly, but a 2-0 lead late in a 3-stock match basically pins the line to
-their color regardless of the ELO delta.
+This produces the right narrative: advantage builds as damage builds, resets per
+stock, then locks to the real winner on `match_over`.
 
 The Flink `win_probability.py` job still runs and emits to `match.win_prob` —
 it's the "raw state-only" probability and could be displayed as a secondary

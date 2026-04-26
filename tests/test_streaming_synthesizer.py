@@ -55,10 +55,32 @@ class StreamingSynthesizerTests(unittest.TestCase):
 
                     self.assertIsNotNone(final)
                     stocks = {fighter["name"]: fighter["stocks"] for fighter in final["fighters"]}
-                    expected_winner_stocks = 1 if target.is_sudden_death else winner_result
+                    expected_winner_stocks = 0 if target.is_sudden_death else winner_result
                     loser_name = fb_name if winner_name == fa_name else fa_name
                     self.assertEqual(stocks[winner_name], expected_winner_stocks)
                     self.assertEqual(stocks[loser_name], 0)
+
+    def test_sudden_death_final_score_is_zero_zero(self):
+        """Sudden death uses a temporary 300% stock but historical final is 0-0."""
+        target = StockTarget.from_match_result(3, 0)
+        cfg = MatchConfig(
+            match_id="sd-final",
+            fighter_a=self.physics["Mario"],
+            fighter_b=self.physics["Pichu"],
+            winner_name="Mario",
+            target=target,
+            seed=42,
+        )
+
+        events = [event.to_dict() for event in run_match(cfg)]
+        event_names = [event["event"] for event in events]
+        final = events[-1]
+        final_stocks = {fighter["name"]: fighter["stocks"] for fighter in final["fighters"]}
+
+        self.assertIn("double_ko", event_names)
+        self.assertIn("sudden_death_start", event_names)
+        self.assertEqual(final["event"], "match_over")
+        self.assertEqual(final_stocks, {"Mario": 0, "Pichu": 0})
 
     def test_damage_caps_are_weight_sensitive(self):
         self.assertLess(normal_damage_cap(self.physics["Pichu"].weight), 160)

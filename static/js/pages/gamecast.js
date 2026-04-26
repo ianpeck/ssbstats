@@ -14,42 +14,149 @@
     const probSeries = { labels: [], a: [], b: [] };
 
     // ---------------- ELO + win prob math ----------------
+    const FIGHTER_WEIGHTS = Object.freeze({
+        'Banjo & Kazooie': 106,
+        'Bayonetta': 81,
+        'Bowser': 135,
+        'Bowser Jr.': 108,
+        'Captain Falcon': 104,
+        'Chrom': 95,
+        'Cloud': 100,
+        'Corrin': 98,
+        'Daisy': 89,
+        'Dark Pit': 96,
+        'Dark Samus': 108,
+        'Diddy Kong': 90,
+        'DK': 127,
+        'Dr. Mario': 98,
+        'Duck Hunt': 86,
+        'Erdrick': 101,
+        'Falco': 82,
+        'Fox': 77,
+        'Ganondorf': 118,
+        'Greninja': 88,
+        'Ice Climbers': 92,
+        'Ike': 107,
+        'Incineroar': 116,
+        'Inkling': 94,
+        'Isabelle': 88,
+        'Jigglypuff': 68,
+        'Joker': 93,
+        'Ken': 103,
+        'King Dedede': 127,
+        'King K. Rool': 133,
+        'Kirby': 79,
+        'Link': 104,
+        'Little Mac': 87,
+        'Lucario': 92,
+        'Lucas': 94,
+        'Lucina': 90,
+        'Luigi': 97,
+        'Mario': 98,
+        'Marth': 90,
+        'Mega Man': 102,
+        'Meta Knight': 80,
+        'Mewtwo': 79,
+        'Mr Game & Watch': 75,
+        'Ness': 94,
+        'Olimar': 79,
+        'Pac-Man': 95,
+        'Palutena': 91,
+        'Peach': 89,
+        'Pichu': 62,
+        'Pikachu': 79,
+        'Piranha Plant': 112,
+        'Pit': 96,
+        'Pokemon Trainer': 96,
+        'ROB': 106,
+        'Richter Belmont': 107,
+        'Ridley': 107,
+        'Robin': 95,
+        'Rosalina & Luma': 82,
+        'Roy': 95,
+        'Ryu': 103,
+        'Samus': 108,
+        'Sheik': 78,
+        'Shulk': 97,
+        'Simon Belmont': 107,
+        'Snake': 106,
+        'Sonic': 86,
+        'Toon Link': 91,
+        'Villager': 92,
+        'Wario': 107,
+        'Wii Fit Trainer': 96,
+        'Wolf': 92,
+        'Yoshi': 104,
+        'Young Link': 88,
+        'Zelda': 85,
+    });
+
+    function clamp01(value) {
+        return Math.max(0, Math.min(1, value));
+    }
+
     function eloProb(myElo, oppElo) {
         if (myElo == null || oppElo == null) return 0.5;
         return 1 / (1 + Math.pow(10, (oppElo - myElo) / 400));
     }
 
-    function liveStateProb(stockDiff, damageDiff) {
-        // Stocks dominate hard — each stock advantage = +2.0 in logit space (~88/12
-        // odds for a 1-stock lead). Damage is a small secondary signal.
-        const logit = 2.0 * stockDiff + 0.004 * (-damageDiff);
+    function normalDeathPercent(name) {
+        const weight = FIGHTER_WEIGHTS[name] || 100;
+        return Math.max(145, Math.min(225, 90 + weight));
+    }
+
+    function stockPressure(fighter, phase) {
+        if (!fighter || fighter.stocks <= 0) return 1;
+        if (phase === 'sudden_death') return fighter.damage >= 300 ? 0.95 : 0;
+
+        const deathPercent = normalDeathPercent(fighter.name);
+        // Cap damage pressure at the character's "basically dead" percent:
+        // 250% and 600% should mean the same thing for win probability.
+        const cappedDamageProgress = clamp01(fighter.damage / deathPercent);
+        const lateKoPressure = cappedDamageProgress * cappedDamageProgress * (3 - 2 * cappedDamageProgress);
+        return 0.68 * cappedDamageProgress + 0.24 * lateKoPressure;
+    }
+
+    function effectiveStocks(fighter, phase) {
+        if (!fighter || fighter.stocks <= 0) return 0;
+        return fighter.stocks - stockPressure(fighter, phase);
+    }
+
+    function damageAwareLiveStateProb(a, b, phase) {
+        // Total damage difference matters from 0%, then accelerates as a fighter
+        // nears their character-specific KO percent.
+        const effectiveA = effectiveStocks(a, phase);
+        const effectiveB = effectiveStocks(b, phase);
+        const effectiveStockDiff = effectiveA - effectiveB;
+        const logit = 2.3 * effectiveStockDiff;
         return 1 / (1 + Math.exp(-logit));
     }
 
-    function blendWeight(stocksConsumed, totalStocksAtRisk) {
-        // Start with state mattering meaningfully so a stock change swings the line.
-        // 1-stock lead with even ELO → ~70%, 2-stock lead → ~80%.
+    function damageAwareBlendWeight(effectiveStocksConsumed, totalStocksAtRisk) {
         if (totalStocksAtRisk <= 0) return 0.5;
-        const progress = Math.max(0, Math.min(1, stocksConsumed / totalStocksAtRisk));
+        const progress = clamp01(effectiveStocksConsumed / totalStocksAtRisk);
         return 0.45 + progress * 0.5;
     }
 
     function computeWinProb(payload) {
-        if (!activeMatch || !activeMatch.elo) return { a: 0.5, b: 0.5 };
+        if (!activeMatch) return { a: 0.5, b: 0.5 };
         const a = payload.fighters[0], b = payload.fighters[1];
-        const eloA = activeMatch.elo.a_before, eloB = activeMatch.elo.b_before;
 
+        if (payload.event === 'match_over') {
+            const aWins = activeMatch.winner ? activeMatch.winner === a.name : a.stocks > b.stocks;
+            return { a: aWins ? 1 : 0, b: aWins ? 0 : 1 };
+        }
+
+        const eloA = activeMatch.elo && activeMatch.elo.a_before;
+        const eloB = activeMatch.elo && activeMatch.elo.b_before;
         const elo_a = eloProb(eloA, eloB);
-        const stockDiff = a.stocks - b.stocks;
-        const damageDiff = a.damage - b.damage;
-        const state_a = liveStateProb(stockDiff, damageDiff);
+        const state_a = damageAwareLiveStateProb(a, b, payload.phase);
 
         const total = activeMatch.total_stocks * 2;
-        const consumed = total - (a.stocks + b.stocks);
-        const w = blendWeight(consumed, total);
-
+        const consumed = total - (effectiveStocks(a, payload.phase) + effectiveStocks(b, payload.phase));
+        const w = damageAwareBlendWeight(consumed, total);
         const blended = (1 - w) * elo_a + w * state_a;
-        return { a: blended, b: 1 - blended };
+        return { a: clamp01(blended), b: clamp01(1 - blended) };
     }
 
     // ---------------- Asset helper (matches utils.fighter_to_filename) ----------------
@@ -67,7 +174,25 @@
         imgEl.style.opacity = '1';
     }
 
+    function setStartButton(label, disabled) {
+        const btn = $('gcStart');
+        btn.disabled = disabled;
+        btn.innerHTML = `<i data-lucide="radio"></i><span>${label}</span>`;
+        if (window.lucide) lucide.createIcons();
+    }
+
     // ---------------- Chart ----------------
+    function chartGradient(context, color, transparentColor) {
+        const { chart: chartInstance } = context;
+        const { ctx, chartArea } = chartInstance;
+        if (!chartArea) return transparentColor;
+        const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+        gradient.addColorStop(0, color);
+        gradient.addColorStop(0.72, transparentColor);
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        return gradient;
+    }
+
     function ensureChart() {
         if (chart) return chart;
         const ctx = $('gcProbChart').getContext('2d');
@@ -76,41 +201,95 @@
             data: {
                 labels: [],
                 datasets: [
-                    { label: 'A', data: [], borderColor: '#6cf', backgroundColor: 'rgba(102,204,255,0.12)',
-                      fill: true, tension: 0.25, pointRadius: 0, borderWidth: 2 },
-                    { label: 'B', data: [], borderColor: '#f97', backgroundColor: 'rgba(255,153,119,0.12)',
-                      fill: true, tension: 0.25, pointRadius: 0, borderWidth: 2 },
+                    {
+                        label: 'A',
+                        data: [],
+                        borderColor: '#6ee7ff',
+                        backgroundColor: (context) => chartGradient(context, 'rgba(110,231,255,0.22)', 'rgba(110,231,255,0.02)'),
+                        fill: true,
+                        cubicInterpolationMode: 'monotone',
+                        tension: 0.42,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        pointHoverBorderWidth: 2,
+                        pointHoverBackgroundColor: '#080808',
+                        pointHoverBorderColor: '#6ee7ff',
+                        borderWidth: 3,
+                    },
+                    {
+                        label: 'B',
+                        data: [],
+                        borderColor: '#ff9f7a',
+                        backgroundColor: (context) => chartGradient(context, 'rgba(255,159,122,0.2)', 'rgba(255,159,122,0.02)'),
+                        fill: true,
+                        cubicInterpolationMode: 'monotone',
+                        tension: 0.42,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        pointHoverBorderWidth: 2,
+                        pointHoverBackgroundColor: '#080808',
+                        pointHoverBorderColor: '#ff9f7a',
+                        borderWidth: 3,
+                    },
                 ],
             },
             options: {
-                animation: false, responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                animation: { duration: 220, easing: 'easeOutQuart' },
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(8,8,8,0.94)',
+                        borderColor: 'rgba(96,124,255,0.28)',
+                        borderWidth: 1,
+                        titleColor: '#ffffff',
+                        bodyColor: '#d8dcff',
+                        displayColors: true,
+                        padding: 10,
+                        callbacks: {
+                            title: (items) => items.length ? items[0].label : '',
+                            label: (context) => `${context.dataset.label}: ${Math.round(context.parsed.y * 100)}%`,
+                        },
+                    },
+                },
                 scales: {
-                    x: { display: true, title: { display: false }, ticks: { color: 'rgba(255,255,255,0.4)' } },
-                    y: { min: 0, max: 1, ticks: {
-                        color: 'rgba(255,255,255,0.4)',
-                        callback: (v) => `${Math.round(v * 100)}%`
-                    } },
+                    x: {
+                        display: true,
+                        grid: { color: 'rgba(255,255,255,0.035)', drawBorder: false },
+                        ticks: { color: 'rgba(168,170,184,0.72)', maxTicksLimit: 8 },
+                    },
+                    y: {
+                        min: 0,
+                        max: 1,
+                        grid: { color: 'rgba(96,124,255,0.10)', drawBorder: false },
+                        ticks: {
+                            color: 'rgba(168,170,184,0.72)',
+                            stepSize: 0.25,
+                            callback: (v) => `${Math.round(v * 100)}%`,
+                        },
+                    },
                 },
             },
         });
         return chart;
     }
 
-    function pushChartPoint(elapsedSec, pa, pb) {
+    function pushChartPoint(elapsedSec, pa, pb, force = false) {
         const c = ensureChart();
         // Sample every ~0.5s of match time to keep the chart smooth without bloating points
-        if (probSeries.labels.length > 0) {
+        if (!force && probSeries.labels.length > 0) {
             const lastSec = probSeries.labels[probSeries.labels.length - 1];
             if (elapsedSec - lastSec < 0.5) return;
         }
         probSeries.labels.push(elapsedSec);
         probSeries.a.push(pa);
         probSeries.b.push(pb);
-        c.data.labels = probSeries.labels.map((s) => `${s.toFixed(0)}s`);
+        c.data.labels = probSeries.labels.map(fmtChartClock);
         c.data.datasets[0].data = probSeries.a;
         c.data.datasets[1].data = probSeries.b;
-        c.update('none');
+        c.update();
     }
 
     function resetChart() {
@@ -163,6 +342,10 @@
         return `${m}:${String(s).padStart(2, '0')}`;
     }
 
+    function fmtChartClock(sec) {
+        return fmtClock(Number(sec) || 0);
+    }
+
     function damageClass(d) {
         return 'gc-damage-big' + (d >= 150 ? ' danger' : d >= 100 ? ' high' : '');
     }
@@ -185,10 +368,11 @@
         $('gcStocksA').innerHTML = stockGlyphs(a.stocks, total);
         $('gcStocksB').innerHTML = stockGlyphs(b.stocks, total);
         $('gcClock').textContent = fmtClock(payload.elapsed_sec);
+        const isSuddenDeathFinal = payload.event === 'match_over' && activeMatch && activeMatch.is_sudden_death;
 
         // Stock-loss detection — captures the damage from PREVIOUS tick
         // since by the current tick the synthesizer may have already reset to 0.
-        if (prevA && a.stocks < prevA.stocks) {
+        if (!isSuddenDeathFinal && prevA && a.stocks < prevA.stocks) {
             stockHistA.push({
                 stockBefore: prevA.stocks,
                 damage: prevA.damage,
@@ -198,7 +382,7 @@
             showStockLostBanner(a.name, prevA.damage);
             renderStockHistory();
         }
-        if (prevB && b.stocks < prevB.stocks) {
+        if (!isSuddenDeathFinal && prevB && b.stocks < prevB.stocks) {
             stockHistB.push({
                 stockBefore: prevB.stocks,
                 damage: prevB.damage,
@@ -221,16 +405,14 @@
             const finalScore = `${a.stocks}–${b.stocks}`;
             $('gcMatchPill').textContent = `Final: ${a.name} ${finalScore} ${b.name}`;
             setSuddenDeathBanner(false);
-            const btn = $('gcStart');
-            btn.disabled = false;
-            btn.textContent = 'Start a Match';
+            setStartButton('Start a Match', false);
         }
 
         // Win probability — compute client-side from ELO + state
         const wp = computeWinProb(payload);
         $('gcProbValA').textContent = `${Math.round(wp.a * 100)}%`;
         $('gcProbValB').textContent = `${Math.round(wp.b * 100)}%`;
-        pushChartPoint(payload.elapsed_sec, wp.a, wp.b);
+        pushChartPoint(payload.elapsed_sec, wp.a, wp.b, payload.event === 'match_over');
     }
 
     function renderEvent(payload) {
@@ -298,6 +480,10 @@
         $('gcStockHistTitleB').textContent = m.fighter_b;
         $('gcProbLabelA').textContent = m.fighter_a;
         $('gcProbLabelB').textContent = m.fighter_b;
+        const probChart = ensureChart();
+        probChart.data.datasets[0].label = m.fighter_a;
+        probChart.data.datasets[1].label = m.fighter_b;
+        probChart.update('none');
         setPortrait($('gcPortraitA'), m.fighter_a);
         setPortrait($('gcPortraitB'), m.fighter_b);
 
@@ -333,19 +519,16 @@
     }
 
     async function startMatch() {
-        const btn = $('gcStart');
-        btn.disabled = true;
-        btn.textContent = 'Picking…';
+        setStartButton('Picking...', true);
         try {
             const res = await fetch('/gamecast/start', { method: 'POST' });
             const m = await res.json();
             resetMatch(m);
-            // Stay disabled — re-enables on match_over event from the stream
-            btn.textContent = 'Match in progress…';
+            // Stay disabled - re-enables on match_over event from the stream
+            setStartButton('Match in progress...', true);
         } catch (err) {
             $('gcMatchPill').textContent = 'Failed to pick a match — is Kafka running?';
-            btn.disabled = false;
-            btn.textContent = 'Start a Match';
+            setStartButton('Start a Match', false);
         }
     }
 
