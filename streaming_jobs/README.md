@@ -262,7 +262,7 @@ python -m streaming_jobs.synthesizer.main "Bowser" "Pichu" "Bowser" --total-stoc
 
 - `config/fighter_physics.yaml`: per-fighter weight, damage range, and KO curve
 - `synthesizer/match.py`: convergence schedule, sudden-death handling, KO rules
-- `synthesizer/model.py`: action choices, hit probability, KO probability
+- `synthesizer/model.py`: action choices, hit probability, KO probability, normal damage caps
 
 ## Roadmap
 
@@ -272,6 +272,7 @@ python -m streaming_jobs.synthesizer.main "Bowser" "Pichu" "Bowser" --total-stoc
 - [x] Docker compose Kafka + Flink
 - [x] PyFlink jobs: live state, win probability, notable events
 - [x] Flask `/gamecast` page + SSE endpoint, gated on `LOCAL_STREAMING=1`
+- [x] Weight-sensitive normal-phase damage cap
 - [ ] CEP comeback detection
-- [ ] Damage cap + smoother early-game pacing
+- [ ] Smoother early-game pacing
 - [ ] Per-stock active Pokemon for Pokemon Trainer

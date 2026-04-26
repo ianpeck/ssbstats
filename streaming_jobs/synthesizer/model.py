@@ -50,10 +50,21 @@ class FighterState:
 
 def ko_probability(damage: float, weight: int, threshold: float, steepness: float) -> float:
     # Threshold scales by weight: lighter fighters have a lower effective KO%.
-    # Pichu (62) dies around 130-160%, Mario (98) around 200-230%, Bowser (135)
-    # around 280-310%. Replaces the old multiplicative weight_factor model.
+    # Pichu should be in danger around 90-110%, Mario around 140-165%, and
+    # Bowser around 190-220%. The simulator handles exact final-score guards in
+    # match.py, so this function only models stock danger from current percent.
     eff_threshold = threshold * (weight / 100.0)
     return 1.0 / (1.0 + math.exp(-steepness * (damage - eff_threshold)))
+
+
+def normal_damage_cap(weight: int) -> float:
+    """Highest normal-phase visible percent before a stock must resolve.
+
+    The cap is intentionally weight-sensitive: light fighters should not linger
+    near 200%, while super-heavies can occasionally survive past it. Sudden
+    death is special-cased in match.py and still starts at 300%.
+    """
+    return max(145.0, min(225.0, 90.0 + weight))
 
 
 def hit_probability(
@@ -69,14 +80,14 @@ def hit_probability(
     # Panic-dodge: high-damage fighters become harder to hit (they're playing
     # defensively to avoid the KO). Caps at 60% of base hit chance at 200%+.
     panic_factor = max(0.6, 1.0 - max(0.0, defender.damage - 100.0) * 0.004)
-    base = 0.15 * proximity * defender_factor * cooldown * panic_factor
+    base = 0.10 * proximity * defender_factor * cooldown * panic_factor
     return min(0.78, base + attacker_bias)
 
 
 def random_action(rng: random.Random) -> Action:
     return rng.choices(
         [Action.IDLE, Action.MOVE, Action.ATTACK, Action.DODGE, Action.RECOVER],
-        weights=[0.30, 0.43, 0.13, 0.09, 0.05],
+        weights=[0.33, 0.44, 0.09, 0.09, 0.05],
     )[0]
 
 

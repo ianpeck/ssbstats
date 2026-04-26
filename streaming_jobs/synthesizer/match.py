@@ -14,6 +14,7 @@ from .model import (
     FighterState,
     hit_probability,
     ko_probability,
+    normal_damage_cap,
     random_action,
     random_damage,
 )
@@ -115,23 +116,21 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
     # Adaptive bias: whichever fighter is "behind" on their target death count
     # gets a small advantage. This keeps the simulation converging without making
     # the winner feel dominant when they shouldn't be.
-    base_bias = 0.13
-    # Per-match KO multiplier — biased by score closeness. In real Smash, 3-0
-    # stomps are quick (loser barely lands hits, dies at low %) while close
-    # 3-2s drag (both fighters trade at high %, more stock exchanges). SD is
-    # treated as MORE close than 3-2 since reaching SD requires the equivalent
-    # of a 3-2 path (both reach 1 stock) PLUS the SD finish on top.
+    base_bias = 0.09
+    # Per-match KO multiplier - biased a little by score closeness. Close games
+    # can run slightly higher percent than stomps, but this must stay modest or
+    # the stream starts showing non-Smash-looking 230%+ normal stocks.
     if target.is_sudden_death:
-        closeness = 1.5
+        closeness = 1.0
     else:
         closeness = (target.total_stocks - target.winner_stocks_remaining) / target.total_stocks
-    # closeness=0 (3-0): mult ~ 0.55..0.75  (stomp, ~1.5-2.5min)
-    # closeness=0.33 (3-1): mult ~ 0.68..0.88
-    # closeness=0.67 (3-2): mult ~ 0.82..1.02 (close grind)
-    # closeness=1.5 (SD):  mult ~ 1.15..1.35 (longest — 3-2 + SD finish)
-    match_ko_mult = 0.55 + closeness * 0.40 + rng.random() * 0.20
+    # closeness=0 (3-0): mult ~ 0.90..0.98
+    # closeness=0.33 (3-1): mult ~ 0.94..1.02
+    # closeness=0.67 (3-2): mult ~ 0.98..1.06
+    # closeness=1.0 (SD):  mult ~ 1.02..1.10 before the explicit 300% SD phase
+    match_ko_mult = 0.90 + closeness * 0.12 + rng.random() * 0.08
     tick_period = 1.0 / cfg.tick_rate_hz
-    hard_cap_ticks = int(15 * 60 * cfg.tick_rate_hz)   # 15 minutes — safety net
+    hard_cap_ticks = int(15 * 60 * cfg.tick_rate_hz)   # 15 minutes - safety net
 
     def emit(last_event: str | None = None) -> TickEvent:
         return TickEvent(
@@ -142,6 +141,22 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
             fighter_b=fb,
             last_event=last_event,
             phase="sudden_death" if sd_phase else "normal",
+        )
+
+    def distance_between(a: FighterState, b: FighterState) -> float:
+        return ((a.x - b.x) ** 2 + (a.y - b.y) ** 2) ** 0.5
+
+    def move_toward(fighter: FighterState, opponent: FighterState, step_size: float) -> None:
+        dx = opponent.x - fighter.x
+        dy = opponent.y - fighter.y
+        distance = max((dx * dx + dy * dy) ** 0.5, 1.0)
+        fighter.x = max(
+            STAGE_LEFT,
+            min(STAGE_RIGHT, fighter.x + (dx / distance) * step_size + rng.uniform(-0.5, 0.5)),
+        )
+        fighter.y = max(
+            STAGE_FLOOR,
+            min(STAGE_CEILING, fighter.y + (dy / distance) * step_size + rng.uniform(-0.5, 0.5)),
         )
 
     tick = 0
@@ -173,7 +188,27 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
         # when winner-attacks-protected-loser-final-stock has no effect.
         force_attack_for = None
         elapsed_for_ramp_pre = tick * tick_period
-        if elapsed_for_ramp_pre > 240:  # past 4 min — close out aggressively
+        loser_final_stock_is_protected = (
+            not sd_phase
+            and loser.stocks == 1
+            and (
+                (target.is_sudden_death and winner.stocks > 1)
+                or (not target.is_sudden_death and winner_deaths < winner_normal_deaths)
+            )
+        )
+        winner_still_needs_deaths = (
+            not sd_phase
+            and winner_deaths < winner_normal_deaths
+            and winner.damage >= normal_damage_cap(winner.physics.weight) - 10.0
+        )
+        if loser_final_stock_is_protected and loser.damage >= normal_damage_cap(loser.physics.weight) - 10.0:
+            # The loser cannot lose this stock yet because the historical score
+            # still needs the winner to drop one. Push the loser to attack now
+            # rather than letting their percent balloon while protected.
+            force_attack_for = loser
+        elif winner_still_needs_deaths:
+            force_attack_for = loser
+        elif elapsed_for_ramp_pre > 225:  # past 3.75 min - close out aggressively
             if sd_phase:
                 force_attack_for = winner
             else:
@@ -183,21 +218,24 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
                     # Loser final-stock-protected until winner takes more deaths
                     force_attack_for = loser
                 elif lr_remaining > 0:
-                    # Loser still has deaths to take — winner attacks
+                    # Loser still has deaths to take - winner attacks
                     force_attack_for = winner
                 else:
                     force_attack_for = winner
 
         for f in (fa, fb):
+            opp = fb if f is fa else fa
+            move_step_size = 3.0
             if f is force_attack_for:
-                f.last_action = Action.ATTACK
+                if distance_between(f, opp) > 22.0:
+                    f.last_action = Action.MOVE
+                    move_step_size = 5.0
+                else:
+                    f.last_action = Action.ATTACK
             else:
                 f.last_action = random_action(rng)
             if f.last_action == Action.MOVE:
-                opp = fb if f is fa else fa
-                step = 2.0 if opp.x > f.x else -2.0
-                f.x = max(STAGE_LEFT, min(STAGE_RIGHT, f.x + step + rng.uniform(-1, 1)))
-                f.y = max(STAGE_FLOOR, min(STAGE_CEILING, f.y + rng.uniform(-1, 1)))
+                move_toward(f, opp, step_size=move_step_size)
 
         # Compute who needs the bias this tick. In SD it's always the winner.
         # In normal phase, give it to whichever side has more deaths-still-to-take.
@@ -211,17 +249,17 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
             elif winner_remaining > loser_remaining:
                 biased_attacker = loser           # need more winner KOs
             else:
-                biased_attacker = winner          # balanced — slight winner default
+                biased_attacker = winner          # balanced - slight winner default
 
-        # Progressive bias ramp — push convergence after 4.5 min so most matches
+        # Progressive bias ramp - push convergence after 4.5 min so most matches
         # finish by 6 min, but allow gentle drag through the 4-6 min bucket.
         elapsed_for_ramp = tick * tick_period
-        if elapsed_for_ramp > 360:        # past 6 min — hard convergence
+        if elapsed_for_ramp > 420:        # past 7 min - hard convergence
             current_bias = 0.55
-        elif elapsed_for_ramp > 300:      # 5-6 min
+        elif elapsed_for_ramp > 360:      # 6-7 min
             current_bias = 0.35
-        elif elapsed_for_ramp > 270:      # 4.5-5 min
-            current_bias = 0.22
+        elif elapsed_for_ramp > 300:      # 5-6 min
+            current_bias = 0.20
         else:
             current_bias = base_bias
 
@@ -233,17 +271,22 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
             if rng.random() >= hit_probability(attacker, defender, bias, tick):
                 continue
 
-            defender.damage += random_damage(attacker.physics, rng)
+            damage_after_hit = defender.damage + random_damage(attacker.physics, rng)
+            if sd_phase:
+                defender.damage = SUDDEN_DEATH_DAMAGE
+            else:
+                defender.damage = min(damage_after_hit, normal_damage_cap(defender.physics.weight))
             attacker.last_hit_at_tick = tick
             last_event = "hit"
 
+            force_ko = sd_phase or defender.damage >= normal_damage_cap(defender.physics.weight)
             ko_prob = ko_probability(
                 defender.damage,
                 defender.physics.weight,
                 defender.physics.ko_curve.threshold * match_ko_mult,
                 defender.physics.ko_curve.steepness,
             )
-            if rng.random() >= ko_prob:
+            if not force_ko and rng.random() >= ko_prob:
                 continue
 
             # --- KO safeguards: enforce the historical final score exactly ---
@@ -286,7 +329,8 @@ def run_match(cfg: MatchConfig) -> Iterator[TickEvent]:
             yield emit(last_event="match_over")
             return
 
-    # Hit the 15-minute hard cap without a natural finish — extremely rare random
+    # Hit the 15-minute hard cap without a natural finish - extremely rare random
     # stall. Force the result so the broadcast still ends cleanly.
     loser.stocks = 0
+    winner.stocks = target.winner_stocks_remaining
     yield emit(last_event="match_over")

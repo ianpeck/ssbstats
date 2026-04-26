@@ -11,8 +11,8 @@ defaults:
   fall_speed: 1.0         # reserved for future use (combo vulnerability, recovery)
   starting_stocks: 3
   ko_curve:
-    threshold: 235        # damage where KO probability starts rising sharply (medium-weight typical KO%)
-    steepness: 0.045      # gentler curve allows occasional early KOs (short matches)
+    threshold: 155        # medium-weight danger percent; scaled lower/higher by fighter weight
+    steepness: 0.055      # sharper curve so fighters do not linger forever at high damage
 
 fighters:
   Banjo & Kazooie:  { weight: 106 }

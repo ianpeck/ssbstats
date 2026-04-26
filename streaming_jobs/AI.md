@@ -216,15 +216,22 @@ Tick rate default 10 Hz. Each tick:
    emit `sudden_death_start`.
 2. **Pick actions** for both fighters (`idle / move / attack / dodge / recover`,
    weighted in [`model.py:random_action`](synthesizer/model.py)).
+   - `move` steps toward the opponent on both x and y axes with slight jitter.
+   - Late-match forced attackers move toward the opponent until they are close
+     enough to attack. This avoids long whiff loops where fighters are too far
+     apart for hits to land.
 3. **Resolve attacks** (each fighter attacking is independent):
    - Compute `hit_probability` (proximity, defender dodge state, attacker cooldown,
      plus `attacker_bias`).
-   - On hit: defender damage increases by `random_damage` (2–25 from YAML range).
-   - Compute `ko_probability` (logistic on damage, scaled by `100/weight`).
+   - On hit: defender damage increases by `random_damage` (2-25 from YAML range),
+     capped in normal phase by `normal_damage_cap(weight)`.
+   - Compute `ko_probability` (logistic on damage, with the KO threshold scaled
+     by fighter weight).
    - On KO: apply safeguards (next section).
 4. **Emit `TickEvent`** with current state and any event tag.
 5. End check: `loser.stocks == 0` → emit `match_over`, return.
-6. Hard cap: 15 minutes. On hit, force `loser.stocks = 0` and emit `match_over`.
+6. Hard cap: 15 minutes. Force `loser.stocks = 0`, set the winner to the target
+   stock count, and emit `match_over`.
 
 ### Constraint safeguards (the heart of "outcome-exact" simulation)
 
@@ -246,9 +253,15 @@ Where:
 - `loser_normal_deaths = total_stocks` for normal (loser ends at 0),
   `total_stocks - 1` for SD (loser still has the SD stock to lose).
 
+Damage is also capped in normal phase before those safeguards run:
+`normal_damage_cap(weight)` is `max(145, min(225, 90 + weight))`. This prevents
+score-protected fighters from accumulating absurd visible percent while the
+simulator waits for the historical stock pattern to become legal. Sudden death
+is the exception and intentionally starts both fighters at 300%.
+
 ### Adaptive bias
 
-A small bias (+0.10 to `hit_probability`) is given each tick to whichever
+A small bias (+0.09 to `hit_probability`) is given each tick to whichever
 attacker is "behind" on target deaths. This prevents stalls without making the
 winner feel artificially dominant:
 
@@ -267,18 +280,21 @@ else:
 
 ### Pacing knobs (tune carefully)
 
-Realistic match duration target: **1.5–4 minutes for 3-stock**, **3–5 minutes
-for 5-stock**. Validated empirically across 100+ random matches.
+Realistic match duration target: **mostly 2-4 minutes for 3-stock**, with rare
+1-2 minute blowouts and occasional 4-5 minute grinders. Validated empirically
+across 1000 random 3-stock simulations after the damage-cap and movement-stall
+fixes.
 
 | Knob | File | Current | Effect |
 |------|------|---------|--------|
-| `ko_curve.threshold` | `config/fighter_physics.yaml` | 170 | Higher → more damage needed before KO is likely → slower matches |
-| `ko_curve.steepness` | `config/fighter_physics.yaml` | 0.04 | Lower → more lingering at high % |
+| `ko_curve.threshold` | `config/fighter_physics.yaml` | 155 | Higher -> more damage needed before KO is likely -> slower matches |
+| `ko_curve.steepness` | `config/fighter_physics.yaml` | 0.055 | Lower -> more lingering at high % |
 | `damage_range` | `config/fighter_physics.yaml` | [2, 25] | Bigger range = more variance per hit |
-| Fighter `weight` | `config/fighter_physics.yaml` | 62–135 | KO chance scales by `100 / weight`. Real Smash Ultimate values. |
-| `hit_probability` base | `synthesizer/model.py` | 0.18 | Lower → more whiffs → slower |
-| Action weights | `synthesizer/model.py` | attack=0.15 | Lower attack weight → fewer hit attempts per tick |
-| `base_bias` | `synthesizer/match.py` | 0.10 | Adaptive bias magnitude |
+| Fighter `weight` | `config/fighter_physics.yaml` | 62-135 | KO threshold and normal damage cap scale by weight. Real Smash Ultimate values. |
+| `normal_damage_cap` | `synthesizer/model.py` | 145-225 | Maximum normal-phase visible damage before the stock must resolve. |
+| `hit_probability` base | `synthesizer/model.py` | 0.10 | Lower -> more whiffs -> slower |
+| Action weights | `synthesizer/model.py` | attack=0.09 | Lower attack weight -> fewer hit attempts per tick |
+| `base_bias` | `synthesizer/match.py` | 0.09 | Adaptive bias magnitude |
 | `tick_rate_hz` | `synthesizer/match.py` | 10 | Telemetry frequency |
 
 If you change pacing knobs, re-run the smoke test in CLAUDE memory or:
