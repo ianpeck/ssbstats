@@ -11,7 +11,8 @@
     let stockHistA = [], stockHistB = [];
     let lastPhase = 'normal';
     let chart = null;
-    const probSeries = { labels: [], a: [], b: [] };
+    const probSeries = { labels: [], a: [], b: [], flinkA: [] };
+    let latestFlinkProbA = null;          // most recent p_a from the Flink win_probability job
 
     // ---------------- ELO + win prob math ----------------
     const FIGHTER_WEIGHTS = Object.freeze({
@@ -231,6 +232,26 @@
                         pointHoverBorderColor: '#ff9f7a',
                         borderWidth: 3,
                     },
+                    {
+                        // Flink-computed p_a from the win_probability job.
+                        // No ELO prior, no damage-pressure curve - just a logistic
+                        // on stock_diff + damage_diff. Useful as a "what does the
+                        // raw state say?" overlay against the ELO-blended traces.
+                        label: 'Flink raw state (A)',
+                        data: [],
+                        borderColor: 'rgba(220, 224, 240, 0.85)',
+                        borderDash: [5, 4],
+                        borderWidth: 1.6,
+                        fill: false,
+                        cubicInterpolationMode: 'monotone',
+                        tension: 0.35,
+                        pointRadius: 0,
+                        pointHoverRadius: 3,
+                        pointHoverBorderWidth: 2,
+                        pointHoverBackgroundColor: '#080808',
+                        pointHoverBorderColor: 'rgba(220, 224, 240, 1)',
+                        spanGaps: true,
+                    },
                 ],
             },
             options: {
@@ -239,7 +260,17 @@
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: 'rgba(168,170,184,0.85)',
+                            boxWidth: 18,
+                            boxHeight: 3,
+                            font: { size: 11 },
+                            padding: 12,
+                        },
+                    },
                     tooltip: {
                         backgroundColor: 'rgba(8,8,8,0.94)',
                         borderColor: 'rgba(96,124,255,0.28)',
@@ -286,16 +317,27 @@
         probSeries.labels.push(elapsedSec);
         probSeries.a.push(pa);
         probSeries.b.push(pb);
+        // Sample the latest Flink reading at the same x-coordinate. Null until
+        // Flink has emitted at least one tick - Chart.js draws a gap.
+        probSeries.flinkA.push(latestFlinkProbA);
         c.data.labels = probSeries.labels.map(fmtChartClock);
         c.data.datasets[0].data = probSeries.a;
         c.data.datasets[1].data = probSeries.b;
+        c.data.datasets[2].data = probSeries.flinkA;
         c.update();
     }
 
     function resetChart() {
-        probSeries.labels.length = 0; probSeries.a.length = 0; probSeries.b.length = 0;
+        probSeries.labels.length = 0;
+        probSeries.a.length = 0;
+        probSeries.b.length = 0;
+        probSeries.flinkA.length = 0;
+        latestFlinkProbA = null;
         if (chart) {
-            chart.data.labels = []; chart.data.datasets[0].data = []; chart.data.datasets[1].data = [];
+            chart.data.labels = [];
+            chart.data.datasets[0].data = [];
+            chart.data.datasets[1].data = [];
+            chart.data.datasets[2].data = [];
             chart.update('none');
         }
     }
@@ -453,8 +495,18 @@
                 renderEvent(payload);
             } catch {}
         });
-        // win_prob from Flink is currently overridden by client-side ELO blend;
-        // ignore it for now. Could re-enable as a separate "raw state" trace.
+        // Flink's raw-state win probability — drawn as a dashed overlay on the
+        // chart so the audience can see how the ELO-blended view differs from
+        // the pure stock+damage logistic.
+        es.addEventListener('win_prob', (e) => {
+            try {
+                const payload = JSON.parse(e.data);
+                if (!activeMatch || payload.match_id !== activeMatch.match_id) return;
+                if (typeof payload.p_a === 'number') {
+                    latestFlinkProbA = clamp01(payload.p_a);
+                }
+            } catch {}
+        });
     }
 
     // ---------------- Start a match ----------------
@@ -481,8 +533,9 @@
         $('gcProbLabelA').textContent = m.fighter_a;
         $('gcProbLabelB').textContent = m.fighter_b;
         const probChart = ensureChart();
-        probChart.data.datasets[0].label = m.fighter_a;
-        probChart.data.datasets[1].label = m.fighter_b;
+        probChart.data.datasets[0].label = `${m.fighter_a} (ELO-blended)`;
+        probChart.data.datasets[1].label = `${m.fighter_b} (ELO-blended)`;
+        probChart.data.datasets[2].label = `${m.fighter_a} (Flink raw state)`;
         probChart.update('none');
         setPortrait($('gcPortraitA'), m.fighter_a);
         setPortrait($('gcPortraitB'), m.fighter_b);

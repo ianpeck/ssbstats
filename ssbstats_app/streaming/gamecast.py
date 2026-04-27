@@ -34,7 +34,7 @@ def gamecast_page():
 @gamecast_bp.route("/gamecast/start", methods=["POST"])
 def gamecast_start():
     """Pick a random historical match and publish it to match.scheduled."""
-    from streaming_jobs.kafka_io import TOPIC_SCHEDULED, ensure_topics, make_producer, produce_json
+    from streaming_jobs.kafka_io import TOPIC_SCHEDULED, make_producer, produce_json
     from streaming_jobs.picker.main import pick_match
 
     season = request.args.get("season", type=int)
@@ -42,7 +42,6 @@ def gamecast_start():
 
     match = pick_match(season=season, ppv=ppv)
 
-    ensure_topics()
     producer = make_producer()
     try:
         produce_json(producer, TOPIC_SCHEDULED, key=match["match_id"], value=match)

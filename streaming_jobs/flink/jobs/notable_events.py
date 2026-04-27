@@ -5,7 +5,9 @@ Detects interesting moments inside a match and emits one row per moment to
 
 - KO at high damage: defender was at >= 150% when KO'd  -> "clutch_ko"
 - Speed kill: KO landed before tick 20                  -> "speed_kill"
-- Heavy hit: a single hit of >= 20 damage               -> "heavy_hit"
+- Double KO: both fighters KO'd simultaneously          -> "double_ko"
+- Sudden death triggered                                -> "sudden_death"
+- Match over (final score)                              -> "match_over"
 
 (Stateful CEP patterns like "comeback after being down 2 stocks" are easier to
 add later with the DataStream CEP API once the simple stuff is stable.)
@@ -84,9 +86,51 @@ def main() -> None:
         WHERE event = 'ko' AND tick < 20
     """
 
+    # Both fighters KO'd on the same tick - the synthesizer fires this only
+    # when an SD-flagged match reaches its mandated double-KO moment.
+    double_ko = """
+        INSERT INTO events
+        SELECT
+            match_id, tick, elapsed_sec,
+            'double_ko' AS kind,
+            'Both fighters KO''d simultaneously' AS note
+        FROM telemetry
+        WHERE event = 'double_ko'
+    """
+
+    # SD phase begins - both fighters at 1 stock @ 300%, single KO decides it.
+    sudden_death = """
+        INSERT INTO events
+        SELECT
+            match_id, tick, elapsed_sec,
+            'sudden_death' AS kind,
+            'Sudden death - one stock, 300%, winner takes all' AS note
+        FROM telemetry
+        WHERE event = 'sudden_death_start'
+    """
+
+    # Match over - final score in the note for the ticker.
+    match_over = """
+        INSERT INTO events
+        SELECT
+            match_id, tick, elapsed_sec,
+            'match_over' AS kind,
+            CONCAT(
+                'Final: ',
+                fighters[1].name, ' ', CAST(fighters[1].stocks AS STRING),
+                ' - ',
+                CAST(fighters[2].stocks AS STRING), ' ', fighters[2].name
+            ) AS note
+        FROM telemetry
+        WHERE event = 'match_over'
+    """
+
     stmt_set = t_env.create_statement_set()
     stmt_set.add_insert_sql(clutch_ko)
     stmt_set.add_insert_sql(speed_kill)
+    stmt_set.add_insert_sql(double_ko)
+    stmt_set.add_insert_sql(sudden_death)
+    stmt_set.add_insert_sql(match_over)
     stmt_set.execute().wait()
 
 

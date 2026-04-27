@@ -48,4 +48,12 @@ def create_app():
         from ssbstats_app.streaming.gamecast import gamecast_bp
         app.register_blueprint(gamecast_bp)
 
+        try:
+            from streaming_jobs.kafka_io import ensure_topics
+            ensure_topics()
+        except Exception as exc:  # noqa: BLE001
+            # Kafka may not be up yet when the app boots - the per-request
+            # producer call will surface a clearer error to the user.
+            print(f"[gamecast] ensure_topics() failed at startup: {exc}")
+
     return app

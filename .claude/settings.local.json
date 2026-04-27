@@ -12,7 +12,9 @@
       "Bash(.venv/Scripts/python.exe --version)",
       "Bash(.venv/Scripts/python.exe -m pip install -r requirements.txt --quiet)",
       "Bash(.venv/Scripts/python.exe -c ' *)",
-      "Bash(.venv/Scripts/python.exe -m streaming_jobs.picker.main --sink stdout)"
+      "Bash(.venv/Scripts/python.exe -m streaming_jobs.picker.main --sink stdout)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('streaming_jobs/flink/jobs/notable_events.py'\\).read\\(\\)\\); ast.parse\\(open\\('ssbstats_app/__init__.py'\\).read\\(\\)\\); ast.parse\\(open\\('ssbstats_app/streaming/gamecast.py'\\).read\\(\\)\\); print\\('all good'\\)\")",
+      "Bash(node -e ' *)"
     ]
   }
 }

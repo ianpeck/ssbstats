@@ -53,7 +53,7 @@ renders an ESPN-style live "Gamecast" page in Flask.
 | `match.scheduled` | picker | synthesizer service |
 | `match.telemetry` | synthesizer | all Flink jobs |
 | `match.live_state` | Flink `live_state.py` | Flask SSE |
-| `match.win_prob` | Flink `win_probability.py` | (currently unused — page does ELO blend client-side) |
+| `match.win_prob` | Flink `win_probability.py` | Flask SSE → drawn as dashed "raw state" overlay on the chart |
 | `match.events` | Flink `notable_events.py` | Flask SSE |
 
 Topic names live in [`kafka_io.py`](kafka_io.py). Default bootstrap server
@@ -375,11 +375,17 @@ docker compose -f docker-compose.local.yml exec flink-jobmanager \
 ### `notable_events.py`
 - Source: `match.telemetry`
 - Sink: `match.events` (regular Kafka, append-only)
-- Logic: SQL pattern detection via two `INSERT INTO` statements in a `StatementSet`:
+- Logic: SQL pattern detection via five `INSERT INTO` statements in a `StatementSet`:
   - `clutch_ko`: `event = 'ko'` AND `MAX(damage) >= 150`
   - `speed_kill`: `event = 'ko'` AND `tick < 20`
-- More CEP patterns (comeback after being down 2 stocks, etc.) are easy to add
-  but require the DataStream CEP API rather than SQL — currently a TODO.
+  - `double_ko`: `event = 'double_ko'` (the simultaneous-KO moment that triggers SD)
+  - `sudden_death`: `event = 'sudden_death_start'`
+  - `match_over`: `event = 'match_over'` — note carries the final score
+- The frontend has CSS classes per `kind` (in [`templates/gamecast.html`](../templates/gamecast.html))
+  so each event styles distinctly in the ticker. New kinds need a matching
+  `.gc-event-kind.<kind>` rule or they fall back to the default chip style.
+- More CEP patterns (comeback after being down 2 stocks, lead-change, etc.) are
+  easy to add but require the DataStream CEP API rather than SQL — currently a TODO.
 
 ### Telemetry schema (used by all 3 jobs)
 
@@ -417,7 +423,14 @@ In [`ssbstats_app/__init__.py`](../ssbstats_app/__init__.py):
 if os.getenv("LOCAL_STREAMING", "0") == "1":
     from ssbstats_app.streaming.gamecast import gamecast_bp
     app.register_blueprint(gamecast_bp)
+    # ensure_topics() is idempotent and runs once at boot, not per-request
+    from streaming_jobs.kafka_io import ensure_topics
+    ensure_topics()
 ```
+
+Topics are created at app startup (best-effort — wrapped in a try/except so the
+app still boots if Kafka isn't up yet). The per-request `/gamecast/start`
+handler does **not** call `ensure_topics()` anymore.
 
 Also a context processor exposes `streaming_enabled` to templates so the navbar
 in [`base.html`](../templates/base.html) only shows the Gamecast link locally.
@@ -448,18 +461,26 @@ thread checks each loop. Consumer is closed there too.
 
 ### Frontend (`gamecast.js`) — ESPN gamecast layout
 
-EventSource API consumes two of the three named event types:
+EventSource API consumes all three named event types:
 - `live_state` → updates fighter portraits, damage, stocks, clock, phase banner,
   per-stock damage history, win probability chart
 - `event` → prepends to "Notable Events" ticker
-- `win_prob` (from Flink) → **currently ignored** — the page computes its own
-  blended win probability client-side using ELO (see below)
+- `win_prob` (from Flink) → tracked in `latestFlinkProbA` and drawn as a
+  **dashed "raw state" overlay** (third dataset on the chart). The two solid
+  lines are the ELO-blended client-side computation; the dashed line shows
+  Flink's pure stock+damage logistic, so divergence between the two views is
+  visible at a glance.
 
 Layout: matchup header with fighter portraits and ELO ratings, big
 stocks/damage cards, **ELO-blended win probability line chart** (Chart.js,
 already loaded by base.html), per-stock damage history per fighter, and the
-notable-events ticker. No stage diagram — the synthesizer's x/y coordinates are
-not used in the UI.
+notable-events ticker. **No stage diagram by design** — the synthesizer's
+x/y coordinates are emitted but intentionally unused in the UI. Random-walk
+positions converging on attack range look nothing like real Smash spacing
+(edge-guards, platform play, recoveries), and a fake-looking minimap reads
+worse than no minimap. Don't propose adding a position visualization unless
+the synthesizer first gains real movement semantics (stage geometry, blast
+zones, recovery situations) — see extension point #5.
 
 #### Win probability — ELO baseline blended with live state
 
@@ -490,9 +511,8 @@ So:
 This produces the right narrative: advantage builds as damage builds, resets per
 stock, then locks to the real winner on `match_over`.
 
-The Flink `win_probability.py` job still runs and emits to `match.win_prob` —
-it's the "raw state-only" probability and could be displayed as a secondary
-trace later. Currently the SSE handler ignores it.
+The Flink `win_probability.py` job emits to `match.win_prob` and is now
+displayed on the chart as a dashed overlay alongside the ELO-blended traces.
 
 #### Stock-loss tracking
 
