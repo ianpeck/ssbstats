@@ -141,12 +141,59 @@ img {
     height: 75px;
     width: auto;
     display: block;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.35s ease;
+    animation: logo-ball-glow 4s ease-in-out infinite;
 }
+
+/* Two-line wordmark: fiery "SSB" (matches the Smash Ball and home-page logo) over a spaced "STATS" */
 .logo-text {
-    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+}
+.logo-ssb {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    background: linear-gradient(180deg, #fff6d5 0%, #fcd34d 38%, #f59e0b 62%, #ea580c 100%);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.35));
+    transition: filter 0.3s ease;
+}
+.logo-stats {
+    margin-top: 4px;
+    padding-left: 0.12em;
+    font-family: var(--font-heading);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.55em;
+    text-transform: uppercase;
+    color: var(--accent-light);
+    transition: color 0.3s ease, letter-spacing 0.3s ease;
+}
+.nav-logo:hover .logo-icon-img {
+    transform: rotate(-14deg) scale(1.07);
+    animation: none;
+    filter: brightness(1.15) drop-shadow(0 0 12px rgba(251, 191, 36, 0.6));
+}
+.nav-logo:hover .logo-ssb {
+    filter: drop-shadow(0 0 14px rgba(251, 191, 36, 0.65));
+}
+.nav-logo:hover .logo-stats {
+    color: #fff;
+    letter-spacing: 0.62em;
+}
+
+@keyframes logo-ball-glow {
+    0%, 100% { filter: drop-shadow(0 0 0 rgba(251, 191, 36, 0)); }
+    50% { filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.45)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .logo-icon-img { animation: none; transition: none; }
 }
 
 .nav-links {
@@ -3601,7 +3648,10 @@ img {
 .fight-list {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem;
+    /* Columns adapt to the list's own width (page, popup or phone), not the window's. */
+    container-type: inline-size;
+    container-name: fights;
 }
 
 /* Single fight row */
@@ -3663,23 +3713,132 @@ img {
 
 .fight-row-main {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 7rem 9.5rem minmax(0, 1.1fr) minmax(0, 1.5fr) 9rem 11.5rem;
+    grid-template-areas: "when match winner defeated event stage";
     align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
+    gap: 0 1rem;
+    padding: 0.6rem 1rem;
     cursor: pointer;
     user-select: none;
     transition: background 0.2s ease;
 }
 
-.fight-meta-col {
+.fight-row.no-event .fight-row-main,
+.fight-list-header.no-event .fight-row-main {
+    grid-template-columns: 7rem 9.5rem minmax(0, 1.1fr) minmax(0, 1.5fr) 11.5rem;
+    grid-template-areas: "when match winner defeated stage";
+}
+
+.fight-col { min-width: 0; }
+.fight-col-when {
+    grid-area: when;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent-light);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.fight-col-match {
+    grid-area: match;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+.fight-type-label {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.fight-col-winner,
+.fight-col-defeated {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem;
-    min-width: 0;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-    padding-right: 1rem;
+    gap: 0.3rem;
+}
+.fight-col-winner { grid-area: winner; }
+.fight-col-defeated { grid-area: defeated; }
+.fight-col-defeated-label {
+    display: none;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-right: 0.15rem;
+}
+.fight-col-event {
+    grid-area: event;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+.fight-col-event.is-ppv {
+    color: #a78bfa;
+    font-weight: 600;
+}
+.fight-col-stage {
+    grid-area: stage;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.fight-nc-label {
+    font-size: 0.8rem;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+.fight-muted { color: var(--text-muted); }
+
+/* Column header row above each list */
+.fight-list-header .fight-row-main {
+    cursor: default;
+    padding-top: 0;
+    padding-bottom: 0.15rem;
+}
+.fight-list-header .fight-col {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-style: normal;
+}
+.fight-list:has(.perspective-win, .perspective-loss) > .fight-list-header .fight-row-main {
+    padding-left: 2.75rem; /* line up with rows that have the W/L marker */
+}
+
+/* Medium widths (e.g. the View Card popup): stage thumbnail only */
+@container fights (max-width: 999px) {
+    .fight-row-main {
+        grid-template-columns: 6.25rem 8.5rem minmax(0, 1fr) minmax(0, 1.4fr) 8rem 3.5rem;
+        gap: 0 0.85rem;
+    }
+    .fight-row.no-event .fight-row-main,
+    .fight-list-header.no-event .fight-row-main {
+        grid-template-columns: 6.25rem 8.5rem minmax(0, 1fr) minmax(0, 1.4fr) 3.5rem;
+    }
+    .fight-location-text { display: none; }
+}
+
+/* Narrow (phones): each fight becomes a small stacked card */
+@container fights (max-width: 679px) {
+    .fight-list-header { display: none; }
+    .fight-row-main,
+    .fight-row.no-event .fight-row-main {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "when stage"
+            "match match"
+            "winner winner"
+            "defeated defeated"
+            "event event";
+        gap: 0.35rem 0.75rem;
+    }
+    .fight-col-match {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .fight-col-defeated-label { display: inline; }
+    .fight-location-text { display: inline; }
 }
 
 .fight-badge {
@@ -3697,15 +3856,9 @@ img {
 .fight-badge-champ      { background: rgba(251,191,36,0.15); color: #fbbf24; }
 .fight-badge-ppv        { background: rgba(167,139,250,0.15);color: #a78bfa; }
 
-.fight-location-wrap {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 3px;
-}
 .fight-location-thumb {
-    height: 32px;
-    width: 56px;
+    height: 30px;
+    width: 52px;
     object-fit: cover;
     border-radius: 4px;
     opacity: 0.85;
@@ -3715,35 +3868,23 @@ img {
     font-size: 0.78rem;
     color: var(--text-muted);
     white-space: nowrap;
-}
-
-/* Participants column */
-.fight-participants-col {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 0;
-    flex-wrap: wrap;
-}
-
-.fight-side {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    flex-wrap: wrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .fight-fighter-chip {
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    min-width: 0;
 }
 
 .fight-portrait {
-    width: 36px;
-    height: 36px;
+    width: 30px;
+    height: 30px;
     object-fit: contain;
     border-radius: 4px;
+    flex-shrink: 0;
 }
 
 .fight-fighter-name {
@@ -3757,20 +3898,8 @@ img {
     color: var(--accent);
 }
 
-.fight-side-win .fight-fighter-name {
+.fight-col-winner .fight-fighter-name {
     font-weight: 600;
-}
-
-/* Free-for-all: multi-person non-team match — all fighters with vs between them */
-.fight-side-ffa {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-}
-
-.fight-side-ffa .fight-vs-divider {
-    flex-shrink: 0;
 }
 
 /* Chip win/loss tinting */
@@ -3782,6 +3911,10 @@ img {
 
 .chip-loss {
     opacity: 0.75;
+}
+
+.chip-nc {
+    opacity: 0.85;
 }
 
 /* Inline W/L badge on each chip */
@@ -3797,6 +3930,7 @@ img {
 
 .fight-chip-result.win  { background: rgba(74,222,128,0.2);   color: var(--success); }
 .fight-chip-result.loss { background: rgba(248,113,113,0.12); color: var(--danger);  }
+.fight-chip-result.nc   { background: rgba(156,163,175,0.15); color: var(--text-secondary); }
 
 /* & connector between tag team partners */
 .fight-amp {
@@ -3826,6 +3960,10 @@ img {
 /* ---- Compare Against Widget ---- */
 .compare-against-section {
     margin-bottom: 1.5rem;
+    /* The glass card's backdrop-filter traps the dropdown's z-index inside the card,
+       so lift the whole section above the analytics card that follows it. */
+    position: relative;
+    z-index: 20;
 }
 
 .compare-against-card {
@@ -5370,10 +5508,6 @@ img {
     .fight-layout-singles {
         grid-template-columns: 1fr;
     }
-    .fight-row-main {
-        grid-template-columns: 1fr;
-        gap: 0.5rem;
-    }
     .fight-detail-grid {
         grid-template-columns: 1fr;
     }
@@ -5801,6 +5935,7 @@ img {
 
 .f1-winner-cell { background: rgba(96,124,255,0.13); color: #607cff !important; }
 .f2-winner-cell { background: rgba(251,146,60,0.13);  color: #fb923c !important; }
+.fight-other-winner { color: var(--text-secondary) !important; font-weight: 500 !important; }
 
 .compare-grid-table tbody tr:not(:last-child) td {
     border-bottom: 1px solid rgba(96,124,255,0.07);

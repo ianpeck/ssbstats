@@ -8,5 +8,5 @@ document.addEventListener("DOMContentLoaded", () => {
         container.innerHTML = '<div class="fight-empty">No fights found.</div>';
         return;
     }
-    fights.forEach(fight => container.appendChild(renderFight(fight)));
+    fights.forEach(fight => appendFight(container, fight, { hideEvent: true }));
 });

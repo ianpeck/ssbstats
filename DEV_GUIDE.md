@@ -106,7 +106,8 @@ ssbstats/
 `ssbstats_app/cache.py`
 
 - `ttl_cache` keeps fighter payloads and power scores in memory (per gunicorn worker), serving stale entries instantly while refreshing in the background
-- `app.py` starts a background thread that rebuilds every fighter every 10 minutes, so profiles always load instantly and are at most ~10 minutes behind newly entered fights
+- `app.py` starts a background thread that builds every fighter at startup, then runs a cheap `CHECKSUM TABLE` query each minute and rebuilds only when fights, Elo or awards change. Profiles load instantly and catch up within about a minute of new data, with no steady load on the small `db.t4g.micro` (which bills extra CPU credits if it runs hot)
+- `repositories/base.py` caps concurrent queries per process (`DB_MAX_CONCURRENT_QUERIES`, default 16) because RDS allows only 60 connections in total
 - Payloads built while any query failed are not cached, so a DB hiccup can't pin a half-empty profile
 
 `ssbstats_app/security.py`

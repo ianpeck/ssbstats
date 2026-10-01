@@ -230,10 +230,17 @@ function renderScoreboard(d, seasonOpts) {
             label = `Seasons don't match — no shared H2H`;
         } else {
             const s = String(seasonOpts.f1Season);
-            const seasonFights = (d.fights_between || []).filter(r => String(r.Season) === s);
-            const f1name = f1.name.toLowerCase();
-            w1 = seasonFights.filter(r => r.Fighter_Name?.toLowerCase() === f1name && r.Decision?.toLowerCase() === 'w').length;
-            w2 = seasonFights.filter(r => r.Fighter_Name?.toLowerCase() === f2.name.toLowerCase() && r.Decision?.toLowerCase() === 'w').length;
+            // Only fights where one beat the other count toward the head-to-head score
+            // (not tag wins as teammates or multi-fighter matches someone else won).
+            const decisions = new Map();
+            (d.fights_between || []).filter(r => String(r.Season) === s).forEach(r => {
+                const entry = decisions.get(r.Fight_ID) || {};
+                entry[r.Fighter_Name?.toLowerCase() === f1.name.toLowerCase() ? 'f1' : 'f2'] = r.Decision?.toLowerCase();
+                decisions.set(r.Fight_ID, entry);
+            });
+            const fightsInSeason = [...decisions.values()];
+            w1 = fightsInSeason.filter(f => f.f1 === 'w' && f.f2 === 'l').length;
+            w2 = fightsInSeason.filter(f => f.f2 === 'w' && f.f1 === 'l').length;
             const totalFights = w1 + w2;
             label = `${totalFights} fight${totalFights !== 1 ? 's' : ''} on record (S${s})`;
         }
@@ -434,7 +441,12 @@ function renderMomentum(d, isSeason) {
     const parseCareer = arr => arr.map((r, i) => ({x: i+1, y: parseFloat(String(r.career_win_pct).replace('%','')) || 0}));
     const parseSeason = arr => {
         let wins = 0, total = 0;
-        return arr.map((r, i) => { total++; if (r.decision === 'w') wins++; return {x: i+1, y: (wins/total)*100}; });
+        // No-contests count as neither a win nor a loss (same as the database's running stats).
+        return arr.map((r, i) => {
+            if (r.decision === 'w' || r.decision === 'l') total++;
+            if (r.decision === 'w') wins++;
+            return {x: i+1, y: total ? (wins/total)*100 : null};
+        });
     };
     const parse = arr => isSeason ? parseSeason(arr) : parseCareer(arr);
     const f1pts = parse(d.fighter1.running);
@@ -724,7 +736,8 @@ function renderFights(d) {
         const fid = row.Fight_ID;
         if (!byFight.has(fid)) byFight.set(fid, {meta: row, f1Row: null, f2Row: null});
         const f = byFight.get(fid);
-        if (row.Fighter_Name === f1Name) f.f1Row = row;
+        // Case-insensitive: some names are stored inconsistently (e.g. "DK" / "Dk").
+        if (String(row.Fighter_Name || '').toLowerCase() === f1Name.toLowerCase()) f.f1Row = row;
         else f.f2Row = row;
     });
 
@@ -734,13 +747,18 @@ function renderFights(d) {
         return;
     }
 
+    let directCount = 0;
     const tableRows = [...byFight.values()].map(({meta, f1Row, f2Row}) => {
         const d1 = String(f1Row?.Decision || '').trim().toUpperCase();
         const d2 = String(f2Row?.Decision || '').trim().toUpperCase();
-        // Skip tag-team fights (same decision = same side) and multi-person where neither wins (both L)
-        if (d1 === d2) return null;
-        const winner = d1 === 'W' ? f1Name : d2 === 'W' ? f2Name : '—';
-        const isF1 = winner === f1Name;
+        // Every shared fight is listed: one beat the other, they won together as
+        // teammates, or someone else won a multi-fighter match.
+        let winner = meta.Winners || '—';
+        let winnerClass = 'fight-other-winner';
+        if (d1 === 'W' && d2 !== 'W') { winner = f1Name; winnerClass = 'f1-winner-cell'; directCount++; }
+        else if (d2 === 'W' && d1 !== 'W') { winner = f2Name; winnerClass = 'f2-winner-cell'; directCount++; }
+        else if (d1 === 'W' && d2 === 'W') { winner = `${f1Name} & ${f2Name} (teammates)`; }
+        else if (d1 === 'NC' || d2 === 'NC') { winner = 'No contest'; }
         const champ = meta.Championship_Name || '—';
         const date = `S${meta.Season} M${meta.Month}${meta.Week ? ' W'+meta.Week : ''}`;
         return `<tr class="clickable-row" onclick="window.open('/fights?fight_id=${meta.Fight_ID}','_blank')" title="View in Fight Log">
@@ -748,11 +766,14 @@ function renderFights(d) {
             <td>${meta.PPV_Name || '—'}</td>
             <td>${meta.Description || '—'}</td>
             <td>${champ}</td>
-            <td class="${isF1 ? 'f1-winner-cell' : winner === '—' ? '' : 'f2-winner-cell'}" style="font-weight:600">${winner}</td>
+            <td class="${winnerClass}" style="font-weight:600">${winner}</td>
         </tr>`;
-    }).filter(Boolean);
+    });
 
-    label.textContent = tableRows.length + ' total fights between them';
+    const total = tableRows.length;
+    label.textContent = total === directCount
+        ? `${total} fight${total === 1 ? '' : 's'} between them`
+        : `${total} fight${total === 1 ? '' : 's'} together · ${directCount} head-to-head, ${total - directCount} won by someone else or as teammates`;
 
     wrap.innerHTML = `<table class="stats-table compare-fights-table">
         <thead><tr><th>Date</th><th>PPV</th><th>Type</th><th>Title</th><th>Winner</th></tr></thead>

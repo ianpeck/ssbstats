@@ -355,8 +355,8 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
             xLabels.push(d.season !== prevSeason ? (prevSeason = d.season, `S${d.season}`) : '');
             careerPcts.push(parseFloat(d.career_win_pct) || 0);
             seasonPcts.push(parseFloat(d.season_win_pct) || 0);
-            ptColors.push( d.decision === 'w' ? '#4ade80' : '#f87171');
-            ptBorders.push(d.decision === 'w' ? '#22c55e' : '#ef4444');
+            ptColors.push( d.decision === 'w' ? '#4ade80' : d.decision === 'nc' ? '#9ca3af' : '#f87171');
+            ptBorders.push(d.decision === 'w' ? '#22c55e' : d.decision === 'nc' ? '#6b7280' : '#ef4444');
         });
 
         const W = Math.max(900, data.length * 10);
@@ -381,7 +381,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
                     legend: { position: 'bottom', labels: { padding: 16, font: { size: 12, family: 'Inter' }, filter: i => i.text !== '50% Baseline' } },
                     tooltip: { backgroundColor: 'rgba(18,18,42,0.95)', titleFont: { family: 'Inter' }, bodyFont: { family: 'Inter' }, borderColor: '#607cff', borderWidth: 1,
                         callbacks: {
-                            title:      (its) => { const d = data[its[0].dataIndex]; return `Fight #${its[0].dataIndex+1}  —  ${d.decision==='w' ? 'Win ✓' : 'Loss ✗'}`; },
+                            title:      (its) => { const d = data[its[0].dataIndex]; return `Fight #${its[0].dataIndex+1}  —  ${d.decision==='w' ? 'Win ✓' : d.decision==='nc' ? 'No contest' : 'Loss ✗'}`; },
                             beforeBody: (its) => { const d = data[its[0].dataIndex]; return `Season ${d.season}, Month ${d.month}, Week ${d.week}`; },
                             label:      (it)  => it.dataset.label === '50% Baseline' ? null : `  ${it.dataset.label}: ${it.raw.toFixed(2)}%`,
                             afterBody:  (its) => { const d = data[its[0].dataIndex]; return `Career Record: ${d.career_wins}-${d.career_losses}`; },
@@ -665,11 +665,11 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
                     return;
                 }
                 fights.forEach(f => {
-                    const row = renderFight(f);
+                    const row = appendFight(list, f);
                     // Add W/L perspective indicator based on this fighter's result
-                    const me = f.fighters.find(x => x.name === FIGHTER_NAME);
-                    if (me) row.classList.add(isWinner(me) ? 'perspective-win' : 'perspective-loss');
-                    list.appendChild(row);
+                    // (case-insensitive: some names are stored as e.g. "Dk"; no-contests get none)
+                    const me = f.fighters.find(x => String(x.name).toLowerCase() === FIGHTER_NAME.toLowerCase());
+                    if (me && !isNoContest(me)) row.classList.add(isWinner(me) ? 'perspective-win' : 'perspective-loss');
                 });
                 hasMore = fights.length >= PER_PAGE;
                 document.getElementById('fightHistoryLoadMore').style.display = hasMore ? 'block' : 'none';

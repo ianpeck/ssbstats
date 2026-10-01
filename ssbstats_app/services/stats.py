@@ -3,6 +3,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from ssbstats_app.cache import ttl_cache
+from ssbstats_app.repositories.base import query_failure_count, select_view_row
 from ssbstats_app.repositories import comparisons, elo, events, fight_detail, fighters, fights, leaderboards, lookups, power, seasons
 from ssbstats_app.utils import event_to_slug, fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
 
@@ -52,7 +53,9 @@ def get_head_to_head(fighter1, fighter2, filters):
     return results
 
 
-_FIGHTER_CACHE_SECONDS = 600
+# Entries are rebuilt by keep_fighter_caches_warm() when the data changes; the TTL is
+# only a fallback (e.g. if the background thread isn't running).
+_FIGHTER_CACHE_SECONDS = 6 * 60 * 60
 
 
 @ttl_cache(_FIGHTER_CACHE_SECONDS)
@@ -330,6 +333,8 @@ def get_fight_detail_payload(fight_id):
 
     def streak_from_rows(rows):
         """Return the active streak entering the fight from reverse chronological rows."""
+        # No-contests neither extend nor break a streak (same as the allwinstreaks view).
+        rows = [row for row in rows if str(row.get("Decision") or "").upper() in ("W", "L")]
         if not rows:
             return {"type": "none", "count": 0, "label": "No active streak"}
         ordered = list(rows)
@@ -420,12 +425,19 @@ def get_fight_detail_payload(fight_id):
             grouped_common.setdefault(row.get("Fight_ID"), []).append(row)
         direct_prior = []
         for rows in grouped_common.values():
-            if len(rows) != 2:
-                continue
-            names = {rows[0].get("Fighter_Name"), rows[1].get("Fighter_Name")}
-            decisions = {str(rows[0].get("Decision") or "").upper(), str(rows[1].get("Decision") or "").upper()}
-            if names == {f1, f2} and decisions == {"W", "L"}:
-                direct_prior.append(rows)
+            # Count any shared fight where one beat the other, whatever the match size,
+            # matching the head-to-head page. Other participants' rows are ignored.
+            # Names aren't always cased the same in the data (e.g. "DK" vs "Dk"), so match
+            # case-insensitively and normalize to this fight's spelling.
+            pair_names = {f1.lower(): f1, f2.lower(): f2}
+            pair_rows = [
+                {**row, "Fighter_Name": pair_names[str(row.get("Fighter_Name") or "").lower()]}
+                for row in rows
+                if str(row.get("Fighter_Name") or "").lower() in pair_names
+            ]
+            decisions = {str(row.get("Decision") or "").upper() for row in pair_rows}
+            if len(pair_rows) == 2 and decisions == {"W", "L"}:
+                direct_prior.append(pair_rows)
 
         wins1 = 0
         wins2 = 0
@@ -628,6 +640,9 @@ def _build_fight_result_summary(participants, winners, losers, fight_type, champ
     winner_names = " & ".join(participant["name"] for participant in winners) if winners else ""
     loser_names = " & ".join(participant["name"] for participant in losers) if losers else ""
 
+    if participants and all(participant["decision"] == "NC" for participant in participants):
+        return "No contest"
+
     if championship and winner_names and loser_names:
         title_label = f"{championship} Title"
         defending_winners = [participant for participant in winners if participant.get("defending")]
@@ -688,6 +703,9 @@ def _build_fight_hero_title(participants, winners, losers, fight_type, champions
 
     if fight_type_lower == "smash series" and winner_names:
         return f"{winner_names} Win The Smash Series"
+
+    if not winners and participants:
+        return " vs. ".join(participant["name"] for participant in participants)
 
     if len(participants) == 2:
         return f"{participants[0]['name']} vs. {participants[1]['name']}"
@@ -804,28 +822,46 @@ def get_event_detail_payload(slug):
     }
 
 
-def keep_fighter_caches_warm():
-    """Rebuild every fighter's payloads now and then every few minutes, forever.
+_DATA_CHECK_SECONDS = 60
+_DATA_TABLES = "Fight, Results, Elo, AwardHistory, Fighter, Championship"
 
-    Keeps every profile instant and never more than ~10 minutes out of date. Runs one
-    fighter at a time in a single background thread, so database load stays gentle.
+
+def _data_fingerprint():
+    """Return a cheap fingerprint that changes whenever fight data is added or edited."""
+    return tuple(row[1] for row in select_view_row(f"CHECKSUM TABLE {_DATA_TABLES}"))
+
+
+def keep_fighter_caches_warm():
+    """Pre-build every fighter's payloads, then rebuild only when the data changes.
+
+    A checksum query every minute is nearly free; the full rebuild (~70 fighters)
+    only runs at startup and after new fights, Elo or awards are entered. This keeps
+    profiles instant without putting steady load on the small RDS instance.
     """
     log = logging.getLogger(__name__)
+    built_for = None
     while True:
-        started = time.time()
         try:
-            power.get_all_season_power_scores.refresh()
-            power.get_career_power_scores.refresh()
-            names = lookups.get_all_fighters()
+            fingerprint = _data_fingerprint()
         except Exception:
-            log.exception("Cache warm-up could not start; retrying shortly")
-            time.sleep(60)
+            log.exception("Could not check for data changes")
+            time.sleep(_DATA_CHECK_SECONDS)
             continue
-        for name in names:
+        if fingerprint != built_for:
+            started = time.time()
+            failures_before = query_failure_count()
             try:
-                get_fighter_profile_payload.refresh(name)
-                get_fighter_advanced_payload.refresh(name)
+                power.get_all_season_power_scores.refresh()
+                power.get_career_power_scores.refresh()
+                names = lookups.get_all_fighters()
+                for name in names:
+                    get_fighter_profile_payload.refresh(name)
+                    get_fighter_advanced_payload.refresh(name)
+                    time.sleep(0.2)  # spread the rebuild out so it never spikes the database
+                # Only mark this data version done if every query succeeded; otherwise retry next check.
+                if query_failure_count() == failures_before:
+                    built_for = fingerprint
+                log.info("Rebuilt fighter caches for %d fighters in %.0fs", len(names), time.time() - started)
             except Exception:
-                log.exception("Cache warm-up failed for %s", name)
-        log.info("Refreshed fighter caches for %d fighters in %.0fs", len(names), time.time() - started)
-        time.sleep(max(60, _FIGHTER_CACHE_SECONDS - (time.time() - started)))
+                log.exception("Fighter cache rebuild failed; will retry")
+        time.sleep(_DATA_CHECK_SECONDS)

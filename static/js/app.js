@@ -219,106 +219,118 @@ function isWinner(f) {
     return s === 'W' || s === 'Y' || w === 1 || w === true;
 }
 
+function isNoContest(f) {
+    return String(f.win ?? '').toUpperCase() === 'NC';
+}
+
 function chipHTML(f) {
     const fn  = fighterToFilename(f.name);
     const win = isWinner(f);
+    const nc  = isNoContest(f);
     const stocks = (f.match_result != null && f.match_result !== '') ? f.match_result : null;
-    const resultText = (win ? 'W' : 'L') + (stocks != null ? ` ${stocks}` : '');
-    return `<span class="fight-fighter-chip ${win ? 'chip-win' : 'chip-loss'}">
+    const resultText = nc ? 'NC' : (win ? 'W' : 'L') + (stocks != null ? ` ${stocks}` : '');
+    const chipClass = nc ? 'chip-nc' : (win ? 'chip-win' : 'chip-loss');
+    const resultClass = nc ? 'nc' : (win ? 'win' : 'loss');
+    return `<span class="fight-fighter-chip ${chipClass}">
         <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
              class="fight-portrait" onerror="this.style.display='none'">
         <a href="/fighter/${encodeURIComponent(f.name)}" class="fight-fighter-name"
            onclick="event.stopPropagation()">${f.name}</a>
-        <span class="fight-chip-result ${win ? 'win' : 'loss'}">${resultText}</span>
+        <span class="fight-chip-result ${resultClass}">${resultText}</span>
     </span>`;
 }
 
-function renderFight(fight) {
+// Shared fight row, laid out as aligned columns:
+//   When | Match | Winner | Defeated | Event | Stage
+// Columns adapt to the list's width via CSS container queries, and collapse into a
+// stacked card on narrow screens. opts.hideEvent drops the Event column for lists
+// that all come from one event (the View Card popup and event pages).
+const FIGHT_CHIPS_SHOWN = 4;
+
+function fightChips(group, joiner) {
+    const shown = group.slice(0, FIGHT_CHIPS_SHOWN);
+    const hidden = group.length - shown.length;
+    return shown.map(f => chipHTML(f)).join(joiner) +
+        (hidden > 0 ? `<span class="fight-overflow-chip">+${hidden} more</span>` : '');
+}
+
+function renderFight(fight, opts = {}) {
     const { fight_id, season, month, week, ppv, location, fight_type,
             championship, brand, fighters } = fight;
 
-    const winners   = fighters.filter(isWinner);
-    const losers    = fighters.filter(f => !isWinner(f));
-    const isBig     = fighters.length > 6;
-    // Tag Team and Handicap use & within each side; everything else uses vs between all fighters
-    const ftLower   = fight_type ? fight_type.toLowerCase() : '';
-    const isTeamMatch = ftLower === 'tag team' || ftLower === 'handicap';
-    const is1v1       = !isTeamMatch && fighters.length === 2;
-    // #1 Contender is a match attribute — true if any fighter has it set
+    const winners  = fighters.filter(isWinner);
+    const losers   = fighters.filter(f => !isWinner(f));
+    const noWinner = winners.length === 0;
+    const ftLower  = fight_type ? fight_type.toLowerCase() : '';
+    const isTeamMatch = !noWinner && (ftLower === 'tag team' || ftLower === 'handicap');
+    const teamJoin = '<span class="fight-amp">&amp;</span>';
     const isContender = fighters.some(f => f.contender &&
         String(f.contender).toUpperCase() !== 'N' && f.contender !== 0);
-    const MAX = 4;
 
-    function sideHTML(group, cssClass, useAmp) {
-        const shown  = group.slice(0, MAX);
-        const hidden = group.length - shown.length;
-        const sep    = useAmp ? '<span class="fight-amp">&amp;</span>' : '';
-        let html = `<div class="fight-side ${cssClass}">`;
-        html += shown.map(f => chipHTML(f)).join(sep);
-        if (hidden > 0) html += `<span class="fight-overflow-chip">+${hidden} more</span>`;
-        html += '</div>';
-        return html;
-    }
-
-    let participantsHTML;
-    if (isBig) {
-        const winChip = winners.length ? chipHTML(winners[0]) : '';
-        participantsHTML = `
-            <div class="fight-side fight-side-win">${winChip}</div>
-            <div class="fight-vs-divider">&middot;</div>
-            <span class="fight-overflow-chip">${fighters.length}-person ${fight_type || 'match'}</span>`;
-    } else if (isTeamMatch) {
-        // Tag Team / Handicap: group each side with & between teammates
-        participantsHTML =
-            sideHTML(winners, 'fight-side-win', true) +
-            (winners.length && losers.length ? '<span class="fight-vs-divider">vs</span>' : '') +
-            sideHTML(losers, 'fight-side-loss', true);
-    } else if (is1v1) {
-        // Standard 1v1
-        participantsHTML =
-            sideHTML(winners, 'fight-side-win', false) +
-            (winners.length && losers.length ? '<span class="fight-vs-divider">vs</span>' : '') +
-            sideHTML(losers, 'fight-side-loss', false);
-    } else {
-        // Multi-person free-for-all: show every fighter with vs between each
-        // (winners first so W badges appear on the left)
-        const all    = [...winners, ...losers];
-        const shown  = all.slice(0, MAX);
-        const hidden = all.length - shown.length;
-        participantsHTML =
-            '<div class="fight-side fight-side-ffa">' +
-            shown.map(f => chipHTML(f)).join('<span class="fight-vs-divider">vs</span>') +
-            (hidden > 0 ? `<span class="fight-overflow-chip">+${hidden} more</span>` : '') +
-            '</div>';
-    }
-
-    const metaHTML = `
-        <div class="fight-meta-col">
-            ${season != null ? `<span class="fight-badge fight-badge-season">S${season}${month != null ? ` M${month}` : ''}${week != null ? ` W${week}` : ''}</span>` : ''}
-            ${fight_type   ? `<span class="fight-badge fight-badge-type">${fight_type}</span>` : ''}
-            ${isContender  ? `<span class="fight-badge fight-badge-contender">#1 Contender</span>` : ''}
-            ${championship ? `<span class="fight-badge fight-badge-champ">&#127942; ${championship}</span>` : ''}
-            ${ppv          ? `<span class="fight-badge fight-badge-ppv">${ppv}</span>` : ''}
-            ${location ? `<div class="fight-location-wrap">
-                <img src="/static/assets/stages/${stageToFilename(location)}.png"
-                     alt="${location}" class="fight-location-thumb"
-                     onerror="this.style.display='none'">
-                <span class="fight-location-text">${location}</span>
-            </div>` : ''}
-        </div>`;
+    const when = season != null
+        ? `S${season}${month != null ? ` · M${month}` : ''}${week != null ? ` · W${week}` : ''}`
+        : '—';
+    const matchBadges =
+        (championship ? `<span class="fight-badge fight-badge-champ">&#127942; ${championship}</span>` : '') +
+        (isContender ? `<span class="fight-badge fight-badge-contender">#1 Contender</span>` : '');
+    const winnerHTML = noWinner
+        ? '<span class="fight-nc-label">No contest</span>'
+        : fightChips(winners, isTeamMatch ? teamJoin : '');
+    const defeatedHTML = noWinner
+        ? fightChips(fighters, '<span class="fight-vs-divider">vs</span>')
+        : (losers.length ? fightChips(losers, isTeamMatch ? teamJoin : '') : '<span class="fight-muted">—</span>');
+    const eventText = ppv || (brand ? `${brand} weekly` : 'Weekly');
+    const stageHTML = location
+        ? `<img src="/static/assets/stages/${stageToFilename(location)}.png" alt="" class="fight-location-thumb"
+                onerror="this.style.display='none'"><span class="fight-location-text">${location}</span>`
+        : '<span class="fight-muted">—</span>';
 
     const row = document.createElement('div');
-    row.className = 'fight-row';
+    row.className = 'fight-row' + (opts.hideEvent ? ' no-event' : '');
     row.innerHTML = `
         <div class="fight-row-main">
-            ${metaHTML}
-            <div class="fight-participants-col">${participantsHTML}</div>
+            <div class="fight-col fight-col-when">${when}</div>
+            <div class="fight-col fight-col-match">
+                <span class="fight-type-label">${fight_type || 'Match'}</span>${matchBadges}
+            </div>
+            <div class="fight-col fight-col-winner">${winnerHTML}</div>
+            <div class="fight-col fight-col-defeated">
+                ${noWinner ? '' : '<span class="fight-col-defeated-label">def.</span>'}${defeatedHTML}
+            </div>
+            ${opts.hideEvent ? '' : `<div class="fight-col fight-col-event${ppv ? ' is-ppv' : ''}">${eventText}</div>`}
+            <div class="fight-col fight-col-stage" title="${location || ''}">${stageHTML}</div>
         </div>`;
 
     row.querySelector('.fight-row-main').addEventListener('click', () => {
         window.location.href = `/fight/${fight_id}`;
     });
 
+    return row;
+}
+
+function fightListHeader(opts = {}) {
+    const header = document.createElement('div');
+    header.className = 'fight-list-header' + (opts.hideEvent ? ' no-event' : '');
+    header.innerHTML = `
+        <div class="fight-row-main">
+            <div class="fight-col fight-col-when">When</div>
+            <div class="fight-col fight-col-match">Match</div>
+            <div class="fight-col fight-col-winner">Winner</div>
+            <div class="fight-col fight-col-defeated">Defeated</div>
+            ${opts.hideEvent ? '' : '<div class="fight-col fight-col-event">Event</div>'}
+            <div class="fight-col fight-col-stage">Stage</div>
+        </div>`;
+    return header;
+}
+
+// Append a fight to a .fight-list, adding the column header first if needed.
+function appendFight(list, fight, opts = {}) {
+    if (!list.querySelector(':scope > .fight-list-header')) {
+        list.querySelectorAll(':scope > .fight-empty').forEach(el => el.remove());
+        list.prepend(fightListHeader(opts));
+    }
+    const row = renderFight(fight, opts);
+    list.appendChild(row);
     return row;
 }
 

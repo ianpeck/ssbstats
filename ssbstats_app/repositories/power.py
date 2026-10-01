@@ -133,7 +133,7 @@ def apply_power_scores(fighters, weights, all_time_maxes):
         fighter["power_rank"] = i
 
 
-@ttl_cache(600, copy_result=True)
+@ttl_cache(6 * 60 * 60, copy_result=True)  # rebuilt on data change by keep_fighter_caches_warm()
 def get_all_season_power_scores():
     """Return season power scores keyed by season then lowercase fighter name."""
     with ThreadPoolExecutor(max_workers=5) as pool:
@@ -211,7 +211,7 @@ def get_season_power_scores(season):
     return get_all_season_power_scores().get(season, {})
 
 
-@ttl_cache(600, copy_result=True)
+@ttl_cache(6 * 60 * 60, copy_result=True)  # rebuilt on data change by keep_fighter_caches_warm()
 def get_career_power_scores():
     """Return career power scores keyed by lowercase fighter name."""
     ev_expr = " + ".join(f"SUM(CASE WHEN `{col}` IS NOT NULL AND `{col}` != '' THEN {POWER_EVENT_WEIGHTS[col]} ELSE 0 END)" for col in POWER_EVENT_COLS)

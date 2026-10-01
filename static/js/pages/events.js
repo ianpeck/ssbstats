@@ -94,7 +94,7 @@ function openEvent(ev) {
                 list.innerHTML = '<div class="fight-empty">No fights found.</div>';
                 return;
             }
-            fights.forEach(fight => list.appendChild(renderFight(fight)));
+            fights.forEach(fight => appendFight(list, fight, { hideEvent: true }));
         })
         .catch(() => {
             document.getElementById("overlayLoading").style.display = "none";

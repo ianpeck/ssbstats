@@ -17,7 +17,7 @@
         <div class="nav-container">
             <a href="/" class="nav-logo">
                 <img src="{{ url_for('static', filename='assets/other/smashball.png') }}" alt="" class="logo-icon-img">
-                <span class="logo-text">SSB Stats</span>
+                <span class="logo-text" aria-label="SSB Stats"><span class="logo-ssb">SSB</span><span class="logo-stats">Stats</span></span>
             </a>
             <div class="nav-links">
                 <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}" title="Roster">

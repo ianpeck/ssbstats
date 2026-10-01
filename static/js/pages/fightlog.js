@@ -133,7 +133,7 @@ function loadFights(reset = false) {
                 return;
             }
 
-            fights.forEach(fight => list.appendChild(renderFight(fight)));
+            fights.forEach(fight => appendFight(list, fight));
             hasMore = fights.length >= PER_PAGE;
             document.getElementById("loadMoreContainer").style.display = hasMore ? "block" : "none";
         })

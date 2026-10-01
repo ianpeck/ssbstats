@@ -10,6 +10,28 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path=Path("secrets.env"))
 
 
+# The RDS instance allows 60 connections in total, shared by both gunicorn workers,
+# the background cache refresher and local tools. Each query opens its own connection
+# and pages run many in parallel, so cap concurrent queries per process: extra
+# queries wait briefly for a slot instead of failing with "Too many connections".
+_MAX_CONCURRENT_QUERIES = int(os.getenv("DB_MAX_CONCURRENT_QUERIES", "16"))
+_query_slots = threading.BoundedSemaphore(_MAX_CONCURRENT_QUERIES)
+
+
+def _limit_concurrency(func):
+    """Hold one of this process's query slots for the duration of the call."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not _query_slots.acquire(timeout=30):
+            raise TimeoutError("Timed out waiting for a free database connection slot.")
+        try:
+            return func(*args, **kwargs)
+        finally:
+            _query_slots.release()
+
+    return wrapper
+
+
 def _env_first(*names):
     """Return the first populated environment variable from the provided names."""
     for name in names:
@@ -51,6 +73,7 @@ def get_chat_connection():
     return get_connection()
 
 
+@_limit_concurrency
 def run_readonly_query(query, max_rows=200, timeout_ms=5000):
     """Run untrusted SQL inside a read-only transaction with a server-side time limit.
 
@@ -99,6 +122,7 @@ def _track_failures(func):
 
 
 @_track_failures
+@_limit_concurrency
 def h2h_query_sql(query, params=None):
     """Execute an H2H stored procedure and reshape its row into fighter dicts."""
     conn = get_connection()
@@ -133,6 +157,7 @@ def h2h_query_sql(query, params=None):
 
 
 @_track_failures
+@_limit_concurrency
 def select_list(query, columnnumber, params=None):
     """Execute a query and return one column from every result row."""
     conn = get_connection()
@@ -145,6 +170,7 @@ def select_list(query, columnnumber, params=None):
 
 
 @_track_failures
+@_limit_concurrency
 def select_view_row(query, params=None):
     """Execute a query and return the raw tuple rows."""
     conn = get_connection()
@@ -157,6 +183,7 @@ def select_view_row(query, params=None):
 
 
 @_track_failures
+@_limit_concurrency
 def select_view_dicts(query, params=None):
     """Execute a query and return rows as dictionaries keyed by column name."""
     conn = get_connection()
@@ -169,6 +196,7 @@ def select_view_dicts(query, params=None):
         conn.close()
 
 
+@_limit_concurrency
 def execute_write(query, params=None):
     """Execute a single write statement and return the last insert id."""
     conn = get_write_connection()
