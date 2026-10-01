@@ -1,10 +1,20 @@
 """Request-level security helpers: client IP, admin allowlist, rate limiting, safe redirects."""
 
+import fcntl
+import json
 import os
+import tempfile
 import threading
 import time
 from collections import defaultdict
+from datetime import datetime
 from urllib.parse import urlparse
+
+try:
+    from zoneinfo import ZoneInfo
+    _QUOTA_TZ = ZoneInfo("America/New_York")
+except Exception:  # pragma: no cover - tz database missing
+    _QUOTA_TZ = None
 
 from flask import current_app, request
 
@@ -85,3 +95,44 @@ class RateLimiter:
         """Drop keys with no recent hits so memory stays bounded."""
         for key in [k for k, v in self._hits.items() if not v or now - v[-1] >= self.window]:
             del self._hits[key]
+
+
+class DailyQuota:
+    """Per-visitor and site-wide daily caps, shared by every gunicorn worker on the host.
+
+    Workers don't share memory, so counts live in a small JSON file guarded by an
+    exclusive file lock. Counts reset at midnight US Eastern.
+    """
+
+    def __init__(self, per_visitor, total, path=None, clock=None):
+        self.per_visitor = per_visitor
+        self.total = total
+        self.path = path or os.getenv("CHAT_QUOTA_FILE") or os.path.join(tempfile.gettempdir(), "ssbstats_chat_quota.json")
+        self.clock = clock or (lambda: datetime.now(_QUOTA_TZ))
+
+    def consume(self, key):
+        """Count one question for key. Returns None if allowed, else "visitor" or "total"."""
+        today = self.clock().date().isoformat()
+        with open(self.path, "a+") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+            try:
+                handle.seek(0)
+                try:
+                    state = json.loads(handle.read() or "{}")
+                except ValueError:
+                    state = {}
+                if state.get("date") != today:
+                    state = {"date": today, "total": 0, "visitors": {}}
+                if state["total"] >= self.total:
+                    return "total"
+                if state["visitors"].get(key, 0) >= self.per_visitor:
+                    return "visitor"
+                state["total"] += 1
+                state["visitors"][key] = state["visitors"].get(key, 0) + 1
+                handle.seek(0)
+                handle.truncate()
+                handle.write(json.dumps(state))
+                return None
+            finally:
+                fcntl.flock(handle, fcntl.LOCK_UN)
+

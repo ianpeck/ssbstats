@@ -113,6 +113,7 @@ ssbstats/
 `ssbstats_app/security.py`
 
 - Client IP from Cloudflare's `CF-Connecting-IP`, admin IP allowlist, per-IP rate limiting, safe login redirects
+- Chat limits: 5 questions/minute per visitor, plus `DailyQuota` caps of 40/day per visitor and 100/day site-wide (shared between workers via a locked file in the temp dir; resets at midnight Eastern; admin IPs exempt)
 
 `ssbstats_app/utils.py`
 

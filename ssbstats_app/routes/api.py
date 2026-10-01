@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from ssbstats_app.repositories.seasons import get_all_seasons
-from ssbstats_app.security import RateLimiter, admin_ips, get_client_ip
+from ssbstats_app.security import DailyQuota, RateLimiter, admin_ips, get_client_ip
 from ssbstats_app.services.chat import answer_question
 
 from ssbstats_app.services.content import get_autocomplete_data
@@ -21,6 +21,11 @@ from ssbstats_app.services.stats import (
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 _chat_limiter = RateLimiter(limit=5, window_seconds=60)  # per visitor IP, per worker
+_chat_daily = DailyQuota(per_visitor=40, total=100)  # shared across workers; resets midnight Eastern
+_DAILY_LIMIT_MESSAGES = {
+    "visitor": "You've asked 40 questions today, which is the daily limit. The stats AI resets at midnight Eastern, so come back tomorrow!",
+    "total": "The stats AI has answered its 100 questions for today. It resets at midnight Eastern, so check back tomorrow!",
+}
 
 
 @api_bp.route("/autocomplete/<category>")
@@ -197,8 +202,13 @@ def events():
 @api_bp.route("/chat", methods=["POST"])
 def chat():
     """Return an AI-generated answer for a natural-language stats question."""
-    if get_client_ip() not in admin_ips() and _chat_limiter.hit():
-        return jsonify({"answer": "You're asking too many questions too fast — please wait a minute and try again.", "rows": [], "sql": ""}), 429
+    ip = get_client_ip()
+    if ip not in admin_ips():
+        if _chat_limiter.hit():
+            return jsonify({"answer": "You're asking too many questions too fast — please wait a minute and try again.", "rows": [], "sql": ""}), 429
+        over = _chat_daily.consume(ip or "unknown")
+        if over:
+            return jsonify({"answer": _DAILY_LIMIT_MESSAGES[over], "rows": [], "sql": ""}), 429
     payload = request.get_json(silent=True) or {}
     result = answer_question(payload.get("question", ""), payload.get("history", []))
     status = result.pop("status", 200)
