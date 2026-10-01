@@ -48,6 +48,8 @@ Secrets on EB are set via `eb setenv` (not `secrets.env`).
 - **`ssbstats_app/__init__.py`** — app factory, blueprint registration, static asset versioning.
 - **`ssbstats_app/routes/`** — split between page routes and JSON API routes.
 - **`ssbstats_app/services/`** — feature logic and payload shaping.
+- **`ssbstats_app/services/chat.py` + `chat_metadata.py`** — tool-calling AI chat. The model writes SQL via a `run_sql` tool that runs in a read-only transaction (`run_readonly_query` in `repositories/base.py`). Fix wrong chat answers by improving the schema notes in `chat_metadata.py`.
+- **`ssbstats_app/security.py`** — client IP (`CF-Connecting-IP`), admin allowlist, rate limiting, safe redirects.
 - **`ssbstats_app/repositories/`** — SQL and DB access split by feature area. Each query opens a fresh PyMySQL connection, executes, and closes.
 - **`fighters.yaml`** — fighter blurbs/bios loaded per-request (no restart needed to update).
 - **`templates/base.html`** — shared navbar/layout. All other templates extend it.

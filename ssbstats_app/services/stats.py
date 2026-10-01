@@ -1,5 +1,8 @@
+import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 
+from ssbstats_app.cache import ttl_cache
 from ssbstats_app.repositories import comparisons, elo, events, fight_detail, fighters, fights, leaderboards, lookups, power, seasons
 from ssbstats_app.utils import event_to_slug, fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
 
@@ -49,6 +52,10 @@ def get_head_to_head(fighter1, fighter2, filters):
     return results
 
 
+_FIGHTER_CACHE_SECONDS = 600
+
+
+@ttl_cache(_FIGHTER_CACHE_SECONDS)
 def get_fighter_profile_payload(name):
     """Assemble the full fighter profile JSON payload."""
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -131,6 +138,7 @@ def get_fighter_profile_payload(name):
     return result
 
 
+@ttl_cache(_FIGHTER_CACHE_SECONDS)
 def get_fighter_advanced_payload(name):
     """Assemble advanced analytics payloads for a fighter."""
     raw = fighters.get_advanced_analytics(name)
@@ -794,3 +802,30 @@ def get_event_detail_payload(slug):
             for fight in fights_raw
         ],
     }
+
+
+def keep_fighter_caches_warm():
+    """Rebuild every fighter's payloads now and then every few minutes, forever.
+
+    Keeps every profile instant and never more than ~10 minutes out of date. Runs one
+    fighter at a time in a single background thread, so database load stays gentle.
+    """
+    log = logging.getLogger(__name__)
+    while True:
+        started = time.time()
+        try:
+            power.get_all_season_power_scores.refresh()
+            power.get_career_power_scores.refresh()
+            names = lookups.get_all_fighters()
+        except Exception:
+            log.exception("Cache warm-up could not start; retrying shortly")
+            time.sleep(60)
+            continue
+        for name in names:
+            try:
+                get_fighter_profile_payload.refresh(name)
+                get_fighter_advanced_payload.refresh(name)
+            except Exception:
+                log.exception("Cache warm-up failed for %s", name)
+        log.info("Refreshed fighter caches for %d fighters in %.0fs", len(names), time.time() - started)
+        time.sleep(max(60, _FIGHTER_CACHE_SECONDS - (time.time() - started)))

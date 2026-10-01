@@ -1,34 +1,9 @@
-import os
-import time
-from collections import defaultdict
-
 from flask import Blueprint, jsonify, request
 
 from ssbstats_app.repositories.seasons import get_all_seasons
+from ssbstats_app.security import RateLimiter, admin_ips, get_client_ip
 from ssbstats_app.services.chat import answer_question
 
-# --- chat rate limiting ---
-_CHAT_WINDOW = 60          # seconds
-_CHAT_LIMIT = 5            # max requests per window for public users
-_chat_hits = defaultdict(list)
-
-
-def _get_admin_ips():
-    raw = (os.getenv("ADMIN_ALLOWED_IPS") or "").strip()
-    return {ip.strip() for ip in raw.split(",") if ip.strip()} if raw else set()
-
-
-def _is_chat_rate_limited():
-    ip = request.remote_addr or "unknown"
-    now = time.time()
-    # prune old entries
-    _chat_hits[ip] = [t for t in _chat_hits[ip] if now - t < _CHAT_WINDOW]
-    if ip in _get_admin_ips():
-        return False
-    if len(_chat_hits[ip]) >= _CHAT_LIMIT:
-        return True
-    _chat_hits[ip].append(now)
-    return False
 from ssbstats_app.services.content import get_autocomplete_data
 from ssbstats_app.services.stats import (
     get_championships_payload,
@@ -45,6 +20,7 @@ from ssbstats_app.services.stats import (
 
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
+_chat_limiter = RateLimiter(limit=5, window_seconds=60)  # per visitor IP, per worker
 
 
 @api_bp.route("/autocomplete/<category>")
@@ -81,9 +57,24 @@ def head_to_head():
         return jsonify({"error": str(exc)}), 500
 
 
+def _canonical_fighter(name):
+    """Return the fighter's canonical spelling, or None if unknown.
+
+    Unknown names get a 404 instead of an empty payload, so they never enter the cache.
+    If the fighter list couldn't load, the name is passed through unchanged.
+    """
+    known = {fighter.lower(): fighter for fighter in get_autocomplete_data("fighters")}
+    if not known:
+        return name
+    return known.get(name.lower())
+
+
 @api_bp.route("/fighter/<name>")
 def fighter(name):
     """Return the full fighter profile payload as JSON."""
+    name = _canonical_fighter(name)
+    if not name:
+        return jsonify({"error": "Fighter not found"}), 404
     try:
         return jsonify(get_fighter_profile_payload(name))
     except Exception as exc:
@@ -93,6 +84,9 @@ def fighter(name):
 @api_bp.route("/fighter/<name>/advanced")
 def fighter_advanced(name):
     """Return advanced fighter analytics payloads for charts and streaks."""
+    name = _canonical_fighter(name)
+    if not name:
+        return jsonify({"error": "Fighter not found"}), 404
     try:
         return jsonify(get_fighter_advanced_payload(name))
     except Exception as exc:
@@ -203,7 +197,7 @@ def events():
 @api_bp.route("/chat", methods=["POST"])
 def chat():
     """Return an AI-generated answer for a natural-language stats question."""
-    if _is_chat_rate_limited():
+    if get_client_ip() not in admin_ips() and _chat_limiter.hit():
         return jsonify({"answer": "You're asking too many questions too fast — please wait a minute and try again.", "rows": [], "sql": ""}), 429
     payload = request.get_json(silent=True) or {}
     result = answer_question(payload.get("question", ""), payload.get("history", []))

@@ -5,7 +5,8 @@ from functools import wraps
 from flask import Blueprint, abort, redirect, render_template, request, session, url_for
 
 from ssbstats_app.repositories.seasons import get_all_seasons
-from ssbstats_app.services.content import get_fighter_blurb
+from ssbstats_app.security import RateLimiter, admin_ip_allowed, safe_next_url
+from ssbstats_app.services.content import get_autocomplete_data, get_fighter_blurb
 from ssbstats_app.services.scheduling import (
     create_scheduled_match_from_form,
     delete_scheduled_match_from_form,
@@ -17,42 +18,26 @@ from ssbstats_app.utils import fighter_to_filename
 
 
 pages_bp = Blueprint("pages", __name__)
-
-
-def _get_request_ip():
-    """Return the best client IP available for admin allowlist checks."""
-    cf_ip = request.headers.get("CF-Connecting-IP")
-    if cf_ip:
-        return cf_ip.strip()
-    forwarded_for = request.headers.get("X-Forwarded-For", "")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
-    return request.remote_addr or ""
-
-
-def _admin_ip_allowed():
-    """Return whether the current request IP is allowed by env configuration."""
-    request_ip = _get_request_ip()
-    if request_ip in {"127.0.0.1", "::1", "localhost"}:
-        return True
-    raw = (os.getenv("ADMIN_ALLOWED_IPS") or "").strip()
-    if not raw:
-        return True
-    allowed = {ip.strip() for ip in raw.split(",") if ip.strip()}
-    return request_ip in allowed
+_login_limiter = RateLimiter(limit=5, window_seconds=300)
 
 
 def admin_required(view):
     """Protect admin pages behind login and optional IP allowlisting."""
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if not _admin_ip_allowed():
+        if not admin_ip_allowed():
             abort(403)
         if not session.get("is_admin"):
             return redirect(url_for("pages.admin_login", next=request.path))
         return view(*args, **kwargs)
 
     return wrapped
+
+
+@pages_bp.app_errorhandler(404)
+def not_found(_error):
+    """Render the themed 404 page."""
+    return render_template("404.html"), 404
 
 
 @pages_bp.route("/")
@@ -70,6 +55,10 @@ def head2head():
 @pages_bp.route("/fighter/<name>")
 def fighter_profile(name):
     """Render a fighter profile page for the requested fighter."""
+    canonical = {fighter.lower(): fighter for fighter in get_autocomplete_data("fighters")}
+    if canonical and name.lower() not in canonical:
+        abort(404)
+    name = canonical.get(name.lower(), name)
     return render_template("fighter.html", fighter_name=name, filename=fighter_to_filename(name), blurb=get_fighter_blurb(name))
 
 
@@ -137,9 +126,11 @@ def chat_page():
 def admin_login():
     """Render and process the admin login form."""
     error = ""
-    if not _admin_ip_allowed():
+    if not admin_ip_allowed():
         abort(403)
     if request.method == "POST":
+        if _login_limiter.hit():
+            return render_template("admin_login.html", error="Too many attempts. Try again in a few minutes."), 429
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
         expected_username = os.getenv("ADMIN_USERNAME", "")
@@ -152,7 +143,7 @@ def admin_login():
         ):
             session["is_admin"] = True
             session["admin_username"] = username
-            return redirect(request.args.get("next") or url_for("pages.admin_schedule"))
+            return redirect(safe_next_url(request.args.get("next"), url_for("pages.admin_schedule")))
         error = "Invalid admin credentials."
     return render_template("admin_login.html", error=error)
 

@@ -330,7 +330,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (toggle && links) {
         toggle.addEventListener('click', function() {
-            links.classList.toggle('show');
+            const open = links.classList.toggle('show');
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
     }
 });

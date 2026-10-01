@@ -2,24 +2,32 @@
 {% block title %}SSB Stats - Ask AI{% endblock %}
 
 {% block content %}
-<section class="seasons-section">
+<section class="chat-page">
     <h1 class="section-title">Ask the Stats AI <span class="beta-badge">Beta</span></h1>
-    <p class="section-subtitle">Ask questions about the league and I'll try to look them up in the database</p>
+    <p class="section-subtitle">Ask anything about the league in plain English. The AI looks it up in the stats database.</p>
 
-    <div class="chat-container glass-card">
+    <div class="chat-container glass-card" data-chat-root>
         <div class="chat-messages" id="chatMessages">
             <div class="chat-message chat-message-ai">
                 <div class="chat-bubble">
-                    Hey! Ask me anything about SSB Stats — win records, championship history, streaks, head-to-head matchups, event winners, and more.
+                    Hey! Ask me anything about SSB Stats: win records, title reigns, streaks, head-to-head matchups, awards, event winners and more.
                 </div>
             </div>
         </div>
 
-        <div class="chat-input-row">
-            <input type="text" id="chatInput" class="chat-input" placeholder="e.g. Who has the most title reigns?" maxlength="300" autocomplete="off">
-            <button class="btn btn-primary chat-send-btn" id="chatSendBtn" onclick="sendQuestion()">Ask</button>
+        <div class="chat-suggestions" id="chatSuggestions">
+            <button type="button" class="chat-chip" data-question="Who has the most title defenses?"><i data-lucide="shield"></i>Most title defenses</button>
+            <button type="button" class="chat-chip" data-question="Who has the longest active win streak?"><i data-lucide="flame"></i>Longest active streak</button>
+            <button type="button" class="chat-chip" data-question="Who has beaten Kirby the most?"><i data-lucide="swords"></i>Kirby's nemesis</button>
+            <button type="button" class="chat-chip" data-question="Who won Superstar of the Year each season?"><i data-lucide="award"></i>Superstar of the Year</button>
+            <button type="button" class="chat-chip" data-question="Which tag team has the best record?"><i data-lucide="users"></i>Best tag team</button>
+            <button type="button" class="chat-chip" data-question="Who has the highest current Elo?"><i data-lucide="trending-up"></i>Highest Elo</button>
         </div>
-        <p class="chat-hint">Try: "Who is the all-time wins leader?" &bull; "Who has the longest win streak?" &bull; "What titles has Mario held?"</p>
+
+        <div class="chat-input-row">
+            <input type="text" id="chatInput" class="chat-input" placeholder="e.g. Who has the most title reigns?" maxlength="500" autocomplete="off">
+            <button type="button" class="btn btn-primary chat-send-btn" id="chatSendBtn">Ask</button>
+        </div>
     </div>
 </section>
 {% endblock %}

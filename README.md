@@ -47,6 +47,7 @@ ssbstats/
 │   │   └── pages.py
 │   └── services/
 │       ├── chat.py
+│       ├── chat_metadata.py
 │       ├── content.py
 │       └── stats.py
 ├── templates/
@@ -102,6 +103,7 @@ awsendpoint=your-rds-endpoint.region.rds.amazonaws.com
 awsuser=your_database_username
 awspassword=your_database_password
 awsdb=SmashBros
+GEMINI_API_KEY=optional_for_chat
 GROQ_API_KEY=optional_for_chat
 ```
 
@@ -159,9 +161,9 @@ python -m unittest discover tests
 ## Current Gaps
 
 - The app still depends on private database access for full local use
-- There is not yet a formal automated test suite
-- several templates and some frontend scripts are still larger than ideal
-- The AI chat is useful, but less reliable than the deterministic stats pages
+- Test coverage is light (`unittest` covers helpers, routes and the chat agent loop)
+- Several templates and some frontend scripts are still larger than ideal
+- The AI chat is reliable for most questions, but it can still misread unusual phrasing
 
 ## Deployment
 

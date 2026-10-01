@@ -96,11 +96,22 @@ ssbstats/
 - Feature logic for roster data, fighter payloads, rankings, seasons, fight logs, comparisons, championships, and events
 - Combines multiple query calls and normalizes payloads for the frontend
 
-`ssbstats_app/services/chat.py`
+`ssbstats_app/services/chat.py` and `chat_metadata.py`
 
-- Groq client access
-- SQL guard rails
-- AI prompt orchestration and answer formatting
+- Tool-calling agent: the model gets one `run_sql` tool and loops (query, read result, fix query, answer), up to 6 steps
+- `chat_metadata.py` holds the schema prompt: value encodings (`Decision` is `w`/`l`/`nc`, `DefendingIndicator` is `'y'`), gotchas and example queries. When the model gets a question wrong, the fix is usually a line here
+- Model SQL runs through `run_readonly_query()` in `repositories/base.py`: read-only transaction, 5s `MAX_EXECUTION_TIME`, and the dedicated `awschatuser` login when configured
+- Uses Gemini (`GEMINI_API_KEY`) or Groq (`GROQ_API_KEY`); override models with `CHAT_GEMINI_MODEL` / `CHAT_GROQ_MODEL`
+
+`ssbstats_app/cache.py`
+
+- `ttl_cache` keeps fighter payloads and power scores in memory (per gunicorn worker), serving stale entries instantly while refreshing in the background
+- `app.py` starts a background thread that rebuilds every fighter every 10 minutes, so profiles always load instantly and are at most ~10 minutes behind newly entered fights
+- Payloads built while any query failed are not cached, so a DB hiccup can't pin a half-empty profile
+
+`ssbstats_app/security.py`
+
+- Client IP from Cloudflare's `CF-Connecting-IP`, admin IP allowlist, per-IP rate limiting, safe login redirects
 
 `ssbstats_app/utils.py`
 
@@ -190,4 +201,4 @@ eb deploy
 ## Recommended Next Refactors
 
 1. Add automated tests for the service layer and high-value APIs.
-2. Replace the chat freeform SQL flow with a constrained intent-and-template query layer.
+2. Turn the chat regression questions into an automated eval that runs against the real database.

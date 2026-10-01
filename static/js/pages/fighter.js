@@ -39,8 +39,43 @@ const FIGHTER_NAME = FIGHTER_PAGE.name || '';
     caInput.addEventListener('keydown', e => { if (e.key === 'Enter') goCompare(); });
 })();
 
+// Tint the hero glow with the fighter's dominant color, sampled from their render.
+function applyFighterGlow() {
+    const img = document.getElementById('fighterHeroImg');
+    const hero = document.querySelector('.fighter-hero');
+    if (!img || !hero) return;
+    const sample = () => {
+        try {
+            const size = 40;
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = size;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(img, 0, 0, size, size);
+            const px = ctx.getImageData(0, 0, size, size).data;
+            let r = 0, g = 0, b = 0, weight = 0;
+            for (let i = 0; i < px.length; i += 4) {
+                if (px[i + 3] < 200) continue;
+                const max = Math.max(px[i], px[i + 1], px[i + 2]);
+                const min = Math.min(px[i], px[i + 1], px[i + 2]);
+                const sat = max - min;
+                if (sat < 40 || max < 50) continue; // skip grays, blacks and outlines
+                const w = sat * sat;
+                r += px[i] * w; g += px[i + 1] * w; b += px[i + 2] * w; weight += w;
+            }
+            if (weight) {
+                hero.style.setProperty('--fighter-glow', `rgb(${Math.round(r / weight)}, ${Math.round(g / weight)}, ${Math.round(b / weight)})`);
+            }
+        } catch (e) {
+            // Keep the default accent glow if the image can't be sampled.
+        }
+    };
+    if (img.complete && img.naturalWidth) sample();
+    else img.addEventListener('load', sample, { once: true });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const name = FIGHTER_NAME;
+    applyFighterGlow();
 
     fetch(`/api/fighter/${encodeURIComponent(name)}`)
         .then(res => res.json())
@@ -331,6 +366,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
         canvas.width = W; canvas.height = 400;
 
         if (charts.momentum) charts.momentum.destroy();
+        showLatestSeasons(container);
         charts.momentum = new Chart(canvas.getContext('2d'), {
             type: 'line',
             data: { labels: xLabels, datasets: [
@@ -361,6 +397,25 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
         });
     }
 
+    // Long timeline charts open scrolled to the most recent fights, with a hint that
+    // earlier seasons are to the left (macOS hides scrollbars until you scroll).
+    function showLatestSeasons(container) {
+        const scroller = container.closest('.analytics-chart-scroll');
+        if (!scroller || scroller.scrollWidth <= scroller.clientWidth) return;
+        let hint = scroller.previousElementSibling;
+        if (!hint || !hint.classList.contains('chart-scroll-hint')) {
+            hint = document.createElement('button');
+            hint.type = 'button';
+            hint.className = 'chart-scroll-hint';
+            hint.textContent = '‹ Earlier seasons';
+            hint.addEventListener('click', () => scroller.scrollBy({ left: -scroller.clientWidth * 0.8, behavior: 'smooth' }));
+            scroller.parentNode.insertBefore(hint, scroller);
+            scroller.addEventListener('scroll', () => hint.classList.toggle('is-hidden', scroller.scrollLeft < 8), { passive: true });
+        }
+        scroller.scrollLeft = scroller.scrollWidth;
+        hint.classList.remove('is-hidden');
+    }
+
     // ── 2. ELO Rating History ──────────────────────────────────────────────
     function renderEloChart(data) {
         if (!data.length) return;
@@ -381,6 +436,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
         canvas.width = W; canvas.height = 400;
 
         if (charts.elo) charts.elo.destroy();
+        showLatestSeasons(container);
         charts.elo = new Chart(canvas.getContext('2d'), {
             type: 'line',
             data: { labels: xLabels, datasets: [

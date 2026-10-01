@@ -1,11 +1,13 @@
 import os
+import secrets
 import time
 from pathlib import Path
 
-from flask import Flask, request, session
+from flask import Flask, session
 
 from ssbstats_app.routes.api import api_bp
 from ssbstats_app.routes.pages import pages_bp
+from ssbstats_app.security import admin_ip_allowed
 
 
 _STATIC_VERSION = str(int(time.time()))
@@ -19,23 +21,25 @@ def create_app():
         template_folder=os.path.join(root_dir, "templates"),
         static_folder=os.path.join(root_dir, "static"),
     )
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "local-dev-secret-change-me")
+    secret_key = os.getenv("SECRET_KEY")
+    if not secret_key:
+        # A hard-coded fallback would let anyone forge an admin session. A random key
+        # is safe; it just logs admins out whenever the process restarts.
+        secret_key = secrets.token_hex(32)
+        app.logger.warning("SECRET_KEY is not set; using a random per-process key.")
+    app.config.update(
+        SECRET_KEY=secret_key,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "1") == "1",
+    )
 
     @app.context_processor
     def inject_static_version():
         """Expose the cache-busting static asset version to templates."""
-        raw = (os.getenv("ADMIN_ALLOWED_IPS") or "").strip()
-        request_ip = request.headers.get("CF-Connecting-IP") or request.headers.get("X-Forwarded-For", "").split(",")[0].strip() or request.remote_addr or ""
-        admin_ip_allowed = request_ip in {"127.0.0.1", "::1", "localhost"}
-        if not admin_ip_allowed:
-            if not raw:
-                admin_ip_allowed = True
-            else:
-                allowed = {ip.strip() for ip in raw.split(",") if ip.strip()}
-                admin_ip_allowed = request_ip in allowed
         return {
             "static_v": _STATIC_VERSION,
-            "admin_ip_allowed": admin_ip_allowed,
+            "admin_ip_allowed": admin_ip_allowed(),
             "admin_logged_in": bool(session.get("is_admin")),
             "streaming_enabled": os.getenv("LOCAL_STREAMING", "0") == "1",
         }

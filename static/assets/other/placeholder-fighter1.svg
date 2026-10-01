@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 287 300">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#607cff" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#607cff" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#0c0c18" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#607cff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#607cff" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+  <rect width="287" height="300" fill="#0c0c18"/>
+  <rect width="287" height="300" fill="url(#glow)"/>
+  <circle cx="143.5" cy="112" r="46" fill="url(#body)"/>
+  <path d="M52 300c4-70 44-112 91.5-112S231 230 235 300z" fill="url(#body)"/>
+  <text x="143.5" y="130" text-anchor="middle" font-family="Arial Black, Helvetica, sans-serif" font-weight="900" font-size="56" fill="#ffffff" fill-opacity="0.85">?</text>
+  <text x="143.5" y="282" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="15" letter-spacing="3" fill="#607cff">CHOOSE FIGHTER 1</text>
+</svg>

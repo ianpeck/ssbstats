@@ -1,6 +1,6 @@
 const PORTRAIT_PLACEHOLDER = {
-    f1: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 1</text></svg>`,
-    f2: `data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 287 300%22><rect fill=%22%2312122a%22 width=%22287%22 height=%22300%22/><text fill=%22%23fb923c%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2224%22>Fighter 2</text></svg>`,
+    f1: '/static/assets/other/placeholder-fighter1.svg',
+    f2: '/static/assets/other/placeholder-fighter2.svg',
 };
 
 document.addEventListener('DOMContentLoaded', function() {

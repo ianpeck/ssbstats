@@ -1,8 +1,8 @@
 <section class="fighter-profile-section">
     <!-- Hero -->
     <div class="fighter-hero">
-        <div class="fighter-hero-image">
-            <img src="{{ url_for('static', filename='assets/fighters/' + filename + '.png') }}"
+        <div class="fighter-hero-image" id="fighterHeroImage">
+            <img id="fighterHeroImg" src="{{ url_for('static', filename='assets/fighters/' + filename + '.png') }}"
                  alt="{{ fighter_name }}"
                  onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22><rect fill=%22%2312122a%22 width=%22300%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>?</text></svg>'">
         </div>
@@ -45,13 +45,13 @@
                     <div class="stat-card-label">Power Score</div>
                     <div class="stat-card-sub" id="careerPowerRank"></div>
                 </div>
-                <div class="stat-card-subtle streak-win-card">
-                    <div class="subtle-value" id="winStreakVal">--</div>
-                    <div class="subtle-label">Longest Win Streak</div>
+                <div class="stat-card glass-card stat-card-win">
+                    <div class="stat-card-value" id="winStreakVal">--</div>
+                    <div class="stat-card-label">Longest Win Streak</div>
                 </div>
-                <div class="stat-card-subtle streak-loss-card">
-                    <div class="subtle-value" id="lossStreakVal">--</div>
-                    <div class="subtle-label">Longest Losing Streak</div>
+                <div class="stat-card glass-card stat-card-loss">
+                    <div class="stat-card-value" id="lossStreakVal">--</div>
+                    <div class="stat-card-label">Longest Losing Streak</div>
                 </div>
             </div>
         </div>
