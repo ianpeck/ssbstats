@@ -3,23 +3,76 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from ssbstats_app.cache import ttl_cache
-from ssbstats_app.repositories.base import query_failure_count, select_view_row
+from ssbstats_app.repositories.base import query_failure_count, select_view_dicts, select_view_row
 from ssbstats_app.repositories import comparisons, elo, events, fight_detail, fighters, fights, leaderboards, lookups, power, seasons
 from ssbstats_app.utils import event_to_slug, fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
 
 
 def build_index_payload():
-    """Build the roster card payload used by the landing page."""
+    """Build the roster payload for the landing page (grid cards and the roster globe)."""
     fighters = get_fighters()
     current_champs = lookups.get_current_champions()
-    return [
-        {
+    # Both come from in-memory caches kept warm by keep_fighter_caches_warm().
+    try:
+        brands = lookups.get_fighter_brands()
+    except Exception:
+        brands = {}
+    try:
+        power_scores = power.get_career_power_scores()
+    except Exception:
+        power_scores = {}
+    payload = []
+    for fighter in fighters:
+        key = fighter.lower()
+        score = power_scores.get(key, {})
+        payload.append({
             "name": fighter,
             "filename": fighter_to_filename(fighter),
-            "titles": [normalize_champ_name(title) for title in current_champs.get(fighter.lower(), [])],
-        }
-        for fighter in fighters
+            "titles": [normalize_champ_name(title) for title in current_champs.get(key, [])],
+            "brand": brands.get(key, ""),
+            "power_score": score.get("power_score"),
+            "power_rank": score.get("power_rank"),
+        })
+    return payload
+
+
+# Major titles first, then the rest; anything unlisted sorts last alphabetically.
+_CHAMPIONSHIP_ORDER = ["Melee", "Brawl", "Ultimate", "Smash Bros.", "Unified Tag"]
+
+
+@ttl_cache(6 * 60 * 60)
+def get_home_summary():
+    """League totals for the homepage. Cached; rebuilt by the warmer when data changes."""
+    rows = select_view_dicts(
+        """
+        SELECT (SELECT COUNT(*) FROM Fight) AS fights,
+               (SELECT MAX(Season_ID) FROM Season) AS seasons,
+               (SELECT COUNT(*) FROM ChampionshipHistory) AS title_reigns,
+               (SELECT COUNT(*) FROM PPV) AS ppvs
+        """
+    )
+    row = rows[0] if rows else {}
+    return {key: int(row.get(key) or 0) for key in ("fights", "seasons", "title_reigns", "ppvs")}
+
+
+def home_champions(fighters):
+    """Current champions from the roster payload, major titles first."""
+    champions = [
+        {"title": title, "name": f["name"], "filename": f["filename"], "brand": f.get("brand", "")}
+        for f in fighters for title in f["titles"]
     ]
+
+    def order(champ):
+        title = champ["title"]
+        return (_CHAMPIONSHIP_ORDER.index(title) if title in _CHAMPIONSHIP_ORDER else len(_CHAMPIONSHIP_ORDER), title)
+
+    return sorted(champions, key=order)
+
+
+def home_top_fighters(fighters, count=5):
+    """Top of the all-time power rankings from the roster payload."""
+    ranked = [f for f in fighters if f.get("power_rank")]
+    return sorted(ranked, key=lambda f: f["power_rank"])[:count]
 
 
 def get_fighters():
@@ -854,6 +907,7 @@ def keep_fighter_caches_warm():
                 power.get_all_season_power_scores.refresh()
                 power.get_career_power_scores.refresh()
                 lookups.get_fighter_brands.refresh()
+                get_home_summary.refresh()
                 names = lookups.get_all_fighters()
                 for name in names:
                     get_fighter_profile_payload.refresh(name)

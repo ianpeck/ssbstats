@@ -14,7 +14,7 @@ from ssbstats_app.services.scheduling import (
     get_schedule_admin_payload,
     update_scheduled_match_from_form,
 )
-from ssbstats_app.services.stats import build_index_payload, get_event_detail_payload, get_fight_detail_payload, get_fights_page_filters
+from ssbstats_app.services.stats import build_index_payload, get_home_summary, home_champions, home_top_fighters, get_event_detail_payload, get_fight_detail_payload, get_fights_page_filters
 from ssbstats_app.utils import fighter_to_filename
 
 
@@ -43,8 +43,19 @@ def not_found(_error):
 
 @pages_bp.route("/")
 def index():
-    """Render the fighter roster landing page."""
-    return render_template("index.html", fighters=build_index_payload())
+    """Render the homepage: roster globe, league pulse and about."""
+    fighters = build_index_payload()
+    try:
+        summary = get_home_summary()
+    except Exception:
+        summary = {}
+    return render_template(
+        "index.html",
+        fighters=fighters,
+        summary=summary,
+        champions=home_champions(fighters),
+        top_fighters=home_top_fighters(fighters),
+    )
 
 
 @pages_bp.route("/head2head")

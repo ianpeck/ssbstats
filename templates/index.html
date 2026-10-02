@@ -2,37 +2,111 @@
 {% block title %}SSB Stats - Fighter Roster{% endblock %}
 
 {% block content %}
-<section class="hero">
-    <div class="hero-logo-container">
-        <img src="{{ url_for('static', filename='assets/other/supersmashbroslogo.png') }}" 
-             alt="Super Smash Bros Logo" 
-             style="width: 1000px; height: auto; margin-top: -100px; margin-bottom: -25px;">
-    </div>
-    <p class="hero-subtitle">Head-to-head statistics from a WWE-style franchise with SSB characters</p>
-    <p class="hero-disclaimer">Unofficial, non-commercial fan-made stats project. Not affiliated with or endorsed by Nintendo.</p>
-    <div class="hero-actions">
-        <a href="/about" class="btn btn-primary btn-lg">About</a>
-    </div>
-</section>
+<div class="home-page">
+<section class="roster-section" id="rosterSection">
+    <h2 class="visually-hidden">Fighter roster</h2>
+    <script>
+        // Pick the view before first paint (globe by default) so the grid doesn't flash.
+        (function () {
+            var view = 'globe';
+            try { view = localStorage.getItem('rosterView') || 'globe'; } catch (e) {}
+            document.getElementById('rosterSection').dataset.view = view;
+        })();
+    </script>
 
-<section class="roster-section">
-    <h2 class="section-title">Fighter Roster</h2>
-    <p class="section-subtitle">Click a fighter to view their profile</p>
+    <div class="roster-globe">
+        <div class="globe-side">
+            <header class="home-hero">
+                <img src="{{ url_for('static', filename='assets/other/supersmashbroslogo.png') }}" alt="Super Smash Bros" class="home-logo">
+                <p class="home-tagline">A WWE-style Super Smash Bros league. Every fight, title and rivalry, tracked.</p>
+            </header>
+            <div class="roster-controls">
+                <div class="roster-search-wrapper">
+                    <input type="text" id="rosterSearch" class="fighter-input" placeholder="Find a fighter..." autocomplete="off" aria-label="Find a fighter">
+                </div>
+                <button type="button" class="roster-random-btn" id="rosterRandom" title="Pick a random fighter"><i data-lucide="shuffle"></i>Random</button>
+                <div class="roster-view-toggle" role="group" aria-label="Roster view">
+                    <button type="button" data-view="globe" title="Globe view"><i data-lucide="globe"></i><span>Globe</span></button>
+                    <button type="button" data-view="grid" title="Grid view"><i data-lucide="layout-grid"></i><span>Grid</span></button>
+                </div>
+            </div>
+            <div class="roster-brand-filters" id="rosterBrandFilters">
+                <button type="button" class="brand-filter brand-melee" data-filter="Melee">Melee</button>
+                <button type="button" class="brand-filter brand-brawl" data-filter="Brawl">Brawl</button>
+                <button type="button" class="brand-filter brand-ultimate" data-filter="Ultimate">Ultimate</button>
+                <button type="button" class="brand-filter brand-champs" data-filter="champions"><i data-lucide="crown"></i>Champions</button>
+            </div>
+        </div>
+        <div class="globe-stage" id="globeStage">
+            <div class="globe-aura" aria-hidden="true"></div>
+            <div class="globe-core" aria-hidden="true">
+                <svg viewBox="0 0 200 200" class="globe-core-art">
+                    <ellipse cx="100" cy="100" rx="96" ry="30" />
+                    <ellipse cx="100" cy="100" rx="96" ry="62" />
+                    <ellipse cx="100" cy="100" rx="30" ry="96" />
+                    <ellipse cx="100" cy="100" rx="62" ry="96" />
+                    <circle cx="100" cy="100" r="96" />
+                    <g class="globe-core-emblem">
+                        <circle cx="100" cy="100" r="46" />
+                        <rect x="80" y="54" width="12" height="92" />
+                        <rect x="54" y="112" width="92" height="10" />
+                    </g>
+                </svg>
+            </div>
+            <div class="globe" id="globe">
+                {% for fighter in fighters %}
+                <a href="/fighter/{{ fighter.name }}"
+                   class="globe-tile{% if fighter.brand %} brand-{{ fighter.brand | lower }}{% endif %}{% if fighter.titles %} is-champion{% endif %}"
+                   data-name="{{ fighter.name }}"
+                   data-brand="{{ fighter.brand }}"
+                   data-titles="{{ fighter.titles | join('|') }}"
+                   data-ps="{{ fighter.power_score if fighter.power_score is not none else '' }}"
+                   data-rank="{{ fighter.power_rank or '' }}"
+                   data-img="{{ asset_variant('fighters', fighter.filename, 'md') }}"
+                   aria-label="{{ fighter.name }}">
+                    <span class="globe-tile-hex">
+                        <span class="globe-tile-face">
+                            <img data-src="{{ asset_variant('fighters', fighter.filename, 'md') }}" alt="" draggable="false">
+                        </span>
+                    </span>
+                    {% if fighter.titles %}<span class="globe-tile-crown"><i data-lucide="crown"></i></span>{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            <p class="globe-hint" id="globeHint">Drag to spin &middot; click a fighter to select &middot; click again to open</p>
+        </div>
 
-    <div class="roster-search-wrapper">
-        <input type="text" id="rosterSearch" class="search-input" placeholder="Search fighters...">
+        <aside class="globe-card" id="globeCard" aria-live="polite">
+            <div class="globe-card-empty">
+                <i data-lucide="globe"></i>
+                <p class="globe-card-empty-title">Pick a fighter</p>
+                <p>Spin the globe, search, or hit <strong>Random</strong>.</p>
+                <p class="globe-card-count">{{ fighters | length }} fighters &middot; {{ fighters | selectattr('titles') | list | length }} current champions</p>
+            </div>
+            <div class="globe-card-body" hidden>
+                <div class="globe-card-portrait"><img alt="" id="globeCardImg"></div>
+                <span class="fighter-brand-chip" id="globeCardBrand"></span>
+                <h3 class="globe-card-name" id="globeCardName"></h3>
+                <div class="globe-card-stats">
+                    <div><span class="globe-card-stat" id="globeCardPs"></span><span class="globe-card-label">Power Score</span></div>
+                    <div><span class="globe-card-stat" id="globeCardRank"></span><span class="globe-card-label">All-time rank</span></div>
+                </div>
+                <div class="globe-card-titles" id="globeCardTitles"></div>
+                <a class="btn btn-primary globe-card-btn" id="globeCardLink" href="#">View profile <i data-lucide="arrow-right"></i></a>
+            </div>
+        </aside>
     </div>
 
     <div class="roster-grid" id="rosterGrid">
         {% for fighter in fighters %}
-        <a href="/fighter/{{ fighter.name }}" class="fighter-card{% if fighter.titles %} is-champion{% endif %}" data-name="{{ fighter.name|lower }}">
+        <a href="/fighter/{{ fighter.name }}" class="fighter-card{% if fighter.titles %} is-champion{% endif %}" data-name="{{ fighter.name|lower }}" data-brand="{{ fighter.brand }}">
             {% if fighter.titles %}
             <div class="card-champ-crown">👑</div>
             {% endif %}
             <div class="fighter-card-image">
                 <img src="{{ asset_variant('fighters', fighter.filename, 'md') }}"
                      alt="{{ fighter.name }}"
-                     loading="eager"
+                     loading="lazy"
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22><rect fill=%22%2312122a%22 width=%22200%22 height=%22200%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>?</text></svg>'">
             </div>
             <div class="fighter-card-name">{{ fighter.name }}</div>
@@ -47,6 +121,73 @@
         {% endfor %}
     </div>
 </section>
+
+<section class="home-pulse" aria-label="League pulse">
+    <div class="home-panels">
+        <div class="home-panel home-panel-champs">
+            <div class="home-panel-head">
+                <h2 class="home-panel-title"><i data-lucide="crown"></i>Current Champions</h2>
+                <a href="/championships" class="home-panel-link">All titles <i data-lucide="arrow-right"></i></a>
+            </div>
+            <div class="home-champs">
+                {% for champ in champions %}
+                <button type="button" class="home-champ{% if champ.brand %} brand-{{ champ.brand | lower }}{% endif %}" data-fighter="{{ champ.name }}" data-title="{{ champ.title }}" title="Show {{ champ.name }} on the globe">
+                    <img class="home-champ-belt" alt="" data-belt="{{ champ.title }}">
+                    <img class="home-champ-portrait" src="{{ asset_variant('fighters', champ.filename) }}" alt="">
+                    <span class="home-champ-text">
+                        <span class="home-champ-name">{{ champ.name }}</span>
+                        <span class="home-champ-title">{{ champ.title }}</span>
+                    </span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="home-col">
+            <div class="home-panel home-panel-top">
+                <div class="home-panel-head">
+                    <h2 class="home-panel-title"><i data-lucide="trophy"></i>Power Rankings</h2>
+                    <a href="/leaderboard" class="home-panel-link">Full rankings <i data-lucide="arrow-right"></i></a>
+                </div>
+                <ol class="home-top">
+                    {% for f in top_fighters %}
+                    <li>
+                        <a href="/fighter/{{ f.name }}" class="home-top-row">
+                            <span class="home-top-rank">{{ f.power_rank }}</span>
+                            <img src="{{ asset_variant('fighters', f.filename) }}" alt="">
+                            <span class="home-top-name">{{ f.name }}</span>
+                            <span class="home-top-score" data-ps="{{ f.power_score }}">{{ "%.1f" | format(f.power_score) }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </div>
+            <div class="home-stats">
+                <div class="home-stat"><span class="home-stat-value">{{ fighters | length }}</span><span class="home-stat-label">Fighters</span></div>
+                <div class="home-stat"><span class="home-stat-value">{{ "{:,}".format(summary.fights) if summary.fights else "--" }}</span><span class="home-stat-label">Fights</span></div>
+                <div class="home-stat"><span class="home-stat-value">{{ summary.seasons or "--" }}</span><span class="home-stat-label">Seasons</span></div>
+                <div class="home-stat"><span class="home-stat-value">{{ summary.title_reigns or "--" }}</span><span class="home-stat-label">Title reigns</span></div>
+                <div class="home-stat"><span class="home-stat-value">{{ summary.ppvs or "--" }}</span><span class="home-stat-label">Pay-per-views</span></div>
+            </div>
+        </div>
+
+        <div class="home-panel home-panel-latest">
+            <div class="home-panel-head">
+                <h2 class="home-panel-title"><i data-lucide="swords"></i>Latest Results</h2>
+                <a href="/fights" class="home-panel-link">Fight log <i data-lucide="arrow-right"></i></a>
+            </div>
+            <div class="fight-list home-latest" id="homeLatest"><div class="fight-empty">Loading…</div></div>
+        </div>
+    </div>
+</section>
+
+<section class="home-about">
+    <h2 class="home-about-title">What is SSB Stats?</h2>
+    <p>A long-running Super Smash Bros league run like a wrestling promotion: three brands, championships, pay-per-views, Money in the Bank and a yearly draft. Every match is recorded, and this site turns that history into profiles, rivalries, rankings and title lineages.</p>
+    <a href="/about" class="home-about-link">The story behind the league <i data-lucide="arrow-right"></i></a>
+    <p class="home-disclaimer">Unofficial, non-commercial fan project. Not affiliated with or endorsed by Nintendo.</p>
+</section>
+</div>
 
 {% endblock %}
 
