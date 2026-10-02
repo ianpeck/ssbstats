@@ -459,6 +459,7 @@ function renderMomentum(d, isSeason) {
 
     if (charts.momentum) charts.momentum.destroy();
     charts.momentum = new Chart(canvas.getContext('2d'), {
+        plugins: [stickyYAxisPlugin],
         type: 'line',
         data: { datasets: [
             { label: d.fighter1.name, data: f1pts, borderColor: F1_COLOR, backgroundColor: F1_BG, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.3, fill: true },
@@ -523,6 +524,7 @@ function renderEloComparison(d, f1Season, f2Season) {
 
     if (charts.elo) charts.elo.destroy();
     charts.elo = new Chart(canvas.getContext('2d'), {
+        plugins: [stickyYAxisPlugin],
         type: 'line',
         data: { datasets: [
             {

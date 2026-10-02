@@ -2,12 +2,10 @@
     <div class="stats-table-wrapper glass-card fight-history-card">
         <div class="fight-history-header">
             <div class="fighter-stats-intro fighter-analytics-intro">
-                <span class="fighter-stats-kicker">Advanced Breakdown</span>
                 <div class="fighter-analytics-title-row">
                     <span class="fight-history-icon fighter-analytics-icon"><i data-lucide="chart-line"></i></span>
-                    <h2 class="fighter-stats-heading">Advanced Analytics</h2>
+                    <h2 class="fighter-stats-heading">Analytics</h2>
                 </div>
-                <p class="fighter-stats-copy">Deeper trend views for rating, momentum, streaks, rivals, and season shape so the story behind the raw stats is easier to read.</p>
             </div>
         </div>
         <div class="loading-overlay" id="advancedAnalyticsLoading"
@@ -16,8 +14,8 @@
         </div>
         <div class="advanced-analytics-content" id="advancedAnalyticsContent">
             <div class="analytics-chart-wrapper">
-                <h3 class="analytics-chart-title">Career Win Rate Momentum</h3>
-                <p class="analytics-chart-subtitle">Win rate after each fight &mdash; dots are green (W) or red (L). Dashed yellow = season rate. Dashed gray = 50%.</p>
+                <h3 class="analytics-chart-title">Momentum</h3>
+                <p class="analytics-chart-subtitle">Career win rate after every fight. Dashed: season pace and 50%.</p>
                 <div class="analytics-chart-scroll">
                     <div class="analytics-chart-container" id="runningWinRateContainer">
                         <canvas id="runningWinRateChart"></canvas>
@@ -28,8 +26,8 @@
             <div class="analytics-divider"></div>
 
             <div class="analytics-chart-wrapper">
-                <h3 class="analytics-chart-title">ELO Rating History</h3>
-                <p class="analytics-chart-subtitle">Rating after each fight &mdash; accounts for opponent strength, not just win/loss. Dots are green (W) or red (L). Dashed gray = 1500 baseline.</p>
+                <h3 class="analytics-chart-title">Elo Rating</h3>
+                <p class="analytics-chart-subtitle">Adjusts for opponent strength. 1500 is league average.</p>
                 <div class="analytics-chart-scroll">
                     <div class="analytics-chart-container" id="eloChartContainer">
                         <canvas id="eloChart"></canvas>
@@ -40,16 +38,15 @@
             <div class="analytics-divider"></div>
 
             <div class="analytics-chart-wrapper">
-                <h3 class="analytics-chart-title">Rivals &mdash; Victims &amp; Nemeses</h3>
-                <p class="analytics-chart-subtitle">Top 5 each side sorted by total wins or losses &mdash; volume counts more than rate.</p>
+                <h3 class="analytics-chart-title">Victims &amp; Nemeses</h3>
                 <div class="rivals-section" id="rivalsSection"></div>
             </div>
 
             <div class="analytics-divider"></div>
 
             <div class="analytics-chart-wrapper">
-                <h3 class="analytics-chart-title">Streak History</h3>
-                <p class="analytics-chart-subtitle">Win streaks above zero (green), losing streaks below (red). Brighter bar = currently active streak.</p>
+                <h3 class="analytics-chart-title">Streaks</h3>
+                <p class="analytics-chart-subtitle">Wins up, losses down. Brightest bar is the current run.</p>
                 <div class="analytics-chart-container" style="height: 260px;">
                     <canvas id="streakChart"></canvas>
                 </div>
@@ -58,8 +55,8 @@
             <div class="analytics-divider"></div>
 
             <div class="analytics-chart-wrapper">
-                <h3 class="analytics-chart-title">Season Profile Radar</h3>
-                <p class="analytics-chart-subtitle">Multi-dimensional season grades normalized to 100. Each colored shape = one season.</p>
+                <h3 class="analytics-chart-title">Season by Season</h3>
+                <p class="analytics-chart-subtitle">Each season graded 0&ndash;100.</p>
                 <div class="analytics-chart-container" style="height: 420px;">
                     <canvas id="radarChart"></canvas>
                 </div>

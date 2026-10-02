@@ -103,13 +103,13 @@ function renderLeaderboard(data) {
 
     data.forEach((fighter, i) => {
         const pct = parseFloat(String(fighter.win_pct).replace("%", "")) || 0;
-        const pctClass = pct >= 60 ? "pct-high" : pct < 40 ? "pct-low" : "pct-mid";
+        const pctClass = getBandClass(pct, WIN_PCT_BANDS);
         const rankClass = i < 3 ? `rank-${i + 1}` : "";
         const filename = fighterToFilename(fighter.name);
         const titleBadges = (fighter.titles || []).map(t => `<span class="lb-champ-tag">👑 ${t}</span>`).join("");
         const awardBadges = isSeason ? (fighter.season_awards || []).map(a => `<span class="lb-award-tag">🏅 ${a}</span>`).join("") : "";
         const fmtElo = v => (v != null ? v.toFixed(1) : "--");
-        const eloClass = v => (v == null ? "" : v >= 1600 ? "pct-high" : v < 1400 ? "pct-low" : "");
+        const eloClass = v => getBandClass(v, ELO_BANDS);
         const ps = fighter.power_score;
         const psClass = getPowerScoreClass(ps);
         const extraCells = `

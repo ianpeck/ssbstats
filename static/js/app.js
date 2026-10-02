@@ -79,14 +79,21 @@ function debounce(fn, delay) {
     };
 }
 
+// Shared 7-color scale (ps-tier-7 blue ... ps-tier-1 dark red). Each stat lists the
+// lower bound of the top six bands; anything below the last is dark red.
+const POWER_SCORE_BANDS = [90, 80, 70, 60, 50, 35];
+const WIN_PCT_BANDS = [80, 65, 55, 50, 40, 30];      // blue is rare (80%+); green starts at 55%
+const ELO_BANDS = [1700, 1600, 1500, 1450, 1400, 1350]; // green starts at the 1500 average
+
+function getBandClass(value, bands, prefix = "ps-tier") {
+    if (value == null || value === "" || Number.isNaN(Number(value))) return "";
+    const v = Number(value);
+    const index = bands.findIndex(lower => v >= lower);
+    return `${prefix}-${index === -1 ? 1 : 7 - index}`;
+}
+
 function getPowerScoreClass(score, prefix = "ps-tier") {
-    if (score == null || Number.isNaN(Number(score))) return "";
-    const value = Number(score);
-    if (value >= 90) return `${prefix}-5`;
-    if (value >= 75) return `${prefix}-4`;
-    if (value >= 50) return `${prefix}-3`;
-    if (value >= 25) return `${prefix}-2`;
-    return `${prefix}-1`;
+    return getBandClass(score, POWER_SCORE_BANDS, prefix);
 }
 
 // ---------- Animated Counter ----------
@@ -113,9 +120,22 @@ function animateCounter(elementId, start, end, duration) {
 
 // ---------- Autocomplete ----------
 
+function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Wrap the first case-insensitive occurrence of `query` in <mark>.
+function highlightMatch(text, query) {
+    const i = query ? text.toLowerCase().indexOf(query) : -1;
+    if (i < 0) return escapeHTML(text);
+    return escapeHTML(text.slice(0, i)) + '<mark>' + escapeHTML(text.slice(i, i + query.length)) + '</mark>' + escapeHTML(text.slice(i + query.length));
+}
+
 function setupAutocomplete(input, category) {
     const wrapper = input.closest('.autocomplete-wrapper');
     if (!wrapper) return;
+    // Fighter pickers show portraits and let you browse the roster before typing.
+    const isFighters = category === 'fighters';
 
     let dropdown = wrapper.querySelector('.autocomplete-dropdown');
     if (!dropdown) {
@@ -135,14 +155,13 @@ function setupAutocomplete(input, category) {
 
     const showDropdown = debounce(function() {
         const val = input.value.toLowerCase().trim();
-        if (!val) {
+        if (!val && !isFighters) {
             dropdown.classList.remove('show');
             return;
         }
 
-        const matches = allItems.filter(item =>
-            item.toLowerCase().includes(val)
-        ).slice(0, 15);
+        const matches = (val ? allItems.filter(item => item.toLowerCase().includes(val)) : allItems)
+            .slice(0, val ? 15 : 80);
 
         if (matches.length === 0) {
             dropdown.classList.remove('show');
@@ -154,8 +173,11 @@ function setupAutocomplete(input, category) {
 
         matches.forEach((item, i) => {
             const div = document.createElement('div');
-            div.className = 'autocomplete-item';
-            div.textContent = item;
+            div.className = 'autocomplete-item' + (isFighters ? ' autocomplete-item-fighter' : '');
+            div.dataset.value = item;
+            div.innerHTML = (isFighters
+                ? `<img src="/static/assets/fighters/${fighterToFilename(item)}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
+                : '') + `<span>${highlightMatch(item, val)}</span>`;
             div.addEventListener('mousedown', function(e) {
                 e.preventDefault();
                 input.value = item;
@@ -191,7 +213,7 @@ function setupAutocomplete(input, category) {
         } else if (e.key === 'Enter') {
             e.preventDefault();
             if (highlightedIndex >= 0 && highlightedIndex < items.length) {
-                input.value = items[highlightedIndex].textContent;
+                input.value = items[highlightedIndex].dataset.value;
                 dropdown.classList.remove('show');
                 input.dispatchEvent(new Event('change'));
             }
@@ -333,6 +355,54 @@ function appendFight(list, fight, opts = {}) {
     list.appendChild(row);
     return row;
 }
+
+// Chart.js plugin for wide charts inside .analytics-chart-scroll: keeps a copy of the
+// y-axis pinned to the left edge so values stay readable wherever you've scrolled.
+const stickyYAxisPlugin = {
+    id: 'stickyYAxis',
+    afterRender(chart) {
+        const canvas = chart.canvas;
+        const scroller = canvas.closest('.analytics-chart-scroll');
+        if (!scroller || !chart.chartArea) return;
+        const host = scroller.parentElement;
+        if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+
+        let overlay = chart.$stickyAxis;
+        if (!overlay || !overlay.isConnected) {
+            host.querySelectorAll(`:scope > .chart-sticky-axis[data-chart="${canvas.id}"]`).forEach(el => el.remove());
+            overlay = document.createElement('div');
+            overlay.className = 'chart-sticky-axis';
+            overlay.dataset.chart = canvas.id;
+            overlay.appendChild(document.createElement('canvas'));
+            host.appendChild(overlay);
+            chart.$stickyAxis = overlay;
+        }
+
+        const ratio = chart.currentDevicePixelRatio || window.devicePixelRatio || 1;
+        // Stop just short of the plot so the first data points aren't copied into the strip.
+        const axisWidth = Math.max(0, Math.floor(chart.chartArea.left) - 3);
+        // Stop at the bottom of the plot so x-axis labels scrolling underneath stay visible.
+        const height = Math.min(canvas.clientHeight || chart.height, Math.ceil(chart.chartArea.bottom) + 6);
+        const hostBox = host.getBoundingClientRect();
+        const canvasBox = canvas.getBoundingClientRect();
+        const scrollerBox = scroller.getBoundingClientRect();
+        overlay.style.top = `${canvasBox.top - hostBox.top - host.clientTop}px`;
+        overlay.style.left = `${scrollerBox.left - hostBox.left - host.clientLeft}px`;
+        overlay.style.width = `${axisWidth + 14}px`;
+        overlay.style.height = `${height}px`;
+
+        const copy = overlay.firstChild;
+        if (copy.width !== Math.round(axisWidth * ratio) || copy.height !== Math.round(height * ratio)) {
+            copy.width = Math.round(axisWidth * ratio);
+            copy.height = Math.round(height * ratio);
+            copy.style.width = `${axisWidth}px`;
+            copy.style.height = `${height}px`;
+        }
+        const ctx = copy.getContext('2d');
+        ctx.clearRect(0, 0, copy.width, copy.height);
+        ctx.drawImage(canvas, 0, 0, copy.width, copy.height, 0, 0, copy.width, copy.height);
+    },
+};
 
 // ---------- Mobile Nav Toggle ----------
 

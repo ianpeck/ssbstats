@@ -853,6 +853,7 @@ def keep_fighter_caches_warm():
             try:
                 power.get_all_season_power_scores.refresh()
                 power.get_career_power_scores.refresh()
+                lookups.get_fighter_brands.refresh()
                 names = lookups.get_all_fighters()
                 for name in names:
                     get_fighter_profile_payload.refresh(name)

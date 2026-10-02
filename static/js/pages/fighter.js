@@ -1,29 +1,53 @@
 const FIGHTER_PAGE = window.SSBStats?.fighterPage || {};
 const FIGHTER_NAME = FIGHTER_PAGE.name || '';
 
+// Chart colors follow the page theme: the fighter's brand color for their own lines,
+// gold for highlights, and quiet neutral grids.
+const FIGHTER_THEME = (() => {
+    const root = document.querySelector('.fighter-page');
+    const css = name => (root ? getComputedStyle(root).getPropertyValue(name).trim() : '');
+    const brand = css('--brand') || '#f5b83d';
+    const toRgba = (hex, a) => {
+        const h = hex.replace('#', '');
+        const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+        return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+    };
+    return {
+        brand,
+        brandFill: toRgba(brand, 0.1),
+        brandSoft: toRgba(brand, 0.75),
+        grid: 'rgba(255,255,255,0.06)',
+        gridFaint: 'rgba(255,255,255,0.035)',
+        gridStrong: 'rgba(255,255,255,0.1)',
+        axis: 'rgba(255,255,255,0.55)',
+    };
+})();
+
 // ── Compare Against ────────────────────────────────────────────
 (function() {
     const currentFighter = FIGHTER_NAME;
-    const PLACEHOLDER_SRC = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Crect fill='%2312122a' width='60' height='60'/%3E%3Ctext fill='%23607cff' x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-size='28'%3E%3F%3C/text%3E%3C/svg%3E";
     const caInput    = document.getElementById('caInput');
+    const caAvatar   = document.getElementById('caOpponentAvatar');
     const caPortrait = document.getElementById('caOpponentPortrait');
     const caNameEl   = document.getElementById('caOpponentName');
     const caBtn      = document.getElementById('caBtn');
 
-    caPortrait.src = PLACEHOLDER_SRC;
+    function showEmpty() {
+        caAvatar.classList.add('is-empty');
+        caPortrait.removeAttribute('src');
+        caNameEl.textContent = 'Opponent';
+    }
 
     function updateOpponent() {
         const val = caInput.value.trim();
-        if (!val) {
-            caPortrait.src = PLACEHOLDER_SRC;
-            caPortrait.style.opacity = '0.15';
-            caNameEl.textContent = '?';
-            return;
-        }
-        caPortrait.onerror = () => { caPortrait.onerror = null; caPortrait.src = PLACEHOLDER_SRC; caPortrait.style.opacity = '0.15'; };
+        if (!val) { showEmpty(); return; }
+        // Only fill the slot once the text names a real fighter (their portrait loads).
+        caPortrait.onerror = () => { caPortrait.onerror = null; showEmpty(); };
+        caPortrait.onload = () => {
+            caAvatar.classList.remove('is-empty');
+            caNameEl.textContent = val;
+        };
         caPortrait.src = `/static/assets/fighters/${fighterToFilename(val)}.png`;
-        caPortrait.style.opacity = '1';
-        caNameEl.textContent = val;
     }
 
     function goCompare() {
@@ -117,6 +141,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if ((acc.champ_reigns || []).length > 0 || (acc.awards || []).length > 0 || (acc.holistic || []).length > 0 || data.triple_crown || data.major_winner) {
                 document.getElementById('accoladesSection').style.display = 'block';
             }
+            if (window.lucide) lucide.createIcons();
 
             // --- Championship Stats by Title ---
             renderChampionshipChart(acc.champ_by_champ || []);
@@ -153,7 +178,7 @@ function renderCurrentTitleShowcase(titles) {
 
         const beltMarkup = asset
             ? `<img src="${asset}" alt="${title} belt" class="fighter-title-belt" loading="lazy">`
-            : `<div class="fighter-title-fallback" aria-hidden="true">🏆</div>`;
+            : `<div class="fighter-title-fallback" aria-hidden="true"><i data-lucide="trophy"></i></div>`;
 
         card.innerHTML = `
             <div class="fighter-title-kicker">Current Champion</div>
@@ -175,7 +200,7 @@ function buildChampBadges(rows, hasTripleCrown, majorWinner) {
         mw.className = majorWinner === 'super'
             ? 'accolade-badge super-major-winner-badge'
             : 'accolade-badge major-winner-badge';
-        const icon = majorWinner === 'super' ? '🌟' : '⭐';
+        const icon = majorWinner === 'super' ? '<i data-lucide="sparkles"></i>' : '<i data-lucide="star"></i>';
         const label = majorWinner === 'super' ? 'Super Major Winner' : 'Major Winner';
         mw.innerHTML = `<span class="badge-icon">${icon}</span><span class="badge-text">${label}</span>`;
         container.appendChild(mw);
@@ -183,7 +208,7 @@ function buildChampBadges(rows, hasTripleCrown, majorWinner) {
     if (hasTripleCrown) {
         const tc = document.createElement('div');
         tc.className = 'accolade-badge triple-crown-badge';
-        tc.innerHTML = '<span class="badge-icon">👑</span><span class="badge-text">Triple Crown</span>';
+        tc.innerHTML = '<span class="badge-icon"><i data-lucide="crown"></i></span><span class="badge-text">Triple Crown</span>';
         container.appendChild(tc);
     }
     rows.forEach(row => {
@@ -194,7 +219,11 @@ function buildChampBadges(rows, hasTripleCrown, majorWinner) {
         badge.className = 'accolade-badge champ-badge';
         const reignStr = reigns >= 1 ? `${reigns}x ` : '';
         const monthStr = months > 0 ? ` &mdash; ${months} mo.` : '';
-        badge.innerHTML = `<span class="badge-icon">🏆</span><span class="badge-text">${reignStr}${champ} Champion${monthStr}</span>`;
+        const belt = championshipToBeltAsset(champ);
+        const icon = belt
+            ? `<img src="${belt}" alt="" class="badge-belt" loading="lazy">`
+            : '<i data-lucide="trophy"></i>';
+        badge.innerHTML = `<span class="badge-icon">${icon}</span><span class="badge-text">${reignStr}${champ} Champion${monthStr}</span>`;
         container.appendChild(badge);
     });
 }
@@ -205,14 +234,14 @@ function buildEventBadges(rows) {
     const container = document.getElementById('eventBadges');
 
     const accoladeMap = [
-        { col: 'Won_Tournament',        label: 'Tournament Winner',   icon: '🎯' },
-        { col: 'Won_Royal_Rumble',      label: 'Royal Rumble Winner', icon: '💥' },
-        { col: 'Won_Scramble',          label: 'Scramble Winner',     icon: '🎲' },
-        { col: 'Won_Smash_Series',      label: 'Smash Series Winner', icon: '⚡' },
-        { col: 'Won_Money_In_The_Bank', label: 'Money in the Bank',   icon: '💰' },
-        { col: 'Won_Smash_Bros',        label: 'Smash Bros Winner',   icon: '🎮' },
-        { col: 'Successful_Cash_In',    label: 'Successful Cash-In',  icon: '💸' },
-        { col: 'Defended_Cash_In',      label: 'Defended Cash-In',    icon: '🛡️' },
+        { col: 'Won_Tournament',        label: 'Tournament Winner',   icon: '<i data-lucide="target"></i>' },
+        { col: 'Won_Royal_Rumble',      label: 'Royal Rumble Winner', icon: '<i data-lucide="users"></i>' },
+        { col: 'Won_Scramble',          label: 'Scramble Winner',     icon: '<i data-lucide="shuffle"></i>' },
+        { col: 'Won_Smash_Series',      label: 'Smash Series Winner', icon: '<i data-lucide="zap"></i>' },
+        { col: 'Won_Money_In_The_Bank', label: 'Money in the Bank',   icon: '<i data-lucide="briefcase"></i>' },
+        { col: 'Won_Smash_Bros',        label: 'Smash Bros Winner',   icon: '<i data-lucide="gamepad-2"></i>' },
+        { col: 'Successful_Cash_In',    label: 'Successful Cash-In',  icon: '<i data-lucide="banknote"></i>' },
+        { col: 'Defended_Cash_In',      label: 'Defended Cash-In',    icon: '<i data-lucide="shield"></i>' },
     ];
 
     // Group by col+value, collect seasons in order
@@ -264,7 +293,7 @@ function buildAwardBadges(rows) {
         const badge = document.createElement('div');
         badge.className = 'accolade-badge award-badge';
         const countStr = count > 1 ? `${count}x ` : '';
-        badge.innerHTML = `<span class="badge-icon">🏅</span><span class="badge-text">${countStr}${award} <span class="badge-season">${seasonStr}</span></span>`;
+        badge.innerHTML = `<span class="badge-icon"><i data-lucide="medal"></i></span><span class="badge-text">${countStr}${award} <span class="badge-season">${seasonStr}</span></span>`;
         container.appendChild(badge);
     });
 }
@@ -368,9 +397,10 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
         if (charts.momentum) charts.momentum.destroy();
         showLatestSeasons(container);
         charts.momentum = new Chart(canvas.getContext('2d'), {
+            plugins: [stickyYAxisPlugin],
             type: 'line',
             data: { labels: xLabels, datasets: [
-                { label: 'Career Win Rate %', data: careerPcts, borderColor: '#607cff', backgroundColor: 'rgba(96,124,255,0.08)', borderWidth: 2, pointRadius: 4, pointHoverRadius: 7, pointBackgroundColor: ptColors, pointBorderColor: ptBorders, pointBorderWidth: 1.5, tension: 0.25, fill: true },
+                { label: 'Career Win Rate %', data: careerPcts, borderColor: FIGHTER_THEME.brand, backgroundColor: FIGHTER_THEME.brandFill, borderWidth: 2, pointRadius: 4, pointHoverRadius: 7, pointBackgroundColor: ptColors, pointBorderColor: ptBorders, pointBorderWidth: 1.5, tension: 0.25, fill: true },
                 { label: 'Season Win Rate %', data: seasonPcts, borderColor: 'rgba(251,191,36,0.65)', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, pointHoverRadius: 5, tension: 0.25, fill: false },
                 { label: '50% Baseline', data: new Array(data.length).fill(50), borderColor: 'rgba(176,184,209,0.22)', borderWidth: 1, borderDash: [6,4], pointRadius: 0, fill: false },
             ]},
@@ -379,7 +409,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { position: 'bottom', labels: { padding: 16, font: { size: 12, family: 'Inter' }, filter: i => i.text !== '50% Baseline' } },
-                    tooltip: { backgroundColor: 'rgba(18,18,42,0.95)', titleFont: { family: 'Inter' }, bodyFont: { family: 'Inter' }, borderColor: '#607cff', borderWidth: 1,
+                    tooltip: { backgroundColor: 'rgba(18,18,42,0.95)', titleFont: { family: 'Inter' }, bodyFont: { family: 'Inter' }, borderColor: FIGHTER_THEME.brand, borderWidth: 1,
                         callbacks: {
                             title:      (its) => { const d = data[its[0].dataIndex]; return `Fight #${its[0].dataIndex+1}  —  ${d.decision==='w' ? 'Win ✓' : d.decision==='nc' ? 'No contest' : 'Loss ✗'}`; },
                             beforeBody: (its) => { const d = data[its[0].dataIndex]; return `Season ${d.season}, Month ${d.month}, Week ${d.week}`; },
@@ -389,8 +419,8 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
                     }
                 },
                 scales: {
-                    y: { min: 0, max: 100, grid: { color: 'rgba(96,124,255,0.08)' }, ticks: { callback: v => v+'%', color: '#b0b8d1' }, title: { display: true, text: 'Win Rate', color: '#a8aab8', font: { size: 11 } } },
-                    x: { grid: { color: 'rgba(96,124,255,0.05)' }, ticks: { color: 'rgba(251,191,36,0.85)', font: { size: 11, weight: 'bold' }, maxRotation: 0, autoSkip: false }, title: { display: true, text: 'Fight #', color: '#a8aab8', font: { size: 11 } } },
+                    y: { min: 0, max: 100, grid: { color: FIGHTER_THEME.grid }, ticks: { callback: v => v+'%', color: '#b0b8d1' }, title: { display: true, text: 'Win Rate', color: '#a8aab8', font: { size: 11 } } },
+                    x: { grid: { color: FIGHTER_THEME.gridFaint }, ticks: { color: 'rgba(251,191,36,0.85)', font: { size: 11, weight: 'bold' }, maxRotation: 0, autoSkip: false }, title: { display: true, text: 'Fight #', color: '#a8aab8', font: { size: 11 } } },
                 },
                 animation: { duration: 800 }
             }
@@ -438,6 +468,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
         if (charts.elo) charts.elo.destroy();
         showLatestSeasons(container);
         charts.elo = new Chart(canvas.getContext('2d'), {
+            plugins: [stickyYAxisPlugin],
             type: 'line',
             data: { labels: xLabels, datasets: [
                 { label: 'ELO Rating', data: eloValues, borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.07)', borderWidth: 2, pointRadius: 4, pointHoverRadius: 7, pointBackgroundColor: ptColors, pointBorderColor: ptBorders, pointBorderWidth: 1.5, tension: 0.25, fill: true },
@@ -458,8 +489,8 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
                     }
                 },
                 scales: {
-                    y: { grid: { color: 'rgba(96,124,255,0.08)' }, ticks: { color: '#b0b8d1' }, title: { display: true, text: 'ELO Rating', color: '#a8aab8', font: { size: 11 } } },
-                    x: { grid: { color: 'rgba(96,124,255,0.05)' }, ticks: { color: 'rgba(251,191,36,0.85)', font: { size: 11, weight: 'bold' }, maxRotation: 0, autoSkip: false }, title: { display: true, text: 'Fight #', color: '#a8aab8', font: { size: 11 } } },
+                    y: { grid: { color: FIGHTER_THEME.grid }, ticks: { color: '#b0b8d1' }, title: { display: true, text: 'ELO Rating', color: '#a8aab8', font: { size: 11 } } },
+                    x: { grid: { color: FIGHTER_THEME.gridFaint }, ticks: { color: 'rgba(251,191,36,0.85)', font: { size: 11, weight: 'bold' }, maxRotation: 0, autoSkip: false }, title: { display: true, text: 'Fight #', color: '#a8aab8', font: { size: 11 } } },
                 },
                 animation: { duration: 800 }
             }
@@ -546,7 +577,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
                 responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: { backgroundColor: 'rgba(18,18,42,0.95)', titleFont: { family:'Inter' }, bodyFont: { family:'Inter' }, borderColor:'#607cff', borderWidth:1,
+                    tooltip: { backgroundColor: 'rgba(18,18,42,0.95)', titleFont: { family:'Inter' }, bodyFont: { family:'Inter' }, borderColor:FIGHTER_THEME.brand, borderWidth:1,
                         callbacks: {
                             title: (its) => { const s=all[its[0].dataIndex]; return `${s.type==='win'?'✓ Win':'✗ Losing'} Streak${s.active?' (Active)':''}: ${Math.abs(s.v)}`; },
                             label: (it)  => { const s=all[it.dataIndex]; return `  S${s.season} M${s.month} W${s.week}`; },
@@ -554,8 +585,8 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
                     }
                 },
                 scales: {
-                    y: { grid: { color: 'rgba(96,124,255,0.08)' }, ticks: { callback: v => Math.abs(v), color: '#b0b8d1' }, title: { display:true, text:'Streak Length', color:'#a8aab8', font:{size:11} } },
-                    x: { grid: { color: 'rgba(96,124,255,0.04)' }, ticks: { color:'#607cff', font:{size:11,weight:'bold'}, maxRotation:0, autoSkip:false } },
+                    y: { grid: { color: FIGHTER_THEME.grid }, ticks: { callback: v => Math.abs(v), color: '#b0b8d1' }, title: { display:true, text:'Streak Length', color:'#a8aab8', font:{size:11} } },
+                    x: { grid: { color: FIGHTER_THEME.gridFaint }, ticks: { color:'rgba(251,191,36,0.85)', font:{size:11,weight:'bold'}, maxRotation:0, autoSkip:false } },
                 },
                 animation: { duration: 600 }
             }
@@ -597,10 +628,10 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
             data: { labels: ['Win Rate', 'Title Reign', 'Major Title Reign', 'Event Wins', 'Unique Titles Held'], datasets },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                scales: { r: { min:0, max:100, grid:{color:'rgba(96,124,255,0.15)'}, angleLines:{color:'rgba(96,124,255,0.15)'}, ticks:{display:false}, pointLabels:{color:'#b0b8d1', font:{size:12,family:'Inter'}} } },
+                scales: { r: { min:0, max:100, grid:{color:FIGHTER_THEME.gridStrong}, angleLines:{color:FIGHTER_THEME.gridStrong}, ticks:{display:false}, pointLabels:{color:'#b0b8d1', font:{size:12,family:'Inter'}} } },
                 plugins: {
                     legend: { position:'bottom', labels:{padding:16, font:{size:12,family:'Inter'}} },
-                    tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:'#607cff', borderWidth:1,
+                    tooltip: { backgroundColor:'rgba(18,18,42,0.95)', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'}, borderColor:FIGHTER_THEME.brand, borderWidth:1,
                         callbacks: { label: (it) => {
                             const row = it.dataset._row;
                             const axis = it.chart.data.labels[it.dataIndex];
@@ -805,9 +836,9 @@ function renderSeasonChart(data) {
                     data: pcts,
                     type: 'line',
                     yAxisID: 'yPct',
-                    borderColor: 'rgba(96,124,255,1)',
-                    backgroundColor: 'rgba(96,124,255,0.15)',
-                    pointBackgroundColor: 'rgba(96,124,255,1)',
+                    borderColor: FIGHTER_THEME.brand,
+                    backgroundColor: FIGHTER_THEME.brandFill,
+                    pointBackgroundColor: FIGHTER_THEME.brand,
                     pointRadius: 5,
                     pointHoverRadius: 7,
                     borderWidth: 2.5,
@@ -856,8 +887,8 @@ function renderSeasonChart(data) {
                 },
                 yPct: {
                     position: 'right',
-                    title: { display: true, text: 'Win %', color: 'rgba(96,124,255,0.7)', font: { size: 11 } },
-                    ticks: { color: 'rgba(96,124,255,0.7)', font: { size: 10 }, callback: v => v + '%' },
+                    title: { display: true, text: 'Win %', color: FIGHTER_THEME.axis, font: { size: 11 } },
+                    ticks: { color: FIGHTER_THEME.axis, font: { size: 10 }, callback: v => v + '%' },
                     grid: { drawOnChartArea: false },
                     min: 0,
                     max: 100,
@@ -1077,7 +1108,7 @@ function renderChampionshipBeltGrid(data) {
 
     wrap.innerHTML = `
         <div class="ppv-performance-intro">
-            <span class="ppv-performance-intro-copy">Each belt tile uses a soft green-to-red tint to show how well the fighter has performed in matches for that championship.</span>
+            <span class="ppv-performance-intro-copy">Greener tiles, better record in that title's fights.</span>
         </div>
         <div class="ppv-performance-grid ppv-performance-grid--belt">${tiles}</div>
     `;

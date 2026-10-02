@@ -1,3 +1,4 @@
+from ssbstats_app.cache import ttl_cache
 from ssbstats_app.repositories.base import nk, select_list, select_view_dicts
 
 
@@ -50,3 +51,29 @@ def get_current_champions():
     for row in rows:
         result.setdefault(nk(row["Fighter_Name"]), []).append(row["Championship_Name"])
     return result
+
+
+@ttl_cache(6 * 60 * 60)
+def get_fighter_brands():
+    """Return each fighter's current brand, keyed by lowercase fighter name.
+
+    Derived from fights rather than Fighter.Brand_ID (which isn't updated after drafts):
+    the brand of the fighter's most recent branded fight, so the current season wins and
+    inactive fighters fall back to the last brand they fought on.
+    """
+    rows = select_view_dicts(
+        """
+        SELECT Fighter_Name, Brand_Name
+        FROM (
+            SELECT Fighter_Name, Brand_Name,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY Fighter_Name
+                       ORDER BY Season DESC, Month DESC, COALESCE(Week, 99) DESC, Fight_ID DESC
+                   ) AS rn
+            FROM FightLog
+            WHERE Brand_Name IS NOT NULL
+        ) latest
+        WHERE rn = 1
+        """
+    )
+    return {nk(row["Fighter_Name"]): row["Brand_Name"] or "" for row in rows}

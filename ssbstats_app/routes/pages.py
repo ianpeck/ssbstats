@@ -4,6 +4,7 @@ from functools import wraps
 
 from flask import Blueprint, abort, redirect, render_template, request, session, url_for
 
+from ssbstats_app.repositories import lookups
 from ssbstats_app.repositories.seasons import get_all_seasons
 from ssbstats_app.security import RateLimiter, admin_ip_allowed, safe_next_url
 from ssbstats_app.services.content import get_autocomplete_data, get_fighter_blurb
@@ -59,7 +60,11 @@ def fighter_profile(name):
     if canonical and name.lower() not in canonical:
         abort(404)
     name = canonical.get(name.lower(), name)
-    return render_template("fighter.html", fighter_name=name, filename=fighter_to_filename(name), blurb=get_fighter_blurb(name))
+    try:
+        brand = lookups.get_fighter_brands().get(name.lower(), "")
+    except Exception:
+        brand = ""
+    return render_template("fighter.html", fighter_name=name, brand=brand, filename=fighter_to_filename(name), blurb=get_fighter_blurb(name))
 
 
 @pages_bp.route("/leaderboard")

@@ -9,6 +9,7 @@
         <div class="fighter-hero-info">
             <div class="fighter-hero-top">
                 <div class="fighter-hero-copy">
+                    {% if brand %}<span class="fighter-brand-chip">{{ brand }}</span>{% endif %}
                     <div class="fighter-name-row">
                         <h1 class="fighter-hero-name">{{ fighter_name }}</h1>
                     </div>

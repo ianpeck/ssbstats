@@ -1,13 +1,17 @@
 {% extends "base.html" %}
 {% block title %}SSB Stats - {{ fighter_name }}{% endblock %}
 
+{% block body_class %}page-fighter{% endblock %}
+
 {% block content %}
+<div class="fighter-page{% if brand %} brand-{{ brand | lower }}{% endif %}">
 {% include "partials/fighter/hero.html" %}
 {% include "partials/fighter/navigation.html" %}
 {% include "partials/fighter/compare.html" %}
 {% include "partials/fighter/analytics.html" %}
 {% include "partials/fighter/stats.html" %}
 {% include "partials/fighter/history.html" %}
+</div>
 {% endblock %}
 
 {% block scripts %}
