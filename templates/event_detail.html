@@ -5,7 +5,7 @@
 <section class="seasons-section">
     <div class="event-detail-hero glass-card">
         <div class="event-detail-hero-logo">
-            <img src="{{ url_for('static', filename='assets/ppv/' + event.event.logo_filename + '.png') }}" alt="{{ event.event.PPV_Name }}" onerror="this.style.display='none';this.parentElement.classList.add('event-detail-hero-logo--fallback');this.parentElement.textContent='{{ event.event.PPV_Name }}';">
+            <img src="{{ asset_variant('ppv', event.event.logo_filename, 'md') }}" alt="{{ event.event.PPV_Name }}" onerror="this.style.display='none';this.parentElement.classList.add('event-detail-hero-logo--fallback');this.parentElement.textContent='{{ event.event.PPV_Name }}';">
         </div>
         <div class="event-detail-hero-copy">
             <span class="season-page-kicker">All-Time Event Hub</span>

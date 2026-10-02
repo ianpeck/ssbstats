@@ -2,7 +2,7 @@
     <!-- Hero -->
     <div class="fighter-hero">
         <div class="fighter-hero-image" id="fighterHeroImage">
-            <img id="fighterHeroImg" src="{{ url_for('static', filename='assets/fighters/' + filename + '.png') }}"
+            <img id="fighterHeroImg" src="{{ asset_variant('fighters', filename, 'md') }}"
                  alt="{{ fighter_name }}"
                  onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22><rect fill=%22%2312122a%22 width=%22300%22 height=%22300%22/><text fill=%22%23607cff%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2240%22>?</text></svg>'">
         </div>

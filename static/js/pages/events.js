@@ -43,7 +43,7 @@ function renderEventCards(events) {
             const ppvFile = ppvToFilename(event.PPV_Name);
             const fallbackLabel = (event.PPV_Name || "PPV Event").replace(/'/g, "\\'");
             const imgHTML = ppvFile
-                ? `<div class="event-card-stage-wrap event-card-stage-wrap--logo"><img src="/static/assets/ppv/${ppvFile}.png" alt="${event.PPV_Name}" class="event-card-stage event-card-stage--logo" onerror="var p=this.parentElement;this.remove();p.classList.add('event-card-stage-fallback');p.textContent='${fallbackLabel}';"></div>`
+                ? `<div class="event-card-stage-wrap event-card-stage-wrap--logo"><img src="${assetVariant('ppv', ppvFile)}" alt="${event.PPV_Name}" class="event-card-stage event-card-stage--logo" onerror="var p=this.parentElement;this.remove();p.classList.add('event-card-stage-fallback');p.textContent='${fallbackLabel}';"></div>`
                 : "";
             card.innerHTML = `
                 ${imgHTML}

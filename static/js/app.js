@@ -65,10 +65,21 @@ function championshipHasTransparentBelt(name) {
     return !!filename;
 }
 
-function championshipToBeltAsset(name) {
+// Web-sized copies made by scripts/maintenance/make_image_variants.py:
+// 'sm' for icons and thumbnails, 'md' for cards and page headers. If a copy is missing,
+// the fallback script in base.html swaps in the original image.
+function assetVariant(folder, stem, size = 'sm') {
+    return `/static/assets/${folder}/${size}/${stem}.webp`;
+}
+
+function fighterImg(name, size = 'sm') {
+    return assetVariant('fighters', fighterToFilename(name), size);
+}
+
+function championshipToBeltAsset(name, size = 'md') {
     const filename = championshipToBeltFilename(name);
     if (!filename || !championshipHasTransparentBelt(name)) return null;
-    return `/static/assets/belts/${filename}.png`;
+    return assetVariant('belts', filename, size);
 }
 
 function debounce(fn, delay) {
@@ -176,7 +187,7 @@ function setupAutocomplete(input, category) {
             div.className = 'autocomplete-item' + (isFighters ? ' autocomplete-item-fighter' : '');
             div.dataset.value = item;
             div.innerHTML = (isFighters
-                ? `<img src="/static/assets/fighters/${fighterToFilename(item)}.png" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
+                ? `<img src="${fighterImg(item)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`
                 : '') + `<span>${highlightMatch(item, val)}</span>`;
             div.addEventListener('mousedown', function(e) {
                 e.preventDefault();
@@ -254,7 +265,7 @@ function chipHTML(f) {
     const chipClass = nc ? 'chip-nc' : (win ? 'chip-win' : 'chip-loss');
     const resultClass = nc ? 'nc' : (win ? 'win' : 'loss');
     return `<span class="fight-fighter-chip ${chipClass}">
-        <img src="/static/assets/fighters/${fn}.png" alt="${f.name}"
+        <img src="${assetVariant('fighters', fn)}" alt="${f.name}"
              class="fight-portrait" onerror="this.style.display='none'">
         <a href="/fighter/${encodeURIComponent(f.name)}" class="fight-fighter-name"
            onclick="event.stopPropagation()">${f.name}</a>
@@ -303,7 +314,7 @@ function renderFight(fight, opts = {}) {
         : (losers.length ? fightChips(losers, isTeamMatch ? teamJoin : '') : '<span class="fight-muted">—</span>');
     const eventText = ppv || (brand ? `${brand} weekly` : 'Weekly');
     const stageHTML = location
-        ? `<img src="/static/assets/stages/${stageToFilename(location)}.png" alt="" class="fight-location-thumb"
+        ? `<img src="${assetVariant('stages', stageToFilename(location))}" alt="" class="fight-location-thumb"
                 onerror="this.style.display='none'"><span class="fight-location-text">${location}</span>`
         : '<span class="fight-muted">—</span>';
 

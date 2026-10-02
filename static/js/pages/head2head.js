@@ -32,7 +32,7 @@ function updatePortrait(slot) {
     const img  = document.getElementById(slot + 'Img');
     if (!name) { img.src = PORTRAIT_PLACEHOLDER[slot]; return; }
     img.onerror = () => { img.onerror = null; img.src = PORTRAIT_PLACEHOLDER[slot]; };
-    img.src = `/static/assets/fighters/${fighterToFilename(name)}.png`;
+    img.src = fighterImg(name, 'md');
 }
 
 const charts = {};
@@ -57,8 +57,8 @@ function doCompare() {
     err.textContent = '';
     updateH2HURL(f1, f2);
 
-    document.getElementById('f1Img').src = `/static/assets/fighters/${fighterToFilename(f1)}.png`;
-    document.getElementById('f2Img').src = `/static/assets/fighters/${fighterToFilename(f2)}.png`;
+    document.getElementById('f1Img').src = fighterImg(f1, 'md');
+    document.getElementById('f2Img').src = fighterImg(f2, 'md');
 
     document.getElementById('compareLoading').style.display = 'flex';
     document.getElementById('compareResults').style.display = 'none';
@@ -218,8 +218,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── Scoreboard ────────────────────────────────────────────────
 function renderScoreboard(d, seasonOpts) {
     const f1 = d.fighter1, f2 = d.fighter2;
-    document.getElementById('sbImg1').src = `/static/assets/fighters/${f1.image}`;
-    document.getElementById('sbImg2').src = `/static/assets/fighters/${f2.image}`;
+    document.getElementById('sbImg1').src = fighterImg(f1.name);
+    document.getElementById('sbImg2').src = fighterImg(f2.name);
     document.getElementById('sbName1').textContent = f1.name;
     document.getElementById('sbName2').textContent = f2.name;
 

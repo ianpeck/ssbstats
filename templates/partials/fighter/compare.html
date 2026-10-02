@@ -8,7 +8,7 @@
             <div class="ca-matchup">
                 <div class="ca-fighter">
                     <div class="ca-avatar ca-avatar-self">
-                        <img class="ca-portrait" src="{{ url_for('static', filename='assets/fighters/' + filename + '.png') }}" alt="{{ fighter_name }}" onerror="this.style.opacity='0.3'">
+                        <img class="ca-portrait" src="{{ asset_variant('fighters', filename) }}" alt="{{ fighter_name }}" onerror="this.style.opacity='0.3'">
                     </div>
                     <span class="ca-name">{{ fighter_name }}</span>
                 </div>

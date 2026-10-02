@@ -10,6 +10,20 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="https://unpkg.com/lucide@1.49.0/dist/umd/lucide.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_v }}">
+    <script>
+        // If a resized image copy (assets/<folder>/sm|md/<name>.webp) is missing, load the
+        // original instead. Runs in the capture phase so pages' own onerror handlers only
+        // fire if the original is missing too.
+        document.addEventListener('error', function (event) {
+            var img = event.target;
+            if (!img || img.tagName !== 'IMG' || img.dataset.variantFallback) return;
+            var match = img.src.match(/\/static\/assets\/(fighters|stages|belts|ppv)\/(?:sm|md)\/([^\/?#]+)\.webp/);
+            if (!match) return;
+            event.stopPropagation();
+            img.dataset.variantFallback = '1';
+            img.src = '/static/assets/' + match[1] + '/' + match[2] + '.png';
+        }, true);
+    </script>
 </head>
 <body class="{% block body_class %}{% endblock %}">
     <canvas id="particleCanvas"></canvas>

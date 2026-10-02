@@ -47,7 +47,7 @@ const FIGHTER_THEME = (() => {
             caAvatar.classList.remove('is-empty');
             caNameEl.textContent = val;
         };
-        caPortrait.src = `/static/assets/fighters/${fighterToFilename(val)}.png`;
+        caPortrait.src = fighterImg(val);
     }
 
     function goCompare() {
@@ -219,7 +219,7 @@ function buildChampBadges(rows, hasTripleCrown, majorWinner) {
         badge.className = 'accolade-badge champ-badge';
         const reignStr = reigns >= 1 ? `${reigns}x ` : '';
         const monthStr = months > 0 ? ` &mdash; ${months} mo.` : '';
-        const belt = championshipToBeltAsset(champ);
+        const belt = championshipToBeltAsset(champ, 'sm');
         const icon = belt
             ? `<img src="${belt}" alt="" class="badge-belt" loading="lazy">`
             : '<i data-lucide="trophy"></i>';
@@ -521,7 +521,7 @@ function fillDynamicTable(tbodyId, theadId, rows, skipCols = []) {
 
             const img = document.createElement('img');
             img.className = 'rival-portrait';
-            img.src = `/static/assets/fighters/${ftf(opp.opponent)}.png`;
+            img.src = assetVariant('fighters', ftf(opp.opponent));
             img.alt = opp.opponent;
             img.onerror = function() { this.onerror=null; this.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Crect fill='%2312122a' width='60' height='60'/%3E%3Ctext fill='%23607cff' x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-size='22'%3E%3F%3C/text%3E%3C/svg%3E"; };
 
@@ -1043,7 +1043,7 @@ function renderPPVLogoGrid(data) {
             <article class="${tileClass}" style="--ppv-tint:${heat};--ppv-border:${border};" title="${safeName}: ${item.wins}-${item.losses} (${item.pct.toFixed(1)}%)">
                 <div class="ppv-performance-logo-wrap">
                     <img
-                        src="/static/assets/ppv/${item.file}.png"
+                        src="${assetVariant('ppv', item.file)}"
                         alt="${safeName}"
                         class="ppv-performance-logo"
                         loading="lazy"
@@ -1086,7 +1086,7 @@ function renderChampionshipBeltGrid(data) {
         const heat = ppvHeatColor(item.pct);
         const border = ppvHeatBorder(item.pct);
         const safeName = escapeHtml(item.name);
-        const asset = championshipToBeltAsset(item.name);
+        const asset = championshipToBeltAsset(item.name, 'sm');
         const media = asset
             ? `<img src="${asset}" alt="${safeName}" class="ppv-performance-logo ppv-performance-logo--belt" loading="lazy">`
             : `<span class="ppv-performance-fallback">${safeName}</span>`;
@@ -1205,7 +1205,7 @@ function renderLocationChart(data) {
         const showLabel = r.rw > 40 && r.rh > 28;
         const showRecord = r.rw > 50 && r.rh > 40;
         const fontSize = Math.max(0.55, Math.min(0.85, r.rw / 90));
-        const imgSrc = `/static/assets/stages/${stageToFilename(r.name)}.png`;
+        const imgSrc = assetVariant('stages', stageToFilename(r.name));
         return `<div class="treemap-tile" data-location-key="${escapeHtml(r.key)}" style="left:${r.rx / containerW * 100}%;top:${r.ry / containerH * 100}%;width:${r.rw / containerW * 100}%;height:${r.rh / containerH * 100}%;" title="${escapeHtml(r.name)}\n${r.w}W-${r.l}L (${r.pct.toFixed(1)}%)">
             <img class="treemap-img" src="${imgSrc}" alt="" onerror="this.style.display='none'">
             <div class="treemap-overlay" style="background:${color}"></div>

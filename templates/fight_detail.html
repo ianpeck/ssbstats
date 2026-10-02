@@ -33,14 +33,14 @@
                 <div class="fight-hero-side fight-hero-side-left">
                     {% set participant = fight.participants_raw[0] %}
                     <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-hero-fighter-card {% if participant.decision == 'W' %}is-winner{% elif participant.decision == 'NC' %}is-no-contest{% else %}is-loser{% endif %}">
-                        <img src="{{ url_for('static', filename='assets/fighters/' + participant.filename + '.png') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
+                        <img src="{{ asset_variant('fighters', participant.filename, 'md') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
                         <span class="fight-hero-fighter-name">{{ participant.name }}</span>
                         <span class="fight-hero-fighter-outcome">{{ 'Winner' if participant.decision == 'W' else ('No contest' if participant.decision == 'NC' else 'Loss') }}</span>
                     </a>
                 </div>
                 <div class="fight-hero-stage">
                     {% if fight.stage_image %}
-                    <img src="{{ url_for('static', filename='assets/stages/' + fight.stage_image) }}" alt="{{ fight.location }}" class="fight-hero-stage-img">
+                    <img src="{{ asset_variant('stages', fight.stage_image, 'md') }}" alt="{{ fight.location }}" class="fight-hero-stage-img">
                     {% else %}
                     <div class="fight-hero-stage-placeholder">No stage image</div>
                     {% endif %}
@@ -49,7 +49,7 @@
                 <div class="fight-hero-side fight-hero-side-right">
                     {% set participant = fight.participants_raw[1] %}
                     <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-hero-fighter-card {% if participant.decision == 'W' %}is-winner{% elif participant.decision == 'NC' %}is-no-contest{% else %}is-loser{% endif %}">
-                        <img src="{{ url_for('static', filename='assets/fighters/' + participant.filename + '.png') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
+                        <img src="{{ asset_variant('fighters', participant.filename, 'md') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
                         <span class="fight-hero-fighter-name">{{ participant.name }}</span>
                         <span class="fight-hero-fighter-outcome">{{ 'Winner' if participant.decision == 'W' else ('No contest' if participant.decision == 'NC' else 'Loss') }}</span>
                     </a>
@@ -57,7 +57,7 @@
             {% else %}
                 <div class="fight-hero-stage fight-hero-stage-wide">
                     {% if fight.stage_image %}
-                    <img src="{{ url_for('static', filename='assets/stages/' + fight.stage_image) }}" alt="{{ fight.location }}" class="fight-hero-stage-img">
+                    <img src="{{ asset_variant('stages', fight.stage_image, 'md') }}" alt="{{ fight.location }}" class="fight-hero-stage-img">
                     {% else %}
                     <div class="fight-hero-stage-placeholder">No stage image</div>
                     {% endif %}
@@ -66,7 +66,7 @@
                 <div class="fight-hero-grid">
                     {% for participant in fight.participants_raw %}
                     <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-hero-fighter-card fight-hero-fighter-card-small {% if participant.decision == 'W' %}is-winner{% elif participant.decision == 'NC' %}is-no-contest{% else %}is-loser{% endif %}">
-                        <img src="{{ url_for('static', filename='assets/fighters/' + participant.filename + '.png') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
+                        <img src="{{ asset_variant('fighters', participant.filename, 'md') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
                         <span class="fight-hero-fighter-name">{{ participant.name }}</span>
                         <span class="fight-hero-fighter-outcome">{{ 'Winner' if participant.decision == 'W' else ('No contest' if participant.decision == 'NC' else 'Entrant') }}</span>
                     </a>
@@ -87,7 +87,7 @@
                 {% for participant in fight.participants %}
                 <div class="fight-pre-card">
                     <div class="fight-pre-card-top">
-                        <img src="{{ url_for('static', filename='assets/fighters/' + participant.filename + '.png') }}" alt="{{ participant.name }}" class="fight-pre-portrait">
+                        <img src="{{ asset_variant('fighters', participant.filename) }}" alt="{{ participant.name }}" class="fight-pre-portrait">
                         <div>
                             <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-pre-name">{{ participant.name }}</a>
                             <div class="fight-pre-status">{{ participant.status }}</div>

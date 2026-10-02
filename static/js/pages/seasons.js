@@ -289,7 +289,7 @@ function renderChampTimeline(rows) {
             const fighterHTML = fighters.map(name => {
                 const filename = fighterToFilename(name);
                 return `<span class="champ-tag-fighter">` +
-                    `<img src="/static/assets/fighters/${filename}.png" alt="${name}" class="champ-seg-portrait" onerror="this.style.display='none'">` +
+                    `<img src="${assetVariant('fighters', filename)}" alt="${name}" class="champ-seg-portrait" onerror="this.style.display='none'">` +
                     `<a href="/fighter/${encodeURIComponent(name)}" class="champ-seg-name fighter-link">${name}</a>` +
                     `</span>`;
             }).join('<span class="champ-tag-amp">&amp;</span>');
@@ -404,7 +404,7 @@ function _renderSortedRankings() {
         tr.innerHTML = `
             <td class="rank-cell ${rankClass}">${i + 1}</td>
             <td class="fighter-cell">
-                <img src="/static/assets/fighters/${filename}.png" alt="${f.name}" class="leaderboard-portrait"
+                <img src="${assetVariant('fighters', filename)}" alt="${f.name}" class="leaderboard-portrait"
                      onerror="this.style.display='none'">
                 <div class="fighter-cell-inner">
                     <a href="/fighter/${encodeURIComponent(f.name)}" class="fighter-link">${f.name}</a>

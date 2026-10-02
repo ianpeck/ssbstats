@@ -126,7 +126,7 @@ function renderLeaderboard(data) {
         row.innerHTML = `
             <td class="rank-cell ${rankClass}">${i + 1}</td>
             <td class="fighter-cell">
-                <img src="/static/assets/fighters/${filename}.png" alt="${fighter.name}"
+                <img src="${assetVariant('fighters', filename)}" alt="${fighter.name}"
                      class="leaderboard-portrait" onerror="this.style.display='none'">
                 <div class="fighter-cell-inner">
                     <a href="/fighter/${encodeURIComponent(fighter.name)}" class="fighter-link">${fighter.name}</a>

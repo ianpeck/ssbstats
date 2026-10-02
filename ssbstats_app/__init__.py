@@ -3,7 +3,7 @@ import secrets
 import time
 from pathlib import Path
 
-from flask import Flask, session
+from flask import Flask, session, url_for
 
 from ssbstats_app.routes.api import api_bp
 from ssbstats_app.routes.pages import pages_bp
@@ -33,6 +33,12 @@ def create_app():
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "1") == "1",
     )
+
+    @app.template_global()
+    def asset_variant(folder, name, size="sm"):
+        """URL of a resized WebP copy (see scripts/maintenance/make_image_variants.py)."""
+        stem = name.rsplit(".", 1)[0] if name.endswith((".png", ".jpg", ".jpeg")) else name
+        return url_for("static", filename=f"assets/{folder}/{size}/{stem}.webp")
 
     @app.context_processor
     def inject_static_version():

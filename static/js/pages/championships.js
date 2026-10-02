@@ -234,7 +234,7 @@ function renderHistory(rows) {
                 const titles = fighterTitlesMap[name] ? [...fighterTitlesMap[name]].join("\n") : "";
                 const tooltipText = titles ? `${name}\nTitles held:\n${titles}` : name;
                 return `<span class="champ-tag-fighter" title="${tooltipText.replace(/"/g, "&quot;")}">` +
-                    `<img src="/static/assets/fighters/${filename}.png" alt="${name}" class="champ-seg-portrait" onerror="this.style.display='none'">` +
+                    `<img src="${assetVariant('fighters', filename)}" alt="${name}" class="champ-seg-portrait" onerror="this.style.display='none'">` +
                     `<a href="/fighter/${encodeURIComponent(name)}" class="champ-seg-name fighter-link">${name}</a>` +
                     `</span>`;
             }).join('<span class="champ-tag-amp">&amp;</span>');
