@@ -2,19 +2,20 @@ import hmac
 import os
 from functools import wraps
 
-from flask import Blueprint, abort, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, redirect, render_template, request, send_from_directory, session, url_for
 
 from ssbstats_app.repositories import lookups
 from ssbstats_app.repositories.seasons import get_all_seasons
 from ssbstats_app.security import RateLimiter, admin_ip_allowed, safe_next_url
 from ssbstats_app.services.content import get_autocomplete_data, get_fighter_blurb
+from ssbstats_app.services.records import get_record_book
 from ssbstats_app.services.scheduling import (
     create_scheduled_match_from_form,
     delete_scheduled_match_from_form,
     get_schedule_admin_payload,
     update_scheduled_match_from_form,
 )
-from ssbstats_app.services.stats import build_index_payload, get_home_summary, home_belts, home_champions, home_top_fighters, get_event_detail_payload, get_fight_detail_payload, get_fights_page_filters
+from ssbstats_app.services.stats import build_index_payload, get_fighter_profile_payload, get_home_summary, home_belts, home_champions, home_top_fighters, get_event_detail_payload, get_fight_detail_payload, get_fights_page_filters
 from ssbstats_app.utils import fighter_to_filename
 
 
@@ -39,6 +40,30 @@ def admin_required(view):
 def not_found(_error):
     """Render the themed 404 page."""
     return render_template("404.html"), 404
+
+
+@pages_bp.route("/favicon.ico")
+def favicon():
+    """Browsers and crawlers ask for /favicon.ico regardless of the <link> tags."""
+    return send_from_directory(os.path.join(current_app.static_folder, "icons"), "favicon.ico", max_age=7 * 24 * 3600)
+
+
+def _fighter_preview(name):
+    """One-line summary for link previews, e.g. "Kirby: 134–51 career record, #1 in the power rankings."."""
+    try:
+        profile = get_fighter_profile_payload(name)
+    except Exception:
+        return f"{name}'s career stats, title history and rivalries in the SSB league."
+    career = profile.get("career") or {}
+    parts = [f"{name}: {career.get('wins', 0)}–{career.get('losses', 0)} career record"]
+    rank = (profile.get("career_power_score") or {}).get("power_rank")
+    if rank:
+        parts.append(f"#{rank} in the all-time power rankings")
+    summary = ", ".join(parts) + "."
+    titles = profile.get("current_titles") or []
+    if titles:
+        summary += f" Current {' and '.join(titles)} Champion."
+    return summary
 
 
 @pages_bp.route("/")
@@ -76,7 +101,14 @@ def fighter_profile(name):
         brand = lookups.get_fighter_brands().get(name.lower(), "")
     except Exception:
         brand = ""
-    return render_template("fighter.html", fighter_name=name, brand=brand, filename=fighter_to_filename(name), blurb=get_fighter_blurb(name))
+    return render_template(
+        "fighter.html",
+        fighter_name=name,
+        brand=brand,
+        filename=fighter_to_filename(name),
+        blurb=get_fighter_blurb(name),
+        preview=_fighter_preview(name),
+    )
 
 
 @pages_bp.route("/leaderboard")
@@ -95,6 +127,12 @@ def seasons():
 def championships():
     """Render the championships history page shell."""
     return render_template("championships.html")
+
+
+@pages_bp.route("/records")
+def records():
+    """Render the all-time Record Book."""
+    return render_template("records.html", book=get_record_book())
 
 
 @pages_bp.route("/events")

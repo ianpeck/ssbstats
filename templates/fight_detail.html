@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 {% block title %}SSB Stats - Fight {{ fight.fight_id }}{% endblock %}
+{% block og_title %}{{ fight.hero_title }} · SSB Stats{% endblock %}
+{% block meta_description %}{% if fight.winners and fight.losers and not fight.championship %}{{ fight.winners | map(attribute='name') | join(' & ') }} def. {{ fight.losers | map(attribute='name') | join(' & ') }}{% else %}{{ fight.result_summary | trim('.') }}{% endif %}{% if fight.fight_type %} · {{ fight.fight_type }}{% endif %} · {{ fight.hero_subtitle }}{% endblock %}
+{% block og_image %}
+{% if fight.stage_image %}
+    <meta property="og:image" content="{{ site_url }}{{ asset_variant('stages', fight.stage_image, 'md') }}">
+    <meta name="twitter:card" content="summary_large_image">
+{% else %}{{ super() }}{% endif %}
+{% endblock %}
 
 {% block content %}
 <section class="fight-page">

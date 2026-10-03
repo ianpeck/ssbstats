@@ -97,7 +97,12 @@ GOTCHAS = dedent(
       Wins / (Wins + Losses) instead, and require a sensible minimum number of fights (e.g. >= 20 all-time,
       >= 10 in a season) for "best record" style questions unless the user says otherwise.
     - "Title reigns", "won the belt", "held the title" -> ChampionshipHistory (count rows). "Record in title
-      matches" -> champfightstats. "Title defenses" (count) -> FightLog rows with DefendingIndicator = 'y' AND Decision = 'w'.
+      matches" -> champfightstats. "Title defenses" (count) -> FightLog rows with DefendingIndicator = 'y' AND Decision = 'w'
+      AND COALESCE(Championship_Name, '') != 'Smash Bros.'. A champion who enters a Tournament or Scramble
+      defends the title in every 1v1 round (Championship_Name is NULL there); they only lose it if knocked out.
+    - "Smash Bros." is a once-a-year trophy, not a title you hold and defend. Leave it out of title reign
+      counts, longest reigns and defenses (add Championship_Name != 'Smash Bros.') unless the user asks about
+      it by name; treat it as an event win like a Tournament or Royal Rumble.
     - "Major" titles = Championship_Tier = 'Major' (the Melee, Brawl and Ultimate titles).
     - "How many titles has X won" means how many times (COUNT(*) of reigns), like "a 7-time champion".
       If the number of different belts is smaller, mention it too (e.g. "7 reigns across 2 different titles").
@@ -114,7 +119,8 @@ GOTCHAS = dedent(
 EXAMPLES = dedent(
     """
     Q: Who has the most successful title defenses?
-    SELECT Fighter_Name, COUNT(*) AS defenses FROM FightLog WHERE DefendingIndicator = 'y' AND Decision = 'w'
+    SELECT Fighter_Name, COUNT(*) AS defenses FROM FightLog
+    WHERE DefendingIndicator = 'y' AND Decision = 'w' AND COALESCE(Championship_Name, '') != 'Smash Bros.'
     GROUP BY Fighter_Name ORDER BY defenses DESC LIMIT 5
 
     Q: Best all-time win percentage?

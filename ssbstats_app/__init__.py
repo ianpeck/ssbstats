@@ -48,6 +48,9 @@ def create_app():
             "admin_ip_allowed": admin_ip_allowed(),
             "admin_logged_in": bool(session.get("is_admin")),
             "streaming_enabled": os.getenv("LOCAL_STREAMING", "0") == "1",
+            # Absolute base for link-preview URLs (og:image must be absolute). Behind
+            # Cloudflare the request scheme is http, so this isn't derived from the request.
+            "site_url": os.getenv("SITE_URL", "https://ssbstats.app").rstrip("/"),
         }
 
     app.register_blueprint(pages_bp)

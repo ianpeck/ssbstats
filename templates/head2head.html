@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% block title %}SSB Stats - Compare{% endblock %}
+{% block og_title %}{% if request.args.get('f1') and request.args.get('f2') %}{{ request.args.get('f1') }} vs {{ request.args.get('f2') }} · Head to Head{% else %}Head to Head · SSB Stats{% endif %}{% endblock %}
+{% block meta_description %}{% if request.args.get('f1') and request.args.get('f2') %}{{ request.args.get('f1') }} vs {{ request.args.get('f2') }}: their head-to-head record, title fights and every meeting in the SSB league.{% else %}Compare any two SSB league fighters: head-to-head record, title fights, Elo and every meeting.{% endif %}{% endblock %}
 
 {% block content %}
 <section class="compare-page">

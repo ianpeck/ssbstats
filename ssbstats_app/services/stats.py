@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from ssbstats_app.cache import ttl_cache
 from ssbstats_app.repositories.base import query_failure_count, select_view_dicts, select_view_row
 from ssbstats_app.repositories import comparisons, elo, events, fight_detail, fighters, fights, leaderboards, lookups, power, seasons
+from ssbstats_app.services.records import get_record_book
 from ssbstats_app.utils import event_to_slug, fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
 
 
@@ -923,6 +924,7 @@ def keep_fighter_caches_warm():
                 power.get_career_power_scores.refresh()
                 lookups.get_fighter_brands.refresh()
                 get_home_summary.refresh()
+                get_record_book.refresh()
                 names = lookups.get_all_fighters()
                 for name in names:
                     get_fighter_profile_payload.refresh(name)

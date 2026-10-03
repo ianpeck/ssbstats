@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Record Book{% endblock %}
+{% block meta_description %}The SSB league's all-time records: longest win streaks, title reigns and defenses, PPV wins, rivalries and the biggest upsets.{% endblock %}
+{% block body_class %}page-records{% endblock %}
+
+{% macro portraits(entry, size) -%}
+<span class="record-faces{% if entry.fighters|length > 1 %} is-pair{% endif %}">
+    {%- for f in entry.fighters %}
+    <img src="{{ asset_variant('fighters', f.filename, size) }}" alt="{{ f.name }}" loading="lazy">
+    {%- endfor %}
+    {%- if entry.stage and size == 'sm' %}
+    <img class="record-stage" src="{{ asset_variant('stages', entry.stage.filename, 'sm') }}" alt="{{ entry.stage.name }}" loading="lazy" onerror="this.remove()">
+    {%- endif %}
+</span>
+{%- endmacro %}
+
+{% block content %}
+<div class="records-page">
+    <header class="records-hero">
+        <span class="records-kicker">All-time · through {{ book.through }}</span>
+        <h1 class="records-title">Record Book</h1>
+        <p class="records-lede">The marks every fighter is chasing. Tap any record to open the fighter, matchup or fight behind it.</p>
+        <nav class="records-jump" aria-label="Record sections">
+            {% for section in book.sections %}
+            <a href="#{{ section.key }}"><i data-lucide="{{ section.icon }}"></i>{{ section.title }}</a>
+            {% endfor %}
+            {% if book.superstars %}<a href="#superstars"><i data-lucide="star"></i>Superstars</a>{% endif %}
+        </nav>
+    </header>
+
+    {% for section in book.sections %}
+    <section class="records-section" id="{{ section.key }}">
+        <h2 class="records-section-title"><i data-lucide="{{ section.icon }}"></i>{{ section.title }}</h2>
+        <div class="records-grid">
+            {% for record in section.records if record.entries %}
+            {% set top = record.entries[0] %}
+            <article class="record-card" id="{{ record.key }}">
+                <header class="record-head">
+                    <h3 class="record-name">{{ record.title }}</h3>
+                    <p class="record-blurb">{{ record.blurb }}</p>
+                </header>
+                <a class="record-holder{% if top.stage %} has-stage{% endif %}" href="{{ top.href }}"{% if top.stage %} style="--stage-img: url('{{ asset_variant('stages', top.stage.filename, 'md') }}')"{% endif %}>
+                    {{ portraits(top, 'md') }}
+                    <span class="record-holder-text">
+                        <span class="record-holder-value">{{ top.value }}<small>{{ top.unit }}</small></span>
+                        <span class="record-holder-name">{{ top.label }}</span>
+                        <span class="record-holder-detail">{{ top.detail }}</span>
+                        {% if top.badge or top.tied %}
+                        <span class="record-badges">
+                            {% if top.tied %}<span class="record-badge is-tie">Tied</span>{% endif %}
+                            {% if top.badge %}<span class="record-badge">{{ top.badge }}</span>{% endif %}
+                        </span>
+                        {% endif %}
+                    </span>
+                </a>
+                {% if record.entries|length > 1 %}
+                <ol class="record-runners">
+                    {% for entry in record.entries[1:] %}
+                    <li>
+                        <a class="record-row" href="{{ entry.href }}">
+                            <span class="record-rank">{{ entry.rank }}</span>
+                            {{ portraits(entry, 'sm') }}
+                            <span class="record-row-text">
+                                <span class="record-row-name">{{ entry.label }}{% if entry.badge %} <span class="record-badge">{{ entry.badge }}</span>{% endif %}</span>
+                                <span class="record-row-detail">{{ entry.detail }}</span>
+                            </span>
+                            <span class="record-row-value">{{ entry.value }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ol>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% if section.honors %}
+        <h3 class="records-subtitle">Honor Roll</h3>
+        <div class="honors-grid">
+            {% for honor in section.honors %}
+            <article class="record-card honor-card honor-{{ honor.key }}" id="{{ honor.key }}">
+                <header class="record-head honor-head">
+                    <div>
+                        <h3 class="record-name"><i data-lucide="{{ honor.icon }}"></i>{{ honor.title }}</h3>
+                        <p class="record-blurb">{{ honor.blurb }}</p>
+                    </div>
+                    <span class="honor-count">{{ honor.entries|length }}</span>
+                </header>
+                {% if honor.entries %}
+                <ol class="honor-list">
+                    {% for e in honor.entries %}
+                    <li>
+                        <a class="honor-row" href="{{ e.href }}">
+                            <img src="{{ asset_variant('fighters', e.filename, 'sm') }}" alt="" loading="lazy">
+                            <span class="honor-text">
+                                <span class="honor-name">{{ e.name }}{% if loop.first %} <span class="record-badge">First</span>{% endif %}</span>
+                                <span class="honor-clinch">Clinched with the {{ e.clinch_title }} title · {{ e.clinch_where }}</span>
+                                <span class="honor-parts">
+                                    {% for part in e.parts %}
+                                    <span class="honor-chip{% if loop.last %} is-clinch{% endif %}" title="{{ part.label }} · {{ part.where }}">{{ part.title }} <small>{{ part.when }}</small></span>
+                                    {% endfor %}
+                                </span>
+                            </span>
+                            <span class="honor-when">{{ e.when }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ol>
+                {% else %}
+                <p class="record-blurb">Nobody yet.</p>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </section>
+    {% endfor %}
+
+    {% if book.superstars %}
+    <section class="records-section" id="superstars">
+        <h2 class="records-section-title"><i data-lucide="star"></i>Superstar of the Year</h2>
+        <ol class="superstar-roll">
+            {% for s in book.superstars %}
+            <li>
+                <a href="/fighter/{{ s.name }}" class="superstar">
+                    <img src="{{ asset_variant('fighters', s.filename, 'md') }}" alt="" loading="lazy">
+                    <span class="superstar-season">Season {{ s.season }}</span>
+                    <span class="superstar-name">{{ s.name }}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+    {% endif %}
+
+    <p class="records-footnote">
+        Rivalries, one-sided series and upsets count one-on-one fights only. A champion who enters a Tournament or Scramble defends the title in every round they win. The Smash Bros. trophy is won once a year, so it counts as an event win, not a title reign.
+        Ranks are shared when values tie.
+    </p>
+</div>
+{% endblock %}
