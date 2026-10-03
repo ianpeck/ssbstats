@@ -34,33 +34,222 @@
         });
     }
 
-    // ---- Layout: spread tiles evenly over a sphere (Fibonacci / golden-angle spiral) ----
+    // ---- Geometry: a Goldberg polyhedron (the "soccer ball" tiling) ---------------
+    // A sphere can only be tiled seamlessly with hexagons if exactly 12 pentagons are
+    // mixed in. Subdividing an icosahedron and taking its dual gives that tiling:
+    // frequency 3 -> 92 faces (80 hexagons + 12 pentagons).
     const N = tiles.length;
-    const GOLDEN = Math.PI * (3 - Math.sqrt(5));
-    const points = tiles.map((tile, i) => {
-        const y = 1 - (2 * (i + 0.5)) / N;          // 1 (top) .. -1 (bottom)
-        const lat = Math.asin(y);
-        const lon = (i * GOLDEN) % (2 * Math.PI);
-        return {
-            lat, lon,
-            // outward normal in CSS space (y points down)
-            nx: Math.cos(lat) * Math.sin(lon),
-            ny: -Math.sin(lat),
-            nz: Math.cos(lat) * Math.cos(lon),
+    const v3 = {
+        add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+        scale: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+        dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+        cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+        norm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+    };
+
+    // Tangent basis for a face: u points "right" and v points "down" on screen when the
+    // face is at the front, so pictures stay upright. Uses CSS axes (y down, z toward viewer).
+    function faceBasis(n) {
+        let u = v3.cross([0, 1, 0], n);
+        if (Math.hypot(u[0], u[1], u[2]) < 1e-6) u = [1, 0, 0];
+        u = v3.norm(u);
+        return [u, v3.cross(n, u)];
+    }
+
+    function buildGoldberg(freq) {
+        const t = (1 + Math.sqrt(5)) / 2;
+        const ico = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t],
+            [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map(v3.norm);
+        const icoFaces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4],
+            [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+            [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+        const verts = [];
+        const index = new Map();
+        const addVert = p => {
+            const v = v3.norm(p);
+            const key = v.map(x => Math.round(x * 1e5)).join(',');
+            if (!index.has(key)) { index.set(key, verts.length); verts.push(v); }
+            return index.get(key);
         };
+        const tris = [];
+        icoFaces.forEach(([a, b, c]) => {
+            const A = ico[a], B = ico[b], C = ico[c];
+            const grid = [];
+            for (let i = 0; i <= freq; i++) {
+                grid[i] = [];
+                for (let j = 0; j <= freq - i; j++) {
+                    const k = freq - i - j;
+                    grid[i][j] = addVert(v3.add(v3.add(v3.scale(A, k), v3.scale(B, i)), v3.scale(C, j)));
+                }
+            }
+            for (let i = 0; i < freq; i++) {
+                for (let j = 0; j < freq - i; j++) {
+                    tris.push([grid[i][j], grid[i + 1][j], grid[i][j + 1]]);
+                    if (j < freq - i - 1) tris.push([grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]]);
+                }
+            }
+        });
+        // Dual: one face per subdivision vertex; its corners are the centers of the
+        // triangles around that vertex, sorted by angle.
+        const around = verts.map(() => []);
+        const centers = tris.map((tri, ti) => {
+            tri.forEach(v => around[v].push(ti));
+            return v3.norm(v3.add(v3.add(verts[tri[0]], verts[tri[1]]), verts[tri[2]]));
+        });
+        return verts.map((n, vi) => {
+            const [u, v] = faceBasis(n);
+            const corners = around[vi].map(ti => centers[ti])
+                .sort((p, q) => Math.atan2(v3.dot(p, v), v3.dot(p, u)) - Math.atan2(v3.dot(q, v), v3.dot(q, u)));
+            return { n, u, v, corners, sides: corners.length };
+        });
+    }
+
+    // Smallest tiling with room for every fighter (frequency 3 fits up to 80).
+    let freq = 3;
+    while (10 * freq * freq - 10 < N) freq++;
+    const faces = buildGoldberg(freq);
+    const pentagons = faces.filter(f => f.sides === 5);
+    let freeHexes = faces.filter(f => f.sides === 6);
+    const takeNearest = dir => {
+        let best = 0, bestDot = -Infinity;
+        freeHexes.forEach((f, i) => { const d = v3.dot(f.n, dir); if (d > bestDot) { bestDot = d; best = i; } });
+        return freeHexes.splice(best, 1)[0];
+    };
+
+    // ---- Assign pieces: brand "continents", belts on pentagons, a few special tiles ----
+    const BRANDS = ['Melee', 'Brawl', 'Ultimate'];
+    const seeds = {};
+    BRANDS.forEach((brand, i) => {
+        const lon = (i * 2 * Math.PI) / 3;
+        seeds[brand] = [Math.sin(lon), 0, Math.cos(lon)];
     });
+    const pieces = [];   // {el, face, kind}
+    const faceOf = [];   // fighter index -> face
+
+    // Special tiles first (only as many as there's room for): brand labels at the heart of
+    // each continent, the Smash Ball at the north pole, "?" (random) tiles at the south pole.
+    let spare = freeHexes.length - N;
+    const specials = [];
+    BRANDS.forEach(brand => { if (spare-- > 0) specials.push({ kind: 'brand', brand, face: takeNearest(seeds[brand]) }); });
+    if (spare-- > 0) specials.push({ kind: 'smash', face: takeNearest([0, -1, 0]) });
+    while (spare-- > 0) specials.push({ kind: 'random', face: takeNearest([0, 1, 0]) });
+
+    // Fighters: each brand claims the free faces nearest its seed (best power rank closest
+    // to the center), which grows three contiguous continents.
+    const byBrand = {};
+    tiles.forEach((tile, i) => {
+        const brand = BRANDS.includes(tile.dataset.brand) ? tile.dataset.brand : BRANDS[i % 3];
+        (byBrand[brand] = byBrand[brand] || []).push(i);
+    });
+    Object.values(byBrand).forEach(list => list.sort((a, b) =>
+        (Number(tiles[a].dataset.rank) || 999) - (Number(tiles[b].dataset.rank) || 999)));
+    const capacity = Object.fromEntries(BRANDS.map(b => [b, (byBrand[b] || []).length]));
+    const claimed = Object.fromEntries(BRANDS.map(b => [b, []]));
+    freeHexes
+        .flatMap(face => BRANDS.map(brand => ({ face, brand, d: v3.dot(face.n, seeds[brand]) })))
+        .sort((a, b) => b.d - a.d)
+        .forEach(({ face, brand }) => {
+            if (face.claimed || claimed[brand].length >= capacity[brand]) return;
+            face.claimed = true;
+            claimed[brand].push(face);
+        });
+    BRANDS.forEach(brand => {
+        claimed[brand].sort((a, b) => v3.dot(b.n, seeds[brand]) - v3.dot(a.n, seeds[brand]));
+        (byBrand[brand] || []).forEach((tileIndex, k) => { faceOf[tileIndex] = claimed[brand][k]; });
+    });
+    tiles.forEach((tile, i) => {
+        tile.classList.add('globe-piece');
+        pieces.push({ el: tile, face: faceOf[i], kind: 'fighter' });
+    });
+
+    // Belts: each brand's major title sits on the pentagon nearest its continent.
+    let belts = [];
+    try { belts = JSON.parse(document.getElementById('globeBelts').textContent); } catch (e) { belts = []; }
+    const freePentagons = pentagons.slice();
+    const placeBelt = (belt, face) => { freePentagons.splice(freePentagons.indexOf(face), 1); belt.face = face; };
+    BRANDS.forEach(brand => {
+        const belt = belts.find(b => b.title === brand);
+        if (!belt) return;
+        const face = freePentagons.reduce((a, b) => (v3.dot(b.n, seeds[brand]) > v3.dot(a.n, seeds[brand]) ? b : a));
+        placeBelt(belt, face);
+    });
+    belts.forEach(belt => { if (!belt.face && freePentagons.length) placeBelt(belt, freePentagons[0]); });
+
+    const makePiece = (tag, className, inner) => {
+        const el = document.createElement(tag);
+        el.className = `globe-piece ${className}`;
+        if (tag === 'button') el.type = 'button';
+        el.innerHTML = `<span class="globe-tile-hex"></span><span class="globe-tile-face">${inner}</span>`;
+        globe.appendChild(el);
+        return el;
+    };
+    belts.filter(b => b.face).forEach(belt => {
+        const src = championshipToBeltAsset(belt.title, 'md');
+        const holders = belt.champions.length ? belt.champions.join(' & ') : 'Vacant';
+        const el = makePiece('button', 'globe-belt',
+            src ? `<img src="${src}" alt="" draggable="false">` : `<span class="globe-special-label">${escapeHTML(belt.display)}</span>`);
+        el.title = `${belt.display} Championship: ${holders}`;
+        el.setAttribute('aria-label', el.title);
+        el.dataset.champion = belt.champions[0] || '';
+        pieces.push({ el, face: belt.face, kind: 'belt' });
+    });
+    specials.forEach(sp => {
+        let el;
+        if (sp.kind === 'brand') {
+            el = makePiece('button', `globe-special globe-special-brand brand-${sp.brand.toLowerCase()}`,
+                `<span class="globe-special-label">${sp.brand}</span>`);
+            el.title = `Show ${sp.brand} fighters`;
+            el.dataset.brand = sp.brand;
+        } else if (sp.kind === 'smash') {
+            el = makePiece('button', 'globe-special globe-special-smash',
+                `<img src="/static/assets/other/firesmashball.png" alt="" draggable="false">`);
+            el.title = 'Smash!';
+        } else {
+            el = makePiece('button', 'globe-special globe-special-random', '<span class="globe-special-label">?</span>');
+            el.title = 'Random fighter';
+        }
+        el.setAttribute('aria-label', el.title);
+        pieces.push({ el, face: sp.face, kind: sp.kind });
+    });
+
+    // ---- Placing faces in 3D ------------------------------------------------------
+    // Each piece is a flat div positioned with matrix3d on its face plane, clipped to the
+    // face's exact polygon. Corners are projected onto the face plane along rays from the
+    // center, so neighbouring pieces meet edge to edge.
     let radius = 300;
+    const SEAM = 0.965;   // outer edge, leaves a thin seam between pieces
+    const INNER = 0.88;   // inner picture area, leaves a colored rim
+    const polygon = (pts, k, minX, minY) =>
+        `polygon(${pts.map(([x, y]) => `${(x * k - minX).toFixed(2)}px ${(y * k - minY).toFixed(2)}px`).join(',')})`;
+
+    function placePiece(piece, { lift = 0, grow = 1 } = {}) {
+        const { el, face } = piece;
+        const { n, u, v } = face;
+        const R = radius;
+        const pts = face.corners.map(c => {
+            const t = R / v3.dot(n, c);
+            return [t * v3.dot(c, u) * grow, t * v3.dot(c, v) * grow];
+        });
+        const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+        const minX = Math.min(...xs), minY = Math.min(...ys);
+        const w = Math.max(...xs) - minX, h = Math.max(...ys) - minY;
+        const d = R + lift;
+        el.style.width = `${w}px`;
+        el.style.height = `${h}px`;
+        el.style.marginLeft = `${minX}px`;
+        el.style.marginTop = `${minY}px`;
+        el.style.transformOrigin = `${-minX}px ${-minY}px`;
+        el.style.transform = `matrix3d(${u[0]},${u[1]},${u[2]},0,${v[0]},${v[1]},${v[2]},0,${n[0]},${n[1]},${n[2]},0,${n[0] * d},${n[1] * d},${n[2] * d},1)`;
+        el.style.setProperty('--outer', polygon(pts, SEAM, minX, minY));
+        el.style.setProperty('--inner', polygon(pts, INNER, minX, minY));
+        el.style.setProperty('--piece', `${w}px`);
+    }
 
     function layout() {
         const size = stage.clientWidth;
         if (!size) return;
         radius = size * 0.4;
-        const tile = radius * Math.sqrt((4 * Math.PI) / N) * 1.1;
-        stage.style.setProperty('--tile', `${tile}px`);
-        tiles.forEach((el, i) => {
-            const p = points[i];
-            el.style.transform = `rotateY(${p.lon}rad) rotateX(${p.lat}rad) translateZ(${radius}px)`;
-        });
+        pieces.forEach(piece => placePiece(piece, piece.el.classList.contains('is-selected') ? { lift: radius * 0.06, grow: 1.12 } : {}));
         render();
     }
 
@@ -81,13 +270,12 @@
         globe.style.transform = `rotateX(${pitch}deg) rotateY(${yaw}deg)`;
         const cy = Math.cos(yaw * DEG), sy = Math.sin(yaw * DEG);
         const cp = Math.cos(pitch * DEG), sp = Math.sin(pitch * DEG);
-        for (let i = 0; i < N; i++) {
-            const p = points[i];
-            const z1 = -p.nx * sy + p.nz * cy;
-            const facing = p.ny * sp + z1 * cp;     // 1 = facing the viewer, -1 = far side
-            const el = tiles[i];
-            el.style.setProperty('--facing', facing.toFixed(3));
-            el.classList.toggle('is-back', facing < 0.08);
+        for (const piece of pieces) {
+            const [nx, ny, nz] = piece.face.n;
+            const z1 = -nx * sy + nz * cy;
+            const facing = ny * sp + z1 * cp;       // 1 = facing the viewer, -1 = far side
+            piece.el.style.setProperty('--facing', facing.toFixed(3));
+            piece.el.classList.toggle('is-back', facing < 0.08);
         }
     }
 
@@ -125,12 +313,12 @@
         if (!running) { running = true; requestAnimationFrame(frame); }
     }
 
-    function flyTo(i, { spin = 0, ease = 0.11 } = {}) {
-        const p = points[i];
-        const wantYaw = -p.lon / DEG;
+    function flyToNormal(n, { spin = 0, ease = 0.11 } = {}) {
+        const lat = Math.asin(-n[1]);
+        const lon = Math.atan2(n[0], n[2]);
         target = {
-            yaw: yaw + shortest(wantYaw - yaw) + spin,
-            pitch: clampPitch(-p.lat / DEG),
+            yaw: yaw + shortest(-lon / DEG - yaw) + spin,
+            pitch: clampPitch(-lat / DEG),
             ease: reduceMotion ? 1 : ease,
         };
         vYaw = vPitch = 0;
@@ -141,6 +329,8 @@
         }
         wake();
     }
+
+    const flyTo = (i, options) => flyToNormal(faceOf[i].n, options);
 
     // ---- Dragging (with momentum). Pointer capture starts only once a drag begins,
     // so a plain click still reaches the tile underneath.
@@ -194,17 +384,34 @@
     // ---- Selecting ----------------------------------------------------------
     stage.addEventListener('click', e => {
         if (stage.dataset.justDragged) { e.preventDefault(); e.stopPropagation(); return; }
-        const tile = e.target.closest('.globe-tile');
-        if (!tile) {                      // clicking empty space clears the selection
+        const pieceEl = e.target.closest('.globe-piece');
+        if (!pieceEl) {                   // clicking empty space clears the selection
             if (e.target.closest('.globe-stage')) select(-1);
             return;
         }
-        const i = tiles.indexOf(tile);
+        const i = tiles.indexOf(pieceEl);
+        if (i < 0) { e.preventDefault(); onSpecialClick(pieceEl); return; }
         if (i !== selected) {            // first click selects, second opens the profile
             e.preventDefault();
             select(i);
         }
     }, true);
+
+    function onSpecialClick(el) {
+        lastInteraction = performance.now();
+        if (el.classList.contains('globe-belt')) {
+            const i = tiles.findIndex(t => t.dataset.name === el.dataset.champion);
+            if (i >= 0) select(i);
+            else flyToNormal(pieces.find(p => p.el === el).face.n);
+        } else if (el.classList.contains('globe-special-brand')) {
+            document.querySelector(`.brand-filter[data-filter="${el.dataset.brand}"]`)?.click();
+        } else if (el.classList.contains('globe-special-random')) {
+            document.getElementById('rosterRandom').click();
+        } else if (el.classList.contains('globe-special-smash')) {
+            select(-1);
+            flyToNormal(pieces.find(p => p.el === el).face.n, { spin: reduceMotion ? 0 : 360, ease: 0.05 });
+        }
+    }
 
     tiles.forEach((tile, i) => {
         tile.draggable = false;
@@ -215,10 +422,14 @@
     });
 
     function select(i, options) {
-        if (selected >= 0) tiles[selected].classList.remove('is-selected');
+        if (selected >= 0) {
+            tiles[selected].classList.remove('is-selected');
+            placePiece(pieces[selected]);
+        }
         selected = i;
         if (i < 0) { showCard(null); wake(); return; }
         tiles[i].classList.add('is-selected');
+        placePiece(pieces[i], { lift: radius * 0.06, grow: 1.12 });
         lastInteraction = performance.now();
         hint.classList.add('is-hidden');
         flyTo(i, options);
@@ -281,7 +492,14 @@
                 if (score < bestScore) { bestScore = score; best = i; }
             }
         });
-        gridCards.forEach(cardEl => {
+        pieces.forEach(piece => {
+            if (piece.kind === 'fighter') return;
+            const lit = !active ||
+                (piece.kind === 'belt' && brandFilter === 'champions' && !q) ||
+                (piece.kind === 'brand' && piece.el.dataset.brand === brandFilter && !q);
+            piece.el.classList.toggle('is-dim', !lit);
+        });
+                gridCards.forEach(cardEl => {
             const ok = (!q || cardEl.dataset.name.includes(q)) &&
                 matchesFilter(cardEl.dataset.name, cardEl.dataset.brand, cardEl.classList.contains('is-champion'));
             cardEl.style.display = ok ? '' : 'none';

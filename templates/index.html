@@ -53,6 +53,7 @@
                     </g>
                 </svg>
             </div>
+            <script type="application/json" id="globeBelts">{{ belts | tojson }}</script>
             <div class="globe" id="globe">
                 {% for fighter in fighters %}
                 <a href="/fighter/{{ fighter.name }}"

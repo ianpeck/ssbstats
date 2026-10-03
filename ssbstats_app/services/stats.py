@@ -69,6 +69,21 @@ def home_champions(fighters):
     return sorted(champions, key=order)
 
 
+def home_belts(fighters):
+    """Every championship with its current holder(s), for the globe's 12 pentagon tiles."""
+    from ssbstats_app.services.content import get_autocomplete_data
+
+    canonical = {f["name"].lower(): f["name"] for f in fighters}
+    holders = {}
+    for fighter_key, titles in lookups.get_current_champions().items():
+        for title in titles:
+            holders.setdefault(title, []).append(canonical.get(fighter_key, fighter_key))
+    return [
+        {"title": title, "display": normalize_champ_name(title), "champions": holders.get(title, [])}
+        for title in get_autocomplete_data("championships")
+    ]
+
+
 def home_top_fighters(fighters, count=5):
     """Top of the all-time power rankings from the roster payload."""
     ranked = [f for f in fighters if f.get("power_rank")]

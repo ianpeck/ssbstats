@@ -14,7 +14,7 @@ from ssbstats_app.services.scheduling import (
     get_schedule_admin_payload,
     update_scheduled_match_from_form,
 )
-from ssbstats_app.services.stats import build_index_payload, get_home_summary, home_champions, home_top_fighters, get_event_detail_payload, get_fight_detail_payload, get_fights_page_filters
+from ssbstats_app.services.stats import build_index_payload, get_home_summary, home_belts, home_champions, home_top_fighters, get_event_detail_payload, get_fight_detail_payload, get_fights_page_filters
 from ssbstats_app.utils import fighter_to_filename
 
 
@@ -54,6 +54,7 @@ def index():
         fighters=fighters,
         summary=summary,
         champions=home_champions(fighters),
+        belts=home_belts(fighters),
         top_fighters=home_top_fighters(fighters),
     )
 

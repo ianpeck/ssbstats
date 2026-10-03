@@ -7517,39 +7517,37 @@ body.page-fighter #particleCanvas { opacity: 0.35; }
     will-change: transform;
 }
 
-/* Flat-top hexagon tiles, edged in the fighter's brand color (gold for champions) */
-.globe-tile {
-    --hex: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+/* Globe pieces: exact faces of a Goldberg polyhedron (80 hexagons + 12 pentagons).
+   index.js sets each piece's size, matrix3d transform and its --outer/--inner polygons. */
+.globe-piece {
     --edge: var(--brand, #8b93ad);
     position: absolute;
     left: 50%;
     top: 50%;
-    width: var(--tile, 110px);
-    height: calc(var(--tile, 110px) * 0.866);
-    margin-left: calc(var(--tile, 110px) / -2);
-    margin-top: calc(var(--tile, 110px) * -0.433);
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    opacity: calc(0.2 + var(--facing, 1) * 0.8);
-    transition: opacity 0.25s, filter 0.25s;
+    opacity: calc(0.25 + var(--facing, 1) * 0.75);
+    transition: opacity 0.25s, filter 0.25s, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+    cursor: pointer;
     outline: none;
 }
-.globe-tile.is-champion { --edge: linear-gradient(135deg, #fde68a, #f59e0b 55%, #b45309); }
-.globe-tile.is-back { pointer-events: none; }
-.globe-tile-hex {
+.globe-piece.is-back { pointer-events: none; }
+.globe-tile-hex,
+.globe-tile-face {
+    position: absolute;
+    inset: 0;
     display: block;
-    width: 100%;
-    height: 100%;
-    padding: 3px;
-    clip-path: var(--hex);
+}
+.globe-tile-hex {
+    clip-path: var(--outer);
     background: var(--edge);
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .globe-tile-face {
-    display: block;
-    width: 100%;
-    height: 100%;
-    clip-path: var(--hex);
+    clip-path: var(--inner);
     overflow: hidden;
     background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--brand, #8b93ad) 28%, #121420), #0b0c12 75%);
 }
@@ -7558,37 +7556,80 @@ body.page-fighter #particleCanvas { opacity: 0.35; }
     height: 100%;
     object-fit: cover;
     object-position: 50% 12%;
-    transform: scale(1.5);
+    transform: scale(1.35);
     transform-origin: 50% 18%;
     pointer-events: none;
 }
+.globe-tile.is-champion { --edge: linear-gradient(135deg, #fde68a, #f59e0b 55%, #b45309); }
 .globe-tile-crown {
     position: absolute;
-    top: -6%;
+    top: 4%;
     left: 50%;
     transform: translateX(-50%);
     color: #fcd34d;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
     pointer-events: none;
 }
-.globe-tile-crown svg { width: calc(var(--tile, 110px) * 0.18); height: calc(var(--tile, 110px) * 0.18); }
+.globe-tile-crown svg { width: calc(var(--piece, 110px) * 0.17); height: calc(var(--piece, 110px) * 0.17); }
 
-.globe-tile:hover .globe-tile-hex,
-.globe-tile:focus-visible .globe-tile-hex { transform: scale(1.14); }
-.globe-tile:hover,
-.globe-tile:focus-visible { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--brand, #fff) 70%, transparent)); }
-.globe-tile.is-selected { filter: drop-shadow(0 0 14px rgba(252, 211, 77, 0.85)); }
-.globe-tile.is-selected .globe-tile-hex {
+/* Championship belts on the 12 pentagons */
+.globe-belt { --edge: linear-gradient(135deg, #fff2c2, #f5b83d 50%, #9a5b09); }
+.globe-belt .globe-tile-face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 40%, #3a2a0c, #120d05 75%);
+}
+.globe-belt .globe-tile-face img {
+    width: 82%;
+    height: auto;
+    object-fit: contain;
+    transform: none;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+}
+
+/* Special tiles: brand labels, the Smash Ball, "?" random */
+.globe-special .globe-tile-face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.globe-special-label {
+    font-family: 'Oswald', var(--font-body);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #fff;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    font-size: calc(var(--piece, 110px) * 0.17);
+    pointer-events: none;
+}
+.globe-special-brand.brand-melee { --brand: #e5484d; }
+.globe-special-brand.brand-brawl { --brand: #4c8dff; }
+.globe-special-brand.brand-ultimate { --brand: #f59e0b; }
+.globe-special-brand { --edge: color-mix(in srgb, var(--brand) 70%, #fff); }
+.globe-special-brand .globe-tile-face {
+    background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--brand) 85%, #fff 5%), color-mix(in srgb, var(--brand) 45%, #000) 80%);
+}
+.globe-special-smash { --edge: linear-gradient(135deg, #ffffff, #fcd34d 40%, #ef4444); }
+.globe-special-smash .globe-tile-face { background: radial-gradient(circle, #2a1606, #0b0806 75%); }
+.globe-special-smash .globe-tile-face img { width: 80%; height: 80%; object-fit: contain; transform: none; }
+.globe-special-random { --edge: linear-gradient(135deg, #fde68a, #f59e0b); }
+.globe-special-random .globe-tile-face { background: radial-gradient(circle at 50% 35%, #2b2f45, #0d0f18 80%); }
+.globe-special-random .globe-special-label { color: #fcd34d; font-size: calc(var(--piece, 110px) * 0.42); }
+
+/* Interaction states */
+.globe-piece:hover,
+.globe-piece:focus-visible { filter: brightness(1.18) drop-shadow(0 0 10px color-mix(in srgb, var(--brand, #fcd34d) 70%, transparent)); }
+.globe-tile.is-selected {
     --edge: linear-gradient(135deg, #fff7d6, #fcd34d 50%, #f59e0b);
-    transform: scale(1.28);
-    animation: globe-pulse 1.6s ease-in-out infinite;
+    animation: globe-glow 1.6s ease-in-out infinite;
 }
-@keyframes globe-pulse {
-    0%, 100% { transform: scale(1.28); }
-    50% { transform: scale(1.36); }
+@keyframes globe-glow {
+    0%, 100% { filter: drop-shadow(0 0 10px rgba(252, 211, 77, 0.65)); }
+    50% { filter: drop-shadow(0 0 20px rgba(252, 211, 77, 0.95)); }
 }
-.globe-tile.is-dim { opacity: calc(0.08 + var(--facing, 1) * 0.12); filter: grayscale(1); }
-.globe-tile.is-dim .globe-tile-hex { transform: scale(0.9); }
+.globe-piece.is-dim { opacity: calc(0.08 + var(--facing, 1) * 0.14); filter: grayscale(1); }
 
 .globe-hint {
     position: absolute;
@@ -7722,7 +7763,8 @@ body.page-fighter #particleCanvas { opacity: 0.35; }
     .globe-card { min-height: 0; max-width: 420px; width: 100%; margin: 0 auto; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .globe-tile.is-selected .globe-tile-hex { animation: none; }
+    .globe-tile.is-selected { animation: none; }
+    .globe-piece { transition: opacity 0.25s, filter 0.25s; }
 }
 
 /* ============================================
