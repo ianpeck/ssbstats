@@ -1,129 +1,85 @@
 {% extends "base.html" %}
-{% block title %}SSB Stats - Season Archive{% endblock %}
-{% block meta_description %}Season-by-season standings, champions and award winners from every SSB league season.{% endblock %}
+{% block title %}SSB Stats - Seasons{% endblock %}
+{% block meta_description %}Season-by-season recaps of the SSB league: awards, event winners, every title change and the final standings.{% endblock %}
+{% block body_class %}page-seasons{% endblock %}
 
 {% block content %}
-<section class="seasons-section">
-    <div class="season-page-intro glass-card">
-        <div class="season-page-copy">
-            <span class="season-page-kicker">Archive</span>
-            <h1 class="section-title">Season Archive</h1>
-            <p class="section-subtitle">A full season-by-season recap of champions, awards, signature moments, and the final rankings table.</p>
-        </div>
-        <div class="season-page-meta">
-            <div class="season-page-meta-label">Browse Season</div>
-            <div class="season-page-meta-value" id="seasonMetaValue">Season {{ seasons[0] if seasons else '' }}</div>
-        </div>
-    </div>
-
-    <div class="season-pills-wrap glass-card">
-        <div class="season-pills-header">
-            <div>
-                <div class="season-pills-kicker">Season Selector</div>
-                <div class="season-pills-title">Jump to any era of the league</div>
-            </div>
-        </div>
-        <div class="season-pills" id="seasonPills">
-        {% for s in seasons %}
-        <button class="season-pill {% if loop.first %}active{% endif %}" data-season="{{ s }}">S{{ s }}</button>
-        {% endfor %}
-        </div>
-    </div>
+<div class="season-page">
+    <header class="lb-hero season-hero-head">
+        <span class="lb-kicker" id="seasonKicker">Season recap</span>
+        <h1 class="lb-title" id="seasonHeading">Season {{ seasons[-1] if seasons else '' }}</h1>
+        <nav class="lb-seasons" id="seasonPills" aria-label="Choose a season">
+            {% for s in seasons %}
+            <button type="button" class="season-pill{% if loop.last %} active{% endif %}" data-season="{{ s }}">S{{ s }}</button>
+            {% endfor %}
+        </nav>
+        <div class="season-facts" id="seasonFacts"></div>
+    </header>
 
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
-        <p>Loading season data...</p>
+        <p>Loading season...</p>
     </div>
 
-    <div id="seasonContent" style="display:none;">
-        <div class="season-hero glass-card">
-            <div>
-                <div class="season-hero-kicker">Season Overview</div>
-                <h2 class="season-heading" id="seasonHeading"></h2>
-                <p class="season-hero-copy">The defining title picture, awards slate, event winners, and closing rankings for the selected season.</p>
-            </div>
-            <div class="season-hero-tagline" id="seasonHeroTagline"></div>
-        </div>
+    <div id="seasonContent" hidden>
+        <nav class="fighter-page-nav h2h-page-nav season-page-nav" id="seasonPageNav" aria-label="Jump to section">
+            <a class="page-nav-pill" data-section="awardsSection" href="#awardsSection"><i data-lucide="award"></i>Awards</a>
+            <a class="page-nav-pill" data-section="eventsSection" href="#eventsSection"><i data-lucide="ticket"></i>Big Events</a>
+            <a class="page-nav-pill" data-section="titlesSection" href="#titlesSection"><i data-lucide="crown"></i>Title Picture</a>
+            <a class="page-nav-pill" data-section="standingsSection" href="#standingsSection"><i data-lucide="list-ordered"></i>Standings</a>
+        </nav>
 
-        <div class="season-top-grid">
-            <!-- Notable Events -->
-            <div class="glass-card season-card season-section-card">
-                <div class="season-card-head">
-                    <div>
-                        <div class="season-card-kicker">Moments</div>
-                        <h3 class="season-card-title">Notable Events</h3>
-                    </div>
-                </div>
-                <div id="eventsList" class="season-highlights"></div>
+        <section class="h2h-section" id="awardsSection">
+            <div class="h2h-section-head">
+                <h2 class="h2h-section-title"><i data-lucide="award"></i>Awards</h2>
+                <p class="h2h-section-note" id="awardsNote"></p>
             </div>
+            <div class="season-awards" id="awardsList"></div>
+        </section>
 
-            <!-- Awards -->
-            <div class="glass-card season-card season-section-card">
-                <div class="season-card-head">
-                    <div>
-                        <div class="season-card-kicker">Recognition</div>
-                        <h3 class="season-card-title">Awards</h3>
-                    </div>
-                </div>
-                <div id="awardsList" class="season-highlights"></div>
+        <section class="h2h-section" id="eventsSection">
+            <div class="h2h-section-head">
+                <h2 class="h2h-section-title"><i data-lucide="ticket"></i>Big Events</h2>
+                <p class="h2h-section-note">Marquee event winners and Money in the Bank cash-ins</p>
             </div>
-        </div>
+            <div class="season-events" id="eventsList"></div>
+        </section>
 
-        <!-- Championship Timeline -->
-        <div class="glass-card season-section-card season-timeline-card" style="margin-top: 1.25rem;" id="champTimelineCard">
-            <div class="season-card-shell">
-                <div class="season-card-head">
-                    <div>
-                        <div class="season-card-kicker">Title Picture</div>
-                        <h3 class="season-card-title">Championship Reigns</h3>
-                    </div>
-                    <div class="season-card-chip" id="championshipsCountChip">0 belts</div>
-                </div>
-                <p class="season-card-description">A visual timeline of who controlled each championship during the selected season.</p>
+        <section class="h2h-section" id="titlesSection">
+            <div class="h2h-section-head">
+                <h2 class="h2h-section-title"><i data-lucide="crown"></i>Title Picture</h2>
+                <p class="h2h-section-note" id="titlesNote"></p>
             </div>
-            <div id="champTimeline" class="season-timeline-body"></div>
-        </div>
+            <div class="season-titles" id="champTimeline"></div>
+        </section>
 
-        <!-- Season Rankings -->
-        <div class="glass-card season-section-card season-rankings-card" style="margin-top: 1.25rem;">
-            <div class="season-card-shell">
-                <div class="season-card-head">
-                    <div>
-                        <div class="season-card-kicker">Final Table</div>
-                        <h3 class="season-card-title">Season Rankings</h3>
-                    </div>
-                    <div class="season-card-chip" id="rankingsCountChip">0 fighters</div>
-                </div>
-                <p class="season-card-description">Sort the final standings by Power Score, record, volume, title months, and event success.</p>
+        <section class="h2h-section" id="standingsSection">
+            <div class="h2h-section-head">
+                <h2 class="h2h-section-title"><i data-lucide="list-ordered"></i>Standings</h2>
+                <a class="season-more-link" id="fullRankingsLink" href="/leaderboard">Full power rankings <i data-lucide="arrow-right"></i></a>
             </div>
-            <div class="table-scroll-wrapper">
-            <table class="leaderboard-table" id="seasonRankingsTable">
-                <thead>
-                    <tr>
-                        <th class="rank-col">#</th>
-                        <th class="fighter-col">Fighter</th>
-                        <th class="sr-sortable sr-active power-col" data-sr-sort="power_score">Power Score</th>
-                        <th class="sr-sortable" data-sr-sort="wins">Wins</th>
-                        <th class="sr-sortable" data-sr-sort="losses">Losses</th>
-                        <th class="sr-sortable" data-sr-sort="win_pct">Win %</th>
-                        <th class="sr-sortable" data-sr-sort="fights">Fights</th>
-                        <th class="sr-sortable" data-sr-sort="major_months">Major Months</th>
-                        <th class="sr-sortable" data-sr-sort="champ_months">Champ Months</th>
-                        <th class="sr-sortable" data-sr-sort="event_wins">Event Wins</th>
-                        <th class="sr-sortable" data-sr-sort="titles">Titles Held</th>
-                        <th class="sr-sortable elo-col" data-sr-sort="peak_season_elo">Peak Season ELO</th>
-                        <th class="sr-sortable elo-col" data-sr-sort="avg_elo">Season Avg ELO</th>
-                        <th class="sr-sortable elo-col" data-sr-sort="season_end_elo">End of Season ELO</th>
-                    </tr>
-                </thead>
-                <tbody id="seasonRankingsTbody"></tbody>
-            </table>
+            <div class="lb-table-wrap">
+                <table class="lb-table" id="seasonRankingsTable">
+                    <thead>
+                        <tr>
+                            <th class="lb-col-rank sortable" data-sort="power_rank" title="Power rank">#</th>
+                            <th class="lb-col-fighter">Fighter</th>
+                            <th class="lb-col-power sortable active" data-sort="power_score">Power Score</th>
+                            <th class="sortable" data-sort="wins">Record</th>
+                            <th class="sortable lb-col-pct" data-sort="pct">Win %</th>
+                            <th class="sortable lb-col-elo" data-sort="champ_months" title="Months holding a title this season">Title Mo.</th>
+                            <th class="sortable lb-col-elo" data-sort="season_end_elo">End Elo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="seasonRankingsTbody"></tbody>
+                </table>
             </div>
-        </div>
+            <button type="button" class="season-show-all" id="showAllBtn" hidden></button>
+        </section>
     </div>
-</section>
+</div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/pages/seasons.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/seasons.js') }}?v={{ static_v }}"></script>
 {% endblock %}

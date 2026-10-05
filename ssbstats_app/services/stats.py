@@ -318,9 +318,20 @@ def get_season_payload(season_id):
     for row in data.get("holistic", []):
         if row.get("Titles_Held"):
             row["Titles_Held"] = normalize_champ_name(row["Titles_Held"])
-    for row in data.get("champ_history", []):
+    for row in data.get("champ_history", []) + data.get("cashins", []):
         if row.get("Championship_Name"):
             row["Championship_Name"] = normalize_champ_name(row["Championship_Name"])
+    for row in data.get("awards", []) + data.get("holistic", []):
+        if row.get("Fighter_Name"):
+            row["Fighter_Name"] = canonical_map.get(row["Fighter_Name"].lower(), row["Fighter_Name"])
+    for row in data.get("cashins", []):
+        for key in ("Fight_Winner_Name", "Fight_Loser_Name"):
+            if row.get(key):
+                row[key] = canonical_map.get(row[key].lower(), row[key])
+    for row in data.get("calendar", []):
+        row["slug"] = event_to_slug(row.get("PPV_Name"))
+    for row in data.get("facts", []):
+        row["in_progress"] = season_id == latest and (row.get("last_month") or 0) < 12
 
     return {
         key: [{field: serialize_value(value) for field, value in row.items()} for row in rows]

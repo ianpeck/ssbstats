@@ -1,429 +1,339 @@
-const eventMap = [
-    { col: 'Won_Tournament',        label: 'Tournament Winner',   icon: '🎯' },
-    { col: 'Won_Royal_Rumble',      label: 'Royal Rumble Winner', icon: '💥' },
-    { col: 'Won_Scramble',          label: 'Scramble Winner',     icon: '🎲' },
-    { col: 'Won_Smash_Series',      label: 'Smash Series Winner', icon: '⚡' },
-    { col: 'Won_Money_In_The_Bank', label: 'Money in the Bank',   icon: '💰' },
-    { col: 'Won_Smash_Bros',        label: 'Smash Bros Winner',   icon: '🎮' },
-    { col: 'Successful_Cash_In',    label: 'Cash-In',             icon: '💸' },
-    { col: 'Defended_Cash_In',      label: 'Defended Cash-In',    icon: '🛡️' },
+// Season recap: awards, big-event winners, a 12-month title timeline and the standings.
+
+const $ = id => document.getElementById(id);
+
+// Marquee events, with the holistic_view column that records each winner.
+const EVENTS = [
+    { col: 'Won_Royal_Rumble',      name: 'Royal Rumble',                 art: ['ppv', 'royalrumble'],                href: '/events/royalrumble' },
+    { col: 'Won_Money_In_The_Bank', name: 'Money in the Bank',            art: ['ppv', 'moneyinthebank'],             href: '/events/moneyinthebank', detail: () => 'Won the briefcase' },
+    { col: 'Won_Tournament',        name: 'Final Destination Tournament', art: ['ppv', 'finaldestinationtournament'], href: '/events/finaldestinationtournament', detail: v => `${v} bracket` },
+    { col: 'Won_Smash_Series',      name: 'Smash Series',                 art: ['ppv', 'smashseries'],                href: '/events/smashseries' },
+    { col: 'Won_Scramble',          name: 'Championship Scramble',        art: ['ppv', 'championshipscramble'],       href: '/events/championshipscramble', detail: v => `${v} scramble` },
+    { col: 'Won_Smash_Bros',        name: 'Smash Bros. Trophy',           art: ['belts', 'smashbros'],                href: '/championships', detail: () => 'Yearly trophy' },
 ];
+const AWARD_ORDER = ['superstar', 'most improved', 'disappoint', 'tag'];
+const TITLE_ORDER = ['Melee', 'Brawl', 'Ultimate', 'Unified Tag'];
 
 let currentSeason = null;
-let _srData       = [];   // cached enriched rows for sort
-let _srSort       = { key: 'power_score', dir: 'desc' };
-let _latestSeason = null;
+let latestSeason = null;
+let standings = [];
+let sort = { key: 'power_score', dir: 'desc' };
+let showAll = false;
 
-function updateSeasonURL() {
+const esc = v => escapeHTML(v == null ? '' : String(v));
+const fighterLink = name => `/fighter/${encodeURIComponent(name)}`;
+const portrait = (name, size = 'sm', cls = '') => `<img class="${cls}" src="${fighterImg(name, size)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const pills = [...document.querySelectorAll('#seasonPills .season-pill')];
+    latestSeason = pills.length ? +pills[pills.length - 1].dataset.season : null;
+    pills.forEach(pill => pill.addEventListener('click', () => {
+        pills.forEach(p => p.classList.toggle('active', p === pill));
+        loadSeason(+pill.dataset.season);
+    }));
+
+    const params = new URLSearchParams(window.location.search);
+    const start = pills.find(p => p.dataset.season === params.get('season')) || pills[pills.length - 1];
+    if (params.get('sort')) sort = { key: params.get('sort'), dir: params.get('dir') === 'asc' ? 'asc' : 'desc' };
+    if (start) {
+        pills.forEach(p => p.classList.toggle('active', p === start));
+        loadSeason(+start.dataset.season, { keepSort: true });
+    }
+
+    document.querySelectorAll('#seasonRankingsTable .sortable').forEach(th => th.addEventListener('click', () => {
+        const key = th.dataset.sort;
+        sort = sort.key === key ? { key, dir: sort.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: key === 'power_rank' ? 'asc' : 'desc' };
+        renderStandings();
+        updateURL();
+    }));
+    $('showAllBtn').addEventListener('click', () => { showAll = !showAll; renderStandings(); });
+    $('seasonRankingsTbody').addEventListener('click', e => {
+        const row = e.target.closest('tr[data-name]');
+        if (row && !e.target.closest('a')) window.location.href = fighterLink(row.dataset.name);
+    });
+    setupSectionNav();
+});
+
+function updateURL() {
     const params = new URLSearchParams();
-    if (currentSeason) params.set('season', currentSeason);
-    if (_srSort.key !== 'power_score') params.set('sort', _srSort.key);
-    if (_srSort.dir !== 'desc') params.set('dir', _srSort.dir);
+    if (currentSeason !== latestSeason) params.set('season', currentSeason);
+    if (sort.key !== 'power_score') params.set('sort', sort.key);
+    if (sort.dir !== 'desc') params.set('dir', sort.dir);
     const qs = params.toString();
     history.replaceState(null, '', '/seasons' + (qs ? '?' + qs : ''));
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const pills = document.querySelectorAll('.season-pill');
-    if (pills.length) _latestSeason = parseInt(pills[pills.length - 1].dataset.season);
-    pills.forEach(pill => {
-        pill.addEventListener('click', function() {
-            pills.forEach(p => p.classList.remove('active'));
-            this.classList.add('active');
-            loadSeason(parseInt(this.dataset.season));
-        });
-    });
-
-    // Restore from URL params
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlSeason = urlParams.get('season');
-    const urlSort = urlParams.get('sort');
-    const urlDir = urlParams.get('dir');
-    if (urlSort) _srSort.key = urlSort;
-    if (urlDir) _srSort.dir = urlDir;
-
-    let startPill = pills[0];
-    if (urlSeason) {
-        const match = Array.from(pills).find(p => p.dataset.season === urlSeason);
-        if (match) startPill = match;
-    }
-    if (startPill) {
-        pills.forEach(p => p.classList.remove('active'));
-        startPill.classList.add('active');
-        loadSeason(parseInt(startPill.dataset.season));
-    }
-
-    document.querySelectorAll('.sr-sortable').forEach(th => {
-        th.addEventListener('click', function() {
-            const key = this.dataset.srSort;
-            _srSort.dir = (_srSort.key === key && _srSort.dir === 'desc') ? 'asc' : 'desc';
-            _srSort.key = key;
-            document.querySelectorAll('.sr-sortable').forEach(h => h.classList.remove('sr-active', 'sr-asc'));
-            this.classList.add('sr-active');
-            if (_srSort.dir === 'asc') this.classList.add('sr-asc');
-            updateSeasonURL();
-            _renderSortedRankings();
-        });
-    });
-});
-
-function loadSeason(season) {
+function loadSeason(season, { keepSort = false } = {}) {
     if (currentSeason === season) return;
     currentSeason = season;
-    if (!window._srSortRestored) {
-        window._srSortRestored = true;
-    } else {
-        _srSort = { key: 'power_score', dir: 'desc' };
-    }
-    updateSeasonURL();
-    document.querySelectorAll('.sr-sortable').forEach(h => h.classList.remove('sr-active', 'sr-asc'));
-    const defTh = document.querySelector('.sr-sortable[data-sr-sort="power_score"]');
-    if (defTh) defTh.classList.add('sr-active');
-    document.getElementById('loadingOverlay').style.display = 'flex';
-    document.getElementById('seasonContent').style.display = 'none';
+    if (!keepSort) sort = { key: 'power_score', dir: 'desc' };
+    showAll = false;
+    updateURL();
+    $('seasonHeading').textContent = `Season ${season}`;
+    $('fullRankingsLink').href = `/leaderboard?season=${season}`;
+    $('loadingOverlay').style.display = 'flex';
+    $('seasonContent').hidden = true;
 
     fetch(`/api/season/${season}`)
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
         .then(data => {
-            document.getElementById('loadingOverlay').style.display = 'none';
-            document.getElementById('seasonContent').style.display = 'block';
-            document.getElementById('seasonHeading').textContent = `Season ${season}`;
-            document.getElementById('seasonMetaValue').textContent = `Season ${season}`;
-            renderEvents(data.holistic || []);
-            renderAwards(data.awards || []);
-            renderChampTimeline(data.champ_history || []);
-            renderRankings(data.rankings || [], data.holistic || [], data.champ_history || [], data.awards || [], data.current_champions || []);
-            renderSeasonSummary(season, data.rankings || [], data.holistic || [], data.champ_history || [], data.awards || []);
+            if (season !== currentSeason) return;   // a newer season was picked meanwhile
+            const facts = (data.facts || [])[0] || {};
+            renderFacts(facts, data);
+            renderAwards(data.awards || [], facts);
+            renderEvents(data.holistic || [], data.cashins || [], data.calendar || []);
+            renderTitles(data.champ_history || [], data.calendar || [], facts);
+            buildStandings(data);
+            renderStandings();
+            $('loadingOverlay').style.display = 'none';
+            $('seasonContent').hidden = false;
         })
-        .catch(() => {
-            document.getElementById('loadingOverlay').innerHTML = '<p>Error loading season data.</p>';
+        .catch(() => { $('loadingOverlay').innerHTML = "<p>Couldn't load this season. Refresh to try again.</p>"; });
+}
+
+// ── Header facts ───────────────────────────────────────────────
+function renderFacts(facts, data) {
+    $('seasonKicker').textContent = facts.game ? `Season recap · ${facts.game} era` : 'Season recap';
+    const stat = (value, label) => `<div class="season-fact"><span class="season-fact-value">${value}</span><span class="season-fact-label">${label}</span></div>`;
+    $('seasonFacts').innerHTML =
+        (facts.in_progress ? `<span class="season-live"><span class="season-live-dot"></span>In progress · through Month ${facts.last_month}</span>` : '') +
+        `<div class="season-fact-row">
+            ${stat((facts.fights || 0).toLocaleString(), 'Fights')}
+            ${stat(facts.ppvs || 0, 'PPVs')}
+            ${stat(facts.title_changes || 0, 'Title changes')}
+            ${stat((data.rankings || []).length, 'Fighters')}
+        </div>`;
+}
+
+// ── Awards ─────────────────────────────────────────────────────
+function renderAwards(rows, facts) {
+    const groups = [];
+    rows.forEach(r => {
+        let g = groups.find(x => x.award === r.Award_Name);
+        if (!g) groups.push(g = { award: r.Award_Name, names: [] });
+        if (!g.names.includes(r.Fighter_Name)) g.names.push(r.Fighter_Name);
+    });
+    const rank = a => { const i = AWARD_ORDER.findIndex(k => a.toLowerCase().includes(k)); return i < 0 ? AWARD_ORDER.length : i; };
+    groups.sort((a, b) => rank(a.award) - rank(b.award));
+
+    $('awardsNote').textContent = groups.length ? '' : (facts.in_progress ? 'Handed out when the season ends' : 'No awards recorded');
+    $('awardsList').innerHTML = groups.map((g, i) => {
+        const featured = i === 0 && g.award.toLowerCase().includes('superstar');
+        return `<article class="season-award${featured ? ' is-featured' : ''}">
+            <span class="season-award-faces">${g.names.map(n => `<a href="${fighterLink(n)}">${portrait(n, featured ? 'md' : 'sm')}</a>`).join('')}</span>
+            <span class="season-award-name">${esc(g.award)}</span>
+            <span class="season-award-winner">${g.names.map(n => `<a href="${fighterLink(n)}">${esc(n)}</a>`).join(' &amp; ')}</span>
+        </article>`;
+    }).join('');
+}
+
+// ── Big events ─────────────────────────────────────────────────
+function renderEvents(holistic, cashins, calendar) {
+    const monthOf = name => (calendar.find(c => c.PPV_Name === name) || {}).Month || 13;
+    const cards = [];
+    EVENTS.forEach(ev => {
+        const winners = [];
+        holistic.forEach(r => {
+            const v = r[ev.col];
+            if (v == null || v === '') return;
+            const detail = ev.detail ? ev.detail(v) : '';
+            if (!winners.some(w => w.name === r.Fighter_Name && w.detail === detail)) winners.push({ name: r.Fighter_Name, detail });
         });
+        if (winners.length) cards.push({ ...ev, month: ev.col === 'Won_Smash_Bros' ? 14 : monthOf(ev.name), winners });
+    });
+    cards.sort((a, b) => a.month - b.month);
+
+    // Pick a column count that never leaves a lone card on the last row.
+    const cols = cards.length <= 5 ? cards.length : cards.length % 3 === 0 ? 3 : 4;
+    const grid = cards.length ? `<div class="season-event-grid" style="--cols:${cols}">${cards.map(c => `
+        <article class="season-event">
+            <a class="season-event-art" href="${c.href}">
+                <img src="${assetVariant(c.art[0], c.art[1], 'sm')}" alt="" loading="lazy" onerror="this.remove()">
+            </a>
+            <a class="season-event-name" href="${c.href}">${esc(c.name)}</a>
+            <span class="season-event-when">${c.month <= 12 ? `Month ${c.month}` : 'End of season'}</span>
+            <div class="season-event-winners"><div class="season-event-winner-list">${c.winners.map(w => `
+                <a class="season-event-winner" href="${fighterLink(w.name)}">
+                    ${portrait(w.name)}
+                    <span><strong>${esc(w.name)}</strong>${w.detail ? `<small>${esc(w.detail)}</small>` : ''}</span>
+                </a>`).join('')}
+            </div></div>
+        </article>`).join('')}</div>` : '';
+
+    $('eventsList').innerHTML = grid + (cashins.length ? cashinCard(cashins) : '')
+        || '<p class="season-empty">No marquee events decided yet.</p>';
 }
 
-function renderSeasonSummary(season, rankings, holistic, champHistory, awards) {
-    const heroTagline = document.getElementById('seasonHeroTagline');
-    const uniqueChampions = new Set((champHistory || []).map(row => row.Fighter_Name).filter(Boolean));
-    const uniqueBelts = new Set((champHistory || []).map(row => row.Championship_Name).filter(Boolean));
-    const awardWinnerCount = new Set((awards || []).map(row => row.Fighter_Name).filter(Boolean)).size;
-    const eventWinnerCount = new Set((holistic || []).map(row => row.Fighter_Name).filter(Boolean)).size;
-
-    document.getElementById('championshipsCountChip').textContent = `${uniqueBelts.size || 0} belts`;
-    document.getElementById('rankingsCountChip').textContent = `${(rankings || []).length || 0} fighters`;
-    heroTagline.textContent = '';
+// Each cash-in as a matchup: the champion vs the briefcase holder, and whether the champion held on.
+function cashinCard(cashins) {
+    const side = (name, role, won) => `
+        <a class="season-cashin-side${won ? ' is-winner' : ''}" href="${fighterLink(name)}">
+            ${portrait(name)}
+            <span><small>${role}</small><strong>${esc(name)}</strong></span>
+        </a>`;
+    return `<article class="season-cashins">
+        <a class="season-event-art" href="/events/moneyinthebank">
+            <img src="${assetVariant('ppv', 'moneyinthebank', 'sm')}" alt="" loading="lazy" onerror="this.remove()">
+        </a>
+        <div class="season-cashins-body">
+            <a class="season-event-name" href="/events/moneyinthebank">Money in the Bank cash-ins</a>
+            ${cashins.map(c => {
+                const held = c.Fight_Winner === 'Champion';
+                const champion = held ? c.Fight_Winner_Name : c.Fight_Loser_Name;
+                const challenger = held ? c.Fight_Loser_Name : c.Fight_Winner_Name;
+                const belt = championshipToBeltAsset(c.Championship_Name, 'sm');
+                return `<div class="season-cashin">
+                    <div class="season-cashin-head">
+                        ${belt ? `<img src="${belt}" alt="" loading="lazy">` : ''}
+                        <span>${esc(c.Championship_Name)} title · M${c.Month}${c.PPV_Name ? ' · ' + esc(c.PPV_Name) : ''}</span>
+                        <span class="season-cashin-result ${held ? 'is-held' : 'is-new'}">${held ? 'Champion held' : 'New champion'}</span>
+                    </div>
+                    <div class="season-cashin-match">
+                        ${side(champion, 'Champion', held)}
+                        <span class="season-cashin-vs">vs</span>
+                        ${side(challenger, 'Cashed in', !held)}
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+    </article>`;
 }
 
-function renderEvents(rows) {
-    const container = document.getElementById('eventsList');
-    container.innerHTML = '';
-
-    // Collect winners per event type — store {name, extra} objects for dedup
-    const events = {};
-    rows.forEach(row => {
-        eventMap.forEach(({ col, label, icon }) => {
-            const val = row[col];
-            if (val == null) return;
-            if (!events[col]) events[col] = { label, icon, entries: [] };
-            const isFlag = (String(val).toUpperCase() === 'Y');
-            const name = row.Fighter_Name;
-            const extra = isFlag ? '' : ` (${val})`;
-            if (!events[col].entries.some(e => e.name === name && e.extra === extra)) {
-                events[col].entries.push({ name, extra });
-            }
-        });
+// ── Title picture: every belt on a 12-month track ─────────────
+function renderTitles(rows, calendar, facts) {
+    const lastMonth = facts.in_progress ? facts.last_month : 12;
+    const byTitle = new Map();
+    rows.filter(r => r.Championship_Name !== 'Smash Bros.').forEach(r => {
+        if (!byTitle.has(r.Championship_Name)) byTitle.set(r.Championship_Name, []);
+        byTitle.get(r.Championship_Name).push(r);
     });
+    const order = name => { const i = TITLE_ORDER.indexOf(name); return i < 0 ? TITLE_ORDER.length : i; };
+    const titles = [...byTitle.keys()].sort((a, b) => order(a) - order(b) || a.localeCompare(b));
 
-    if (!Object.keys(events).length) {
-        container.innerHTML = '<p class="empty-note">No event data for this season.</p>';
-        return;
-    }
+    const changes = facts.title_changes || 0;
+    $('titlesNote').textContent = `${changes} title change${changes === 1 ? '' : 's'}` + (facts.in_progress ? ` through Month ${lastMonth}` : '');
 
-    eventMap.forEach(({ col, label, icon }) => {
-        if (!events[col]) return;
-        const { entries } = events[col];
-        const html = entries.map(e =>
-            `<a href="/fighter/${encodeURIComponent(e.name)}" class="fighter-link">${e.name}</a>${e.extra}`
-        ).join(', ');
-        const div = document.createElement('div');
-        div.className = 'season-highlight-row';
-        div.innerHTML = `
-            <span class="highlight-icon">${icon}</span>
-            <span class="highlight-label">${label}</span>
-            <span class="highlight-value">${html}</span>
-        `;
-        container.appendChild(div);
-    });
-}
+    const ppvByMonth = Object.fromEntries(calendar.map(c => [c.Month, c.PPV_Name]));
+    const axis = `<div class="season-track-axis">${Array.from({ length: 12 }, (_, i) => {
+        const m = i + 1;
+        return `<span class="${m > lastMonth ? 'is-future' : ''}" title="${esc(ppvByMonth[m] || '')}">M${m}</span>`;
+    }).join('')}</div>`;
 
-function renderAwards(rows) {
-    const container = document.getElementById('awardsList');
-    container.innerHTML = '';
-
-    if (!rows.length) {
-        container.innerHTML = '<p class="empty-note">No awards data for this season.</p>';
-        return;
-    }
-
-    // Group by award name so tag team winners are joined with &
-    const grouped = {};
-    const order = [];
-    rows.forEach(row => {
-        const award = row.Award_Name;
-        if (!grouped[award]) { grouped[award] = []; order.push(award); }
-        grouped[award].push(row.Fighter_Name);
-    });
-
-    // Sort awards: Superstar of Year → Most Improved → Disappointing → Tag → rest
-    const PRIORITY = ['superstar', 'most improved', 'disappoint', 'tag'];
-    function awardPriority(name) {
-        const lower = name.toLowerCase();
-        for (let i = 0; i < PRIORITY.length; i++) {
-            if (lower.includes(PRIORITY[i])) return i;
-        }
-        return PRIORITY.length;
-    }
-    order.sort((a, b) => awardPriority(a) - awardPriority(b));
-
-    order.forEach(award => {
-        const fighters = grouped[award];
-        const fighterLinks = fighters
-            .map(f => `<a href="/fighter/${encodeURIComponent(f)}" class="fighter-link">${f}</a>`)
-            .join(' &amp; ');
-        const div = document.createElement('div');
-        div.className = 'season-highlight-row';
-        div.innerHTML = `
-            <span class="highlight-icon">🏅</span>
-            <span class="highlight-label">${award}</span>
-            <span class="highlight-value">${fighterLinks}</span>
-        `;
-        container.appendChild(div);
-    });
-}
-
-function renderChampTimeline(rows) {
-    const container = document.getElementById('champTimeline');
-    const card = document.getElementById('champTimelineCard');
-    container.innerHTML = '';
-
-    if (!rows.length) {
-        card.style.display = 'none';
-        return;
-    }
-    card.style.display = 'block';
-
-    // Group by championship, preserving row order (already chronological from DB)
-    const byChamp = {};
-    const champOrder = [];
-    rows.forEach(row => {
-        const champ = row.Championship_Name || '?';
-        if (!byChamp[champ]) {
-            byChamp[champ] = [];
-            champOrder.push(champ);
-        }
-        byChamp[champ].push(row);
-    });
-
-    champOrder.forEach(champName => {
-        const reigns = byChamp[champName];
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'champ-timeline-row';
-
-        const label = document.createElement('div');
-        label.className = 'champ-timeline-label';
-        label.textContent = `🏆 ${champName}`;
-        wrapper.appendChild(label);
-
-        const bar = document.createElement('div');
-        bar.className = 'champ-timeline-bar';
-
-        // Group consecutive rows with same Season_Won+Month_Won+Season_Lost+Month_Lost as tag-team partners.
-        // Win month does NOT count (reign starts 1st of next month).
-        // Loss month DOES count. Same-month win+loss = 0 months.
-        // Season_Lost null = current champion → show as "active".
-        const groups = [];
-        let ri = 0;
-        while (ri < reigns.length) {
-            const cur = reigns[ri];
-            const partners = [cur];
-            let rj = ri + 1;
-            while (rj < reigns.length &&
-                   reigns[rj].Season_Won  === cur.Season_Won &&
-                   reigns[rj].Month_Won   === cur.Month_Won  &&
-                   reigns[rj].Season_Lost === cur.Season_Lost &&
-                   reigns[rj].Month_Lost  === cur.Month_Lost) {
-                partners.push(reigns[rj]);
-                rj++;
-            }
-            const isCurrent = cur.Season_Lost == null;
-            let displayMonths = 0;
-            if (!isCurrent) {
-                // absStart: reign starts NEXT month after win; absEnd: loss month inclusive (exclusive ptr)
-                const absStart = (cur.Season_Won  - 1) * 12 + (cur.Month_Won  || 1) + 1;
-                const absEnd   = (cur.Season_Lost - 1) * 12 + (cur.Month_Lost || 1) + 1;
-                // Clamp to this season's range
-                const seaStart = (currentSeason - 1) * 12 + 1;
-                const seaEnd   = currentSeason * 12 + 1; // exclusive
-                displayMonths  = Math.max(0, Math.min(absEnd, seaEnd) - Math.max(absStart, seaStart));
-            }
-            groups.push({
-                months:    displayMonths,
-                isCurrent: isCurrent,
-                fighters:  partners.map(p => p.Fighter_Name || '?')
-            });
-            ri = rj;
-        }
-
-        groups.forEach((group, gi) => {
-            const { months, isCurrent, fighters } = group;
-            const isLast = gi === groups.length - 1;
-            const flexVal = isCurrent ? 3 : (months > 0 ? months : 0.4);
-            const monthLabel = isCurrent ? 'active' : (months > 0 ? `${months} mo.` : '<1 mo.');
-            const isTag = fighters.length > 1;
-
-            const seg = document.createElement('div');
-            seg.className = 'champ-segment' +
-                (isLast ? ' champ-segment-last' : '') +
-                (isTag ? ' champ-segment-tag' : '');
-            seg.style.flex = flexVal;
-
-            const fighterHTML = fighters.map(name => {
-                const filename = fighterToFilename(name);
-                return `<span class="champ-tag-fighter">` +
-                    `<img src="${assetVariant('fighters', filename)}" alt="${name}" class="champ-seg-portrait" onerror="this.style.display='none'">` +
-                    `<a href="/fighter/${encodeURIComponent(name)}" class="champ-seg-name fighter-link">${name}</a>` +
-                    `</span>`;
-            }).join('<span class="champ-tag-amp">&amp;</span>');
-
-            seg.innerHTML = fighterHTML + `<span class="champ-seg-months">${monthLabel}</span>`;
-            bar.appendChild(seg);
+    const lines = titles.map(title => {
+        // Tag partners share a reign: same won/lost dates.
+        const reigns = [];
+        byTitle.get(title).forEach(r => {
+            const same = reigns.find(g => g.Season_Won === r.Season_Won && g.Month_Won === r.Month_Won && g.Season_Lost === r.Season_Lost && g.Month_Lost === r.Month_Lost);
+            if (same) { same.names.push(r.Fighter_Name); same.inaugural = same.inaugural || !!r.inaugural; }
+            else reigns.push({ ...r, inaugural: !!r.inaugural, names: [r.Fighter_Name] });
         });
 
-        wrapper.appendChild(bar);
-        container.appendChild(wrapper);
-    });
+        const segments = [], brief = [];
+        reigns.forEach(g => {
+            // A reign starts the month after the title is won; the month it's lost still counts.
+            // Inaugural champions already held the title going into its first fight, so their
+            // reign covers that month too.
+            const start = g.Season_Won < currentSeason ? 1 : g.Month_Won + (g.inaugural ? 0 : 1);
+            const current = g.Season_Lost == null;
+            const end = current ? (currentSeason === latestSeason ? lastMonth : 12) : (g.Season_Lost > currentSeason ? 12 : g.Month_Lost);
+            if (start <= end) segments.push({ g, start, end, current: current && currentSeason === latestSeason });
+            else if (g.Season_Won === currentSeason) brief.push({ g, month: g.Month_Won });   // won and lost the same month, or won in M12
+        });
+
+        const label = g => g.names.join(' & ');
+        const seg = ({ g, start, end, current }, i) => {
+            const span = end - start + 1;
+            const tip = `${label(g)} · M${start}–M${end}${g.inaugural ? ' · inaugural champion' : ''}${current ? ' · current champion' : ''}`;
+            return `<a class="season-reign${i % 2 ? ' is-alt' : ''}${current ? ' is-current' : ''}${span < 2 ? ' is-narrow' : ''}" href="${fighterLink(g.names[0])}"
+                    style="left:${(start - 1) / 12 * 100}%;width:${span / 12 * 100}%" title="${esc(tip)}">
+                <span class="season-reign-faces">${g.names.map(n => portrait(n)).join('')}</span>
+                <span class="season-reign-name">${esc(label(g))}</span>
+            </a>`;
+        };
+        const mark = ({ g, month }) => `<a class="season-reign-brief" href="${fighterLink(g.names[0])}" style="left:${(month - 0.5) / 12 * 100}%"
+                title="${esc(`${label(g)} · won in M${month}${g.Season_Lost === currentSeason && g.Month_Lost === month ? ', lost it the same month' : month === 12 ? ', reign continues next season' : ''}`)}">${portrait(g.names[0])}</a>`;
+
+        const belt = championshipToBeltAsset(title, 'sm');
+        return `<div class="season-title-row">
+            <div class="season-title-name">${belt ? `<img src="${belt}" alt="" loading="lazy">` : ''}<span>${esc(title)}</span></div>
+            <div class="season-track">
+                ${lastMonth < 12 ? `<span class="season-track-future" style="left:${lastMonth / 12 * 100}%"></span>` : ''}
+                ${segments.map(seg).join('')}${brief.map(mark).join('')}
+            </div>
+        </div>`;
+    }).join('');
+
+    $('champTimeline').innerHTML = titles.length
+        ? `<div class="season-title-row season-title-axis"><div></div>${axis}</div>${lines}`
+        : '<p class="season-empty">No title reigns recorded.</p>';
 }
 
-const _SR_EVENT_COLS = ['Won_Tournament','Won_Royal_Rumble','Won_Scramble','Won_Smash_Series','Won_Money_In_The_Bank','Won_Smash_Bros'];
+// ── Standings ──────────────────────────────────────────────────
+function buildStandings(data) {
+    const months = {};
+    (data.holistic || []).forEach(r => { months[r.Fighter_Name.toLowerCase()] = parseInt(r.Months_With_Title) || 0; });
+    const awards = {};
+    (data.awards || []).forEach(r => (awards[r.Fighter_Name.toLowerCase()] ||= []).push(r.Award_Name));
+    const belts = {};
+    (data.current_champions || []).forEach(r => (belts[String(r.Fighter_Name).toLowerCase()] ||= []).push(r.Championship_Name));
 
-function renderRankings(rows, holistic, champHistory, awards, currentChampions) {
-    // Build holistic stats map
-    const holisticMap = {};
-    (holistic || []).forEach(row => {
-        const name = (row.Fighter_Name || row.fighter_name || '').toLowerCase();
-        if (!holisticMap[name]) holisticMap[name] = { champ_months: 0, major_months: 0, event_wins: new Set() };
-        holisticMap[name].champ_months += parseInt(row.Months_With_Title || 0) || 0;
-        holisticMap[name].major_months += parseInt(row.Months_With_Major || 0) || 0;
-        _SR_EVENT_COLS.forEach(col => {
-            if (row[col] != null && row[col] !== '' && String(row[col]) !== 'None') {
-                holisticMap[name].event_wins.add(col);
-            }
-        });
-    });
-
-    // Build titles held map from champ history (for "Titles Held" count column)
-    const titlesMap = {};
-    (champHistory || []).forEach(row => {
-        const name = (row.Fighter_Name || row.fighter_name || '').toLowerCase();
-        if (!titlesMap[name]) titlesMap[name] = new Set();
-        if (row.Championship_Name) titlesMap[name].add(row.Championship_Name);
-    });
-
-    // Build current champions map (for badge display on latest season only)
-    const currentChampsMap = {};
-    (currentChampions || []).forEach(row => {
-        const name = (row.Fighter_Name || '').toLowerCase();
-        if (!currentChampsMap[name]) currentChampsMap[name] = [];
-        if (row.Championship_Name) currentChampsMap[name].push(row.Championship_Name);
-    });
-
-    // Build awards map: fighter → [award_name, ...] (lowercase keys for case-insensitive lookup)
-    const awardsMap = {};
-    (awards || []).forEach(row => {
-        const name = (row.Fighter_Name || '').toLowerCase();
-        if (!awardsMap[name]) awardsMap[name] = [];
-        if (row.Award_Name && !awardsMap[name].includes(row.Award_Name))
-            awardsMap[name].push(row.Award_Name);
-    });
-
-    // Build enriched data rows for sorting
-    _srData = rows.map(row => {
-        const name = row.Fighter_Name || row.fighter_name || '';
-        const wins = parseInt(row.Wins || row.wins || 0);
-        const losses = parseInt(row.Losses || row.losses || 0);
-        const pct = row['Win Percentage'] || row.Win_Pct || row.win_pct || row['W/L %'] || '0.00%';
-        const pctVal = parseFloat(String(pct).replace('%', '')) || 0;
-        const nk = name.toLowerCase();
-        const hol = holisticMap[nk] || { champ_months: 0, major_months: 0, event_wins: new Set() };
-        const ps = row.power_score != null ? parseFloat(row.power_score) : null;
-        const titleSet = titlesMap[nk];
+    standings = (data.rankings || []).map(r => {
+        const name = r.Fighter_Name, key = name.toLowerCase();
+        const pct = r['Win Percentage'] || '0.00%';
         return {
-            name, wins, losses, pct, pctVal,
-            fights: wins + losses,
-            major_months: hol.major_months,
-            champ_months: hol.champ_months,
-            event_wins: hol.event_wins.size,
-            titles: titleSet ? titleSet.size : 0,
-            title_names: currentChampsMap[nk] || [],
-            season_awards: awardsMap[name.toLowerCase()] || [],
-            power_score: ps,
-            power_rank: row.power_rank != null ? parseInt(row.power_rank) : null,
-            peak_season_elo: row.peak_season_elo != null ? parseFloat(row.peak_season_elo) : null,
-            avg_elo: row.avg_elo != null ? parseFloat(row.avg_elo) : null,
-            season_end_elo: row.season_end_elo != null ? parseFloat(row.season_end_elo) : null,
+            name, pct,
+            pctVal: parseFloat(String(pct).replace('%', '')) || 0,
+            wins: parseInt(r.Wins) || 0, losses: parseInt(r.Losses) || 0,
+            power_score: r.power_score, power_rank: r.power_rank,
+            champ_months: months[key] || 0,
+            season_end_elo: r.season_end_elo,
+            awards: awards[key] || [], belts: belts[key] || [],
         };
     });
-
-    _renderSortedRankings();
 }
 
-function _renderSortedRankings() {
-    const key = _srSort.key;
-    const dir = _srSort.dir;
-    const sorted = [..._srData].sort((a, b) => {
-        let av = a[key], bv = b[key];
-        if (key === 'pct' || key === 'win_pct') { av = a.pctVal; bv = b.pctVal; }
-        av = av ?? -Infinity;
-        bv = bv ?? -Infinity;
-        return dir === 'desc' ? bv - av : av - bv;
+function renderStandings() {
+    const val = (f, key) => key === 'pct' ? f.pctVal : (f[key] ?? -Infinity);
+    const sign = sort.dir === 'desc' ? -1 : 1;
+    const rows = [...standings].sort((a, b) => sign * (val(a, sort.key) - val(b, sort.key)) || (a.power_rank || 999) - (b.power_rank || 999));
+    const shown = showAll ? rows : rows.slice(0, 10);
+
+    document.querySelectorAll('#seasonRankingsTable .sortable').forEach(th => {
+        const on = th.dataset.sort === sort.key;
+        th.classList.toggle('active', on);
+        th.classList.toggle('asc', on && sort.dir === 'asc');
     });
 
-    const tbody = document.getElementById('seasonRankingsTbody');
-    tbody.innerHTML = '';
-    const fmtElo = v => (v != null ? v.toFixed(1) : '--');
-    const eloClass = v => (v == null ? '' : v >= 1600 ? 'pct-high' : v < 1400 ? 'pct-low' : '');
-    sorted.forEach((f, i) => {
-        const pctClass = f.pctVal >= 60 ? 'pct-high' : f.pctVal < 40 ? 'pct-low' : 'pct-mid';
-        const rankClass = i < 3 ? `rank-${i + 1}` : '';
-        const filename = fighterToFilename(f.name);
+    $('seasonRankingsTbody').innerHTML = shown.map(f => {
+        const chips = f.belts.map(t => `<span class="lb-belt">${esc(t)}</span>`).concat(f.awards.map(a => `<span class="lb-award">${esc(a)}</span>`)).join('');
         const ps = f.power_score;
-        const psClass = getPowerScoreClass(ps);
-        const titleBadges = f.title_names.map(t => `<span class="lb-champ-tag">👑 ${t}</span>`).join('');
-        const awardBadges = f.season_awards.map(a => `<span class="lb-award-tag">🏅 ${a}</span>`).join('');
+        return `<tr data-name="${esc(f.name)}" class="${f.power_rank <= 3 ? 'is-top' : ''}">
+            <td class="lb-col-rank"><span class="lb-rank">${f.power_rank ?? '—'}</span></td>
+            <td class="lb-col-fighter"><a class="lb-fighter" href="${fighterLink(f.name)}">${portrait(f.name)}
+                <span class="lb-fighter-text"><span class="lb-fighter-name">${esc(f.name)}</span>${chips ? `<span class="lb-fighter-titles">${chips}</span>` : ''}</span></a></td>
+            <td class="lb-col-power">${ps != null ? `<div class="lb-power ${getPowerScoreClass(ps)}"><span class="lb-power-num">${ps.toFixed(1)}</span><span class="lb-power-track"><span class="lb-power-fill" style="width:${Math.max(2, Math.min(100, ps))}%"></span></span></div>` : '—'}</td>
+            <td class="lb-num lb-record">${f.wins}<span class="lb-dash">–</span>${f.losses}</td>
+            <td class="lb-num lb-col-pct ${getBandClass(f.pctVal, WIN_PCT_BANDS)}">${esc(f.pct)}</td>
+            <td class="lb-num lb-col-elo">${f.champ_months || '<span class="lb-muted">—</span>'}</td>
+            <td class="lb-num lb-col-elo ${getBandClass(f.season_end_elo, ELO_BANDS)}">${f.season_end_elo != null ? Math.round(f.season_end_elo) : '—'}</td>
+        </tr>`;
+    }).join('');
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="rank-cell ${rankClass}">${i + 1}</td>
-            <td class="fighter-cell">
-                <img src="${assetVariant('fighters', filename)}" alt="${f.name}" class="leaderboard-portrait"
-                     onerror="this.style.display='none'">
-                <div class="fighter-cell-inner">
-                    <a href="/fighter/${encodeURIComponent(f.name)}" class="fighter-link">${f.name}</a>
-                    ${titleBadges}${awardBadges}
-                </div>
-            </td>
-            <td class="stat-cell power-col ${psClass}">${ps != null ? `<span class="ps-dot"></span>${ps.toFixed(1)}` : '--'}</td>
-            <td class="stat-cell">${f.wins}</td>
-            <td class="stat-cell">${f.losses}</td>
-            <td class="stat-cell ${pctClass}">${f.pct}</td>
-            <td class="stat-cell">${f.fights}</td>
-            <td class="stat-cell">${f.major_months}</td>
-            <td class="stat-cell">${f.champ_months}</td>
-            <td class="stat-cell">${f.event_wins > 0 ? f.event_wins + '/6' : '—'}</td>
-            <td class="stat-cell">${f.titles || '—'}</td>
-            <td class="stat-cell ${eloClass(f.peak_season_elo)}">${fmtElo(f.peak_season_elo)}</td>
-            <td class="stat-cell ${eloClass(f.avg_elo)}">${fmtElo(f.avg_elo)}</td>
-            <td class="stat-cell ${eloClass(f.season_end_elo)}">${fmtElo(f.season_end_elo)}</td>
-        `;
-        tbody.appendChild(tr);
-    });
+    const btn = $('showAllBtn');
+    btn.hidden = rows.length <= 10;
+    btn.textContent = showAll ? 'Show top 10' : `Show all ${rows.length} fighters`;
+}
+
+// ── Section nav (same behavior as the fighter and head-to-head pages) ──
+function setupSectionNav() {
+    const pills = document.querySelectorAll('#seasonPageNav .page-nav-pill');
+    const jump = id => {
+        const el = $(id);
+        if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - (64 + 56), behavior: 'smooth' });
+    };
+    pills.forEach(p => p.addEventListener('click', e => { e.preventDefault(); jump(p.dataset.section); }));
+    const spy = new IntersectionObserver(entries => entries.forEach(entry => {
+        if (entry.isIntersecting) pills.forEach(p => p.classList.toggle('active', p.dataset.section === entry.target.id));
+    }), { rootMargin: '-15% 0px -70% 0px' });
+    pills.forEach(p => spy.observe($(p.dataset.section)));
 }

@@ -58,6 +58,10 @@ function fetchJSON(url) {
 function loadRankings(season, { keepSort = false } = {}) {
     currentSeason = season;
     $("rankingsKicker").textContent = season ? `Season ${season}` : "All-time";
+    const recap = $("seasonRecapLink");
+    recap.hidden = !season;
+    recap.href = `/seasons?season=${season}`;
+    recap.querySelector("span").textContent = `Season ${season} recap`;
     $("loadingOverlay").style.display = "flex";
     $("leaderboardWrapper").hidden = true;
 
