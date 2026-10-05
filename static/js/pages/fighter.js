@@ -836,9 +836,10 @@ function renderSeasonChart(data) {
                     data: pcts,
                     type: 'line',
                     yAxisID: 'yPct',
-                    borderColor: FIGHTER_THEME.brand,
-                    backgroundColor: FIGHTER_THEME.brandFill,
-                    pointBackgroundColor: FIGHTER_THEME.brand,
+                    // Fixed blue: a brand color (Melee is red) would blend into the loss bars.
+                    borderColor: '#60a5fa',
+                    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                    pointBackgroundColor: '#60a5fa',
                     pointRadius: 5,
                     pointHoverRadius: 7,
                     borderWidth: 2.5,

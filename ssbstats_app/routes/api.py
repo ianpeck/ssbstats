@@ -138,6 +138,7 @@ def fights():
     filters = {
         "season": request.args.get("season", ""),
         "month": request.args.get("month", ""),
+        "week": request.args.get("week", ""),
         "fight_type": request.args.get("fight_type", ""),
         "location": request.args.get("location", ""),
         "ppv": request.args.get("ppv", ""),

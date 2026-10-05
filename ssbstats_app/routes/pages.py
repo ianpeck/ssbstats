@@ -9,6 +9,7 @@ from ssbstats_app.repositories.seasons import get_all_seasons
 from ssbstats_app.security import RateLimiter, admin_ip_allowed, safe_next_url
 from ssbstats_app.services.content import get_autocomplete_data, get_fighter_blurb
 from ssbstats_app.services.championships import get_championship_detail, get_championships_overview
+from ssbstats_app.services.fight_story import build_fight_extras
 from ssbstats_app.services.ppv import get_event_hub, get_events_data
 from ssbstats_app.services.records import get_record_book
 from ssbstats_app.services.scheduling import (
@@ -179,7 +180,7 @@ def fight_detail_page(fight_id):
     payload = get_fight_detail_payload(fight_id)
     if payload is None:
         abort(404)
-    return render_template("fight_detail.html", fight=payload)
+    return render_template("fight_detail.html", fight=payload, extras=build_fight_extras(payload))
 
 
 @pages_bp.route("/chat")

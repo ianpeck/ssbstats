@@ -132,3 +132,35 @@ def get_prev_next_fight_ids(season, month, week, fight_id):
         "previous_fight_id": prev_row[0]["Fight_ID"] if prev_row else None,
         "next_fight_id": next_row[0]["Fight_ID"] if next_row else None,
     }
+
+
+_BEFORE = """(f.Season < %s OR (f.Season = %s AND (f.Month < %s OR (f.Month = %s AND
+            (COALESCE(f.Week, 99) < %s OR (COALESCE(f.Week, 99) = %s AND f.Fight_ID <= %s))))))"""
+
+
+def get_fight_numbers(season, month, week, fight_id, location):
+    """Where this fight falls: its number within the season, and at its stage, counting chronologically."""
+    when = (season, season, month, month, week, week, fight_id)
+    rows = select_view_dicts(
+        f"""
+        SELECT
+            (SELECT COUNT(DISTINCT f.Fight_ID) FROM FightLog f WHERE f.Season = %s AND {_BEFORE}) AS in_season,
+            (SELECT COUNT(DISTINCT f.Fight_ID) FROM FightLog f WHERE f.Season = %s) AS season_total,
+            (SELECT COUNT(DISTINCT f.Fight_ID) FROM FightLog f WHERE f.Location_Name = %s AND {_BEFORE}) AS at_stage,
+            (SELECT COUNT(DISTINCT f.Fight_ID) FROM FightLog f WHERE f.Location_Name = %s) AS stage_total,
+            (SELECT MIN(f.Season) FROM FightLog f WHERE f.Location_Name = %s) AS stage_first_season
+        """,
+        (season, *when, season, location, *when, location, location),
+    )
+    return rows[0] if rows else {}
+
+
+def get_stage_leaders(location, limit=3):
+    """Most wins at a stage, all time."""
+    return select_view_dicts(
+        """
+        SELECT Fighter_Name, Wins, Losses FROM CareerStatsByLocation
+        WHERE Location_Name = %s ORDER BY Wins DESC, Losses LIMIT %s
+        """,
+        (location, limit),
+    )

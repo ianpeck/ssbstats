@@ -40,3 +40,11 @@ class ChampionshipSlugTests(unittest.TestCase):
     def test_title_route_registered(self):
         routes = {str(rule) for rule in create_app().url_map.iter_rules()}
         self.assertIn("/championships/<slug>", routes)
+
+
+class FightStoryWordingTests(unittest.TestCase):
+    def test_ordinals_and_articles(self):
+        from ssbstats_app.services.fight_story import _a, _ordinal
+        self.assertEqual([_ordinal(n) for n in (1, 2, 3, 4, 11, 12, 13, 21, 22, 101)],
+                         ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "101st"])
+        self.assertEqual([_a(n) for n in (8, 11, 18, 32, 80, 13)], ["an", "an", "an", "a", "an", "a"])

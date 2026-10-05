@@ -28,11 +28,21 @@ class AppFactoryTests(unittest.TestCase):
             self.assertIn("static_v", injected)
             self.assertTrue(injected["static_v"])
 
+    @patch("ssbstats_app.routes.pages.build_fight_extras")
     @patch("ssbstats_app.routes.pages.get_fight_detail_payload")
-    def test_fight_detail_page_renders_when_payload_exists(self, mock_payload):
+    def test_fight_detail_page_renders_when_payload_exists(self, mock_payload, mock_extras):
         """The fight detail page should render when a fight payload is available."""
+        mock_extras.return_value = {
+            "story": [{"icon": "swords", "text": "Mario beat Bowser.", "tone": ""}],
+            "tiles": [{"label": "Fight of Season 1", "value": "#1", "sub": "of 10"}],
+            "stage": None, "card": [], "belt": None, "title_slug": None, "ppv_slug": None,
+        }
         mock_payload.return_value = {
             "fight_id": 123,
+            "season": 1,
+            "month": 1,
+            "week": 1,
+            "brand": "Melee",
             "hero_title": "Mario vs. Bowser",
             "hero_subtitle": "Season 1 · Month 1",
             "fight_type": "Singles",
@@ -81,6 +91,7 @@ class AppFactoryTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Mario vs. Bowser", response.data)
+        self.assertIn(b"Mario beat Bowser.", response.data)
 
     @patch("ssbstats_app.routes.api.get_fight_detail_payload")
     def test_fight_detail_api_returns_404_for_missing_fight(self, mock_payload):

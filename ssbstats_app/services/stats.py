@@ -6,6 +6,7 @@ from ssbstats_app.cache import ttl_cache
 from ssbstats_app.repositories.base import query_failure_count, select_view_dicts, select_view_row
 from ssbstats_app.repositories import comparisons, elo, events, fight_detail, fighters, fights, leaderboards, lookups, power, seasons
 from ssbstats_app.services.championships import get_championships_data
+from ssbstats_app.services.fight_story import get_upset_ranks
 from ssbstats_app.services.ppv import get_event_hub, get_events_data
 from ssbstats_app.services.records import get_record_book
 from ssbstats_app.utils import event_to_slug, fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
@@ -557,15 +558,19 @@ def get_fight_detail_payload(fight_id):
                     "record": contender_record,
                 }
             )
-        if participant["defending"]:
-            defending_record = record_from_rows(
-                rows,
-                lambda row: str(row.get("DefendingIndicator") or "").upper() not in ("", "N", "0", "NONE"),
-            )
+        if championship:
+            # One row for both sides: the champion's record defending titles, the challenger's
+            # record challenging for them (title fights where they weren't the champion).
+            defending = lambda row: str(row.get("DefendingIndicator") or "").upper() not in ("", "N", "0", "NONE")
+            if participant["defending"]:
+                role, role_record = "defending", record_from_rows(rows, defending)
+            else:
+                role, role_record = "challenging", record_from_rows(rows, lambda row: bool(row.get("Championship_Name")) and not defending(row))
             contextual_records.append(
                 {
-                    "label": "Title Defenses",
-                    "record": defending_record,
+                    "label": "Defending / challenging",
+                    "record": role_record,
+                    "role": role,
                 }
             )
         return {
@@ -975,6 +980,7 @@ def keep_fighter_caches_warm():
                 get_championships_data.refresh()
                 get_events_data.refresh()
                 get_event_hub.cache_clear()   # event pages rebuild on demand from the fresh data
+                get_upset_ranks.refresh()
                 get_compare_roster_maxes.refresh()
                 get_compare_payload.cache_clear()  # pairs rebuild on demand from the per-fighter halves
                 latest = lookups.get_latest_season()

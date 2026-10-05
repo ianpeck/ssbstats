@@ -40,6 +40,8 @@ function getFightLogFilters() {
         contender: document.getElementById("filterContender").value,
         season: document.getElementById("filterSeason").value,
         month: document.getElementById("filterMonth").value,
+        week: document.getElementById("filterWeek").value,
+        fight_id: document.getElementById("filterFightId").value.trim(),
         fight_type: document.getElementById("filterFightType").value,
         location: document.getElementById("filterLocation").value,
         ppv: document.getElementById("filterPPV").value,
@@ -145,7 +147,7 @@ function loadFights(reset = false) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    const dropdownIds = ["filterDecision", "filterContender", "filterSeason", "filterMonth", "filterFighterOp2", "filterFighterOp3", "filterFighterOp4"];
+    const dropdownIds = ["filterDecision", "filterContender", "filterSeason", "filterMonth", "filterWeek", "filterFighterOp2", "filterFighterOp3", "filterFighterOp4"];
     dropdownIds.forEach(id => {
         document.getElementById(id).addEventListener("change", () => {
             currentFilters = getFightLogFilters();
@@ -190,6 +192,8 @@ document.addEventListener("DOMContentLoaded", () => {
     fighterInputs.forEach(input => {
         input.addEventListener("input", syncFighterFilterRows);
     });
+    const fightIdInput = document.getElementById("filterFightId");
+    fightIdInput.addEventListener("input", debouncedLoad);
     textAutocompleteInputs.forEach(([input]) => {
         input.addEventListener("input", debouncedLoad);
         input.addEventListener("change", () => {
@@ -211,6 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
         textAutocompleteInputs.forEach(([input]) => {
             input.value = "";
         });
+        fightIdInput.value = "";
         document.querySelectorAll('.fight-fighter-row[data-row="2"], .fight-fighter-row[data-row="3"], .fight-fighter-row[data-row="4"]').forEach(row => {
             row.classList.add("is-hidden");
         });
@@ -274,6 +279,8 @@ document.addEventListener("DOMContentLoaded", () => {
         contender: "filterContender",
         season: "filterSeason",
         month: "filterMonth",
+        week: "filterWeek",
+        fight_id: "filterFightId",
         fight_type: "filterFightType",
         location: "filterLocation",
         ppv: "filterPPV",
@@ -285,7 +292,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (val) document.getElementById(elId).value = val;
     });
     currentFilters = getFightLogFilters();
-    if (urlParams.get("fight_id")) currentFilters.fight_id = urlParams.get("fight_id");
     syncFighterFilterRows();
     updateFightFilterCount();
 

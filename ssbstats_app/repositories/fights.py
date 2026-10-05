@@ -10,6 +10,7 @@ def get_fight_log(filters, page=1, per_page=100):
     mapping = [
         ("season", "Season", False),
         ("month", "Month", False),
+        ("week", "Week", False),
         ("fight_type", "Description", False),
         ("location", "Location_Name", False),
         ("ppv", "PPV_Name", False),

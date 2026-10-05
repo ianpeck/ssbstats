@@ -2,31 +2,27 @@
 {% block title %}SSB Stats - Fight Log{% endblock %}
 {% block meta_description %}Search every fight in SSB league history by fighter, stage, season, PPV or title.{% endblock %}
 
-{% block content %}
-<section class="seasons-section">
-    <h1 class="section-title">Fight Log</h1>
-    <p class="section-subtitle">Complete record of every fight</p>
+{% block body_class %}page-fights{% endblock %}
 
-    <!-- Filter bar -->
-    <div class="fight-filters glass-card">
-        <div class="fight-filter-header">
-            <div>
-                <span class="fight-filter-kicker">Archive Controls</span>
-                <h2 class="fight-filter-title">Find A Specific Fight Fast</h2>
-                <p class="fight-filter-copy">Slice the archive by fighter, season, title stakes, event, or result.</p>
-            </div>
-            <div class="fight-filter-summary">
-                <span class="fight-filter-summary-label">Active Filters</span>
-                <strong id="fightFilterCount">0</strong>
-            </div>
+{% block content %}
+<div class="champ-page fightlog-page">
+    <header class="lb-hero">
+        <span class="lb-kicker">Every fight in league history</span>
+        <h1 class="lb-title">Fight Log</h1>
+        <p class="lb-lede">Search by fighter, event, stage, title and more. Open any fight for the full story.</p>
+    </header>
+
+    <section class="fl-filters" aria-label="Filter fights">
+        <div class="fl-filters-head">
+            <h2 class="fl-filters-title"><i data-lucide="sliders-horizontal"></i>Filters <span class="fl-filter-count" id="fightFilterCount">0</span></h2>
+            <button class="fl-clear" id="clearFilters" type="button"><i data-lucide="x"></i>Clear all</button>
         </div>
 
-        <div class="fight-filter-grid">
-            <div class="fight-filter-group fight-filter-group-featured">
-                <div class="fight-fighter-filter-head">
-                    <label>Fighters</label>
-                    <button id="addFighterFilter" type="button" class="fight-add-filter-btn">+ Add Fighter</button>
-                </div>
+        <div class="fl-group fl-group-fighters">
+            <div class="fight-fighter-filter-head">
+                <label>Fighters</label>
+                <button id="addFighterFilter" type="button" class="fight-add-filter-btn"><i data-lucide="plus"></i>Add fighter</button>
+            </div>
                 <div class="fight-fighter-builder">
                     <div class="fight-fighter-row" data-row="1">
                         <div class="autocomplete-wrapper">
@@ -72,96 +68,78 @@
                         <button type="button" class="fight-remove-filter-btn" data-remove-row="4">Remove</button>
                     </div>
                 </div>
-                <p class="fight-filter-microcopy">Chain fighters with <strong>OR</strong> to widen the search, or <strong>AND</strong> to require the same fight to include both fighters.</p>
-            </div>
-            <div class="fight-filter-group">
-                <label>Result</label>
-                <select id="filterDecision" class="fight-filter-input">
-                    <option value="">All Results</option>
-                    <option value="W">Wins Only</option>
-                    <option value="L">Losses Only</option>
-                </select>
-            </div>
-            <div class="fight-filter-group">
-                <label>#1 Contender</label>
-                <select id="filterContender" class="fight-filter-input">
-                    <option value="">All Fights</option>
-                    <option value="Y">Contender Matches</option>
-                    <option value="N">Non-Contender Matches</option>
-                </select>
-            </div>
-            <div class="fight-filter-group">
-                <label>Season</label>
+                <p class="fight-filter-microcopy"><strong>OR</strong> widens the search; <strong>AND</strong> finds fights with both fighters.</p>
+        </div>
+
+        <div class="fl-grid">
+            <label class="fl-field"><span>Season</span>
                 <select id="filterSeason" class="fight-filter-input">
-                    <option value="">All Seasons</option>
+                    <option value="">All seasons</option>
                     {% for s in seasons %}<option value="{{ s }}">Season {{ s }}</option>{% endfor %}
-                </select>
-            </div>
-            <div class="fight-filter-group">
-                <label>Month</label>
+                </select></label>
+            <label class="fl-field"><span>Month</span>
                 <select id="filterMonth" class="fight-filter-input">
-                    <option value="">All Months</option>
+                    <option value="">All months</option>
                     {% for m in range(1,13) %}<option value="{{ m }}">Month {{ m }}</option>{% endfor %}
-                </select>
-            </div>
-            <div class="fight-filter-group">
-                <label>Fight Type</label>
+                </select></label>
+            <label class="fl-field"><span>Week</span>
+                <select id="filterWeek" class="fight-filter-input">
+                    <option value="">All weeks</option>
+                    {% for w in range(1,5) %}<option value="{{ w }}">Week {{ w }}{% if w == 4 %} (PPV){% endif %}</option>{% endfor %}
+                </select></label>
+            <label class="fl-field"><span>Fight ID</span>
+                <input type="number" id="filterFightId" class="fight-filter-input" placeholder="e.g. 2286" min="1" inputmode="numeric"></label>
+            <label class="fl-field"><span>Result</span>
+                <select id="filterDecision" class="fight-filter-input">
+                    <option value="">All results</option>
+                    <option value="W">Wins only</option>
+                    <option value="L">Losses only</option>
+                </select></label>
+            <label class="fl-field"><span>#1 Contender</span>
+                <select id="filterContender" class="fight-filter-input">
+                    <option value="">All fights</option>
+                    <option value="Y">Contender matches</option>
+                    <option value="N">Non-contender matches</option>
+                </select></label>
+            <div class="fl-field"><span>PPV</span>
                 <div class="autocomplete-wrapper">
-                    <input type="text" id="filterFightType" class="fight-filter-input"
-                           placeholder="Type a fight type..." autocomplete="off">
+                    <input type="text" id="filterPPV" class="fight-filter-input" placeholder="Any event…" autocomplete="off">
                     <div class="autocomplete-dropdown"></div>
-                </div>
-            </div>
-            <div class="fight-filter-group">
-                <label>Location</label>
+                </div></div>
+            <div class="fl-field"><span>Championship</span>
                 <div class="autocomplete-wrapper">
-                    <input type="text" id="filterLocation" class="fight-filter-input"
-                           placeholder="Type a location..." autocomplete="off">
+                    <input type="text" id="filterChampionship" class="fight-filter-input" placeholder="Any title…" autocomplete="off">
                     <div class="autocomplete-dropdown"></div>
-                </div>
-            </div>
-            <div class="fight-filter-group">
-                <label>PPV</label>
+                </div></div>
+            <div class="fl-field"><span>Fight type</span>
                 <div class="autocomplete-wrapper">
-                    <input type="text" id="filterPPV" class="fight-filter-input"
-                           placeholder="Type a PPV..." autocomplete="off">
+                    <input type="text" id="filterFightType" class="fight-filter-input" placeholder="Any type…" autocomplete="off">
                     <div class="autocomplete-dropdown"></div>
-                </div>
-            </div>
-            <div class="fight-filter-group">
-                <label>Championship</label>
+                </div></div>
+            <div class="fl-field"><span>Stage</span>
                 <div class="autocomplete-wrapper">
-                    <input type="text" id="filterChampionship" class="fight-filter-input"
-                           placeholder="Type a championship..." autocomplete="off">
+                    <input type="text" id="filterLocation" class="fight-filter-input" placeholder="Any stage…" autocomplete="off">
                     <div class="autocomplete-dropdown"></div>
-                </div>
-            </div>
-            <div class="fight-filter-group">
-                <label>Brand</label>
+                </div></div>
+            <div class="fl-field"><span>Brand</span>
                 <div class="autocomplete-wrapper">
-                    <input type="text" id="filterBrand" class="fight-filter-input"
-                           placeholder="Type a brand..." autocomplete="off">
+                    <input type="text" id="filterBrand" class="fight-filter-input" placeholder="Any brand…" autocomplete="off">
                     <div class="autocomplete-dropdown"></div>
-                </div>
-            </div>
+                </div></div>
         </div>
-        <div class="fight-filter-actions">
-            <span class="fight-filter-hint">Filters update the archive instantly.</span>
-            <button class="fight-filter-clear-btn" id="clearFilters" type="button">Clear Filters</button>
-        </div>
-    </div>
+    </section>
 
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
         <p>Loading fights...</p>
     </div>
 
-    <div id="fightList" class="fight-list" style="display:none;"></div>
+    <div id="fightList" class="fight-list fl-results" style="display:none;"></div>
 
-    <div id="loadMoreContainer" style="text-align:center;margin-top:1.25rem;display:none;">
-        <button class="btn-outline" id="loadMoreBtn">Load More</button>
+    <div id="loadMoreContainer" class="fl-more" style="display:none;">
+        <button class="season-show-all" id="loadMoreBtn" type="button">Load more fights</button>
     </div>
-</section>
+</div>
 {% endblock %}
 
 {% block scripts %}

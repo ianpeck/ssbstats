@@ -1,208 +1,251 @@
 {% extends "base.html" %}
-{% block title %}SSB Stats - Fight {{ fight.fight_id }}{% endblock %}
+{% block title %}SSB Stats - {{ fight.hero_title }}{% endblock %}
 {% block og_title %}{{ fight.hero_title }} · SSB Stats{% endblock %}
-{% block meta_description %}{% if fight.winners and fight.losers and not fight.championship %}{{ fight.winners | map(attribute='name') | join(' & ') }} def. {{ fight.losers | map(attribute='name') | join(' & ') }}{% else %}{{ fight.result_summary | trim('.') }}{% endif %}{% if fight.fight_type %} · {{ fight.fight_type }}{% endif %} · {{ fight.hero_subtitle }}{% endblock %}
+{% block meta_description %}{% if extras.story %}{{ extras.story[0].text }} {% endif %}{{ fight.hero_subtitle }}{% if fight.location %} · {{ fight.location }}{% endif %}{% endblock %}
 {% block og_image %}
 {% if fight.stage_image %}
     <meta property="og:image" content="{{ site_url }}{{ asset_variant('stages', fight.stage_image, 'md') }}">
     <meta name="twitter:card" content="summary_large_image">
 {% else %}{{ super() }}{% endif %}
 {% endblock %}
+{% block body_class %}page-fight{% endblock %}
+
+{% macro outcome(p) -%}
+{{ 'Winner' if p.decision == 'W' else ('No contest' if p.decision == 'NC' else 'Defeated') }}
+{%- endmacro %}
+
+{# A W–L record with its win % in small brackets #}
+{% macro wl(r, role=None) -%}
+{% set total = r.wins + r.losses %}
+{{ r.wins }}–{{ r.losses }}{% if total %} <small class="fd-pct">({{ (100 * r.wins / total + 0.5) | int }}%)</small>{% endif %}
+{%- if role %}<small class="fd-role">{{ role }}</small>{% endif %}
+{%- endmacro %}
+
+{% macro fighter_card(p, size='lg') -%}
+<a class="fd-fighter is-{{ size }} {% if p.decision == 'W' %}is-winner{% elif p.decision == 'NC' %}is-nc{% else %}is-loser{% endif %}" href="{{ url_for('pages.fighter_profile', name=p.name) }}">
+    <span class="fd-fighter-portrait"><img src="{{ asset_variant('fighters', p.filename, 'md') }}" alt="{{ p.name }}"></span>
+    <span class="fd-fighter-tags">
+        <span class="fd-outcome">{{ outcome(p) }}</span>
+        {% if p.defending %}<span class="fd-tag-champ">Champion</span>{% endif %}
+        {% if p.seed %}<span class="fd-tag-seed">#{{ p.seed }} seed</span>{% endif %}
+    </span>
+    <span class="fd-fighter-name">{{ p.name }}</span>
+    {% if p.get('elo_before') is not none and p.get('elo_after') is not none %}
+    {% set delta = (p.elo_after - p.elo_before) | round | int %}
+    <span class="fd-fighter-elo">{{ p.elo_before | round | int }} → {{ p.elo_after | round | int }} <b class="{{ 'is-up' if delta > 0 else 'is-down' }}">{{ '+' if delta > 0 }}{{ delta }}</b></span>
+    {% endif %}
+</a>
+{%- endmacro %}
 
 {% block content %}
-<section class="fight-page">
-    <div class="fight-page-topbar">
-        <a href="{{ url_for('pages.fights') }}" class="btn-outline fight-back-link">&larr; Back to Fight Log</a>
-        <div class="fight-page-nav">
-            {% if fight.navigation.previous_fight_id %}
-            <a href="{{ url_for('pages.fight_detail_page', fight_id=fight.navigation.previous_fight_id) }}" class="btn-outline">Previous Fight</a>
-            {% endif %}
-            {% if fight.navigation.next_fight_id %}
-            <a href="{{ url_for('pages.fight_detail_page', fight_id=fight.navigation.next_fight_id) }}" class="btn-outline">Next Fight</a>
-            {% endif %}
-        </div>
-    </div>
+{% set winners = fight.participants_raw | selectattr('decision', 'equalto', 'W') | list %}
+{% set others = fight.participants_raw | rejectattr('decision', 'equalto', 'W') | list %}
+<div class="champ-page fight-article">
+    <nav class="fd-topbar">
+        <a class="champ-back" href="{{ url_for('pages.fights') }}"><i data-lucide="arrow-left"></i>Fight Log</a>
+        <span class="fd-topbar-nav">
+            {% if fight.navigation.previous_fight_id %}<a href="{{ url_for('pages.fight_detail_page', fight_id=fight.navigation.previous_fight_id) }}"><i data-lucide="chevron-left"></i>Previous fight</a>{% endif %}
+            {% if fight.navigation.next_fight_id %}<a href="{{ url_for('pages.fight_detail_page', fight_id=fight.navigation.next_fight_id) }}">Next fight<i data-lucide="chevron-right"></i></a>{% endif %}
+        </span>
+    </nav>
 
-    <div class="fight-hero-card glass-card">
-        <div class="fight-hero-copy">
-            <span class="fight-page-kicker">Fight Detail</span>
-            <h1 class="fight-page-title">{{ fight.hero_title }}</h1>
-            <p class="fight-page-subtitle">{{ fight.hero_subtitle }}</p>
-            <div class="fight-page-badges">
-                {% if fight.fight_type %}<span class="fight-badge fight-badge-type">{{ fight.fight_type }}</span>{% endif %}
-                {% if fight.championship %}<span class="fight-badge fight-badge-champ">&#127942; {{ fight.championship }}</span>{% endif %}
-                {% if fight.ppv %}<span class="fight-badge fight-badge-ppv">{{ fight.ppv }}</span>{% endif %}
-                {% if fight.location %}<span class="fight-badge fight-badge-season">{{ fight.location }}</span>{% endif %}
+    {# The stage is the backdrop of the whole hero #}
+    <header class="fd-hero{% if not fight.stage_image %} no-stage{% endif %}"{% if fight.stage_image %} style="--stage: url('{{ asset_variant('stages', fight.stage_image, 'md') }}')"{% endif %}>
+        <div class="fd-hero-copy">
+            <span class="lb-kicker">{{ fight.hero_subtitle }}</span>
+            <h1 class="fd-title">{{ fight.hero_title }}</h1>
+            <div class="fd-badges">
+                {% if fight.fight_type and fight.fight_type != fight.ppv %}<span class="fd-badge">{{ fight.fight_type }}</span>{% endif %}
+                {% if fight.championship %}
+                <a class="fd-badge is-title" href="{{ '/championships/' ~ extras.title_slug if extras.title_slug else '/championships' }}">
+                    {% if extras.belt %}<img src="{{ asset_variant('belts', extras.belt, 'sm') }}" alt="">{% endif %}{{ fight.championship }} title
+                </a>
+                {% endif %}
+                {% if fight.participants_raw | selectattr('contender') | list %}<span class="fd-badge is-contender">#1 Contender</span>{% endif %}
+                {% if fight.ppv %}<a class="fd-badge is-ppv" href="/events/{{ extras.ppv_slug }}">{{ fight.ppv }}</a>{% elif fight.brand %}<span class="fd-badge">{{ fight.brand }} weekly</span>{% endif %}
             </div>
         </div>
 
-        <div class="fight-hero-arena fight-layout-{{ fight.layout }}">
-            {% if fight.layout == "singles" %}
-                <div class="fight-hero-side fight-hero-side-left">
-                    {% set participant = fight.participants_raw[0] %}
-                    <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-hero-fighter-card {% if participant.decision == 'W' %}is-winner{% elif participant.decision == 'NC' %}is-no-contest{% else %}is-loser{% endif %}">
-                        <img src="{{ asset_variant('fighters', participant.filename, 'md') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
-                        <span class="fight-hero-fighter-name">{{ participant.name }}</span>
-                        <span class="fight-hero-fighter-outcome">{{ 'Winner' if participant.decision == 'W' else ('No contest' if participant.decision == 'NC' else 'Loss') }}</span>
-                    </a>
-                </div>
-                <div class="fight-hero-stage">
-                    {% if fight.stage_image %}
-                    <img src="{{ asset_variant('stages', fight.stage_image, 'md') }}" alt="{{ fight.location }}" class="fight-hero-stage-img">
-                    {% else %}
-                    <div class="fight-hero-stage-placeholder">No stage image</div>
-                    {% endif %}
-                    <div class="fight-hero-stage-label">{{ fight.location or 'Unknown Location' }}</div>
-                </div>
-                <div class="fight-hero-side fight-hero-side-right">
-                    {% set participant = fight.participants_raw[1] %}
-                    <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-hero-fighter-card {% if participant.decision == 'W' %}is-winner{% elif participant.decision == 'NC' %}is-no-contest{% else %}is-loser{% endif %}">
-                        <img src="{{ asset_variant('fighters', participant.filename, 'md') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
-                        <span class="fight-hero-fighter-name">{{ participant.name }}</span>
-                        <span class="fight-hero-fighter-outcome">{{ 'Winner' if participant.decision == 'W' else ('No contest' if participant.decision == 'NC' else 'Loss') }}</span>
-                    </a>
-                </div>
+        <div class="fd-faceoff layout-{{ fight.layout }}">
+            {% if fight.layout == 'singles' %}
+                {{ fighter_card(fight.participants_raw[0]) }}
+                <span class="fd-vs">VS</span>
+                {{ fighter_card(fight.participants_raw[1]) }}
+            {% elif fight.layout == 'tag' and winners %}
+                <div class="fd-team">{% for p in winners %}{{ fighter_card(p, 'md') }}{% endfor %}</div>
+                <span class="fd-vs">VS</span>
+                <div class="fd-team">{% for p in others %}{{ fighter_card(p, 'md') }}{% endfor %}</div>
             {% else %}
-                <div class="fight-hero-stage fight-hero-stage-wide">
-                    {% if fight.stage_image %}
-                    <img src="{{ asset_variant('stages', fight.stage_image, 'md') }}" alt="{{ fight.location }}" class="fight-hero-stage-img">
-                    {% else %}
-                    <div class="fight-hero-stage-placeholder">No stage image</div>
-                    {% endif %}
-                    <div class="fight-hero-stage-label">{{ fight.location or 'Unknown Location' }}</div>
+                {% for p in winners %}{{ fighter_card(p, 'lg') }}{% endfor %}
+                <div class="fd-field">{% for p in others %}{{ fighter_card(p, 'sm') }}{% endfor %}</div>
+            {% endif %}
+        </div>
+
+        {% if fight.location %}<span class="fd-stage-tag"><i data-lucide="map-pin"></i>{{ fight.location }}</span>{% endif %}
+    </header>
+
+    {% if extras.story %}
+    <section class="fd-story" aria-label="The story">
+        <p class="fd-lede {{ 'is-' ~ extras.story[0].tone if extras.story[0].tone }}">{{ extras.story[0].text }}</p>
+        {% if extras.story | length > 1 %}
+        <ul class="fd-notes">
+            {% for l in extras.story[1:] %}
+            <li class="{{ 'is-' ~ l.tone if l.tone }}"><i data-lucide="{{ l.icon }}"></i><span>{{ l.text }}</span></li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if extras.tiles %}
+    <section class="fd-tiles" aria-label="By the numbers">
+        {% for t in extras.tiles %}
+        <div class="fd-tile {{ 'is-' ~ t.tone if t.tone }}">
+            <span class="fd-tile-value">{{ t.value }}</span>
+            <span class="fd-tile-label">{{ t.label }}</span>
+            {% if t.sub %}<span class="fd-tile-sub">{{ t.sub }}</span>{% endif %}
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <div class="fd-columns">
+        <section class="h2h-section fd-tape-section">
+            <div class="h2h-section-head">
+                <h2 class="h2h-section-title"><i data-lucide="ruler"></i>Before the bell</h2>
+                <p class="h2h-section-note">Where each fighter stood entering this fight</p>
+            </div>
+            {% if fight.layout == 'singles' %}
+            {% set a = fight.participants[0] %}{% set b = fight.participants[1] %}
+            <div class="h2h-tape fd-tape">
+                <div class="fd-tape-names"><span>{{ a.name }}</span><span></span><span>{{ b.name }}</span></div>
+                {% for label, va, vb in [
+                    ('Career', a.career.wins ~ '–' ~ a.career.losses, b.career.wins ~ '–' ~ b.career.losses),
+                    ('Win rate (all time)', a.career.win_pct, b.career.win_pct),
+                    ('Season ' ~ fight.season, wl(a.season), wl(b.season)),
+                    ('Elo', (a.elo_before | round | int) if a.get('elo_before') is not none else '—', (b.elo_before | round | int) if b.get('elo_before') is not none else '—'),
+                    ('At ' ~ (fight.location or 'this stage'), wl(a.location), wl(b.location)),
+                    (fight.fight_type or 'This match type', wl(a.fight_type), wl(b.fight_type)),
+                    ('Streak', a.streak.label, b.streak.label),
+                ] %}
+                <div class="h2h-tape-row fd-tape-row">
+                    <div class="h2h-tape-val h2h-f1-val">{{ va }}</div>
+                    <div class="h2h-tape-label">{{ label }}</div>
+                    <div class="h2h-tape-val h2h-f2-val">{{ vb }}</div>
                 </div>
-                <div class="fight-hero-grid">
-                    {% for participant in fight.participants_raw %}
-                    <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-hero-fighter-card fight-hero-fighter-card-small {% if participant.decision == 'W' %}is-winner{% elif participant.decision == 'NC' %}is-no-contest{% else %}is-loser{% endif %}">
-                        <img src="{{ asset_variant('fighters', participant.filename, 'md') }}" alt="{{ participant.name }}" class="fight-hero-fighter-img">
-                        <span class="fight-hero-fighter-name">{{ participant.name }}</span>
-                        <span class="fight-hero-fighter-outcome">{{ 'Winner' if participant.decision == 'W' else ('No contest' if participant.decision == 'NC' else 'Entrant') }}</span>
-                    </a>
+                {% endfor %}
+                {% for ra in (a.contextual_records or []) %}
+                {% set rb = ((b.contextual_records or []) | selectattr('label', 'equalto', ra.label) | list | first) %}
+                <div class="h2h-tape-row fd-tape-row">
+                    <div class="h2h-tape-val h2h-f1-val">{{ wl(ra.record, ra.role) }}</div>
+                    <div class="h2h-tape-label">{{ ra.label }}</div>
+                    <div class="h2h-tape-val h2h-f2-val">{% if rb %}{{ wl(rb.record, rb.role) }}{% else %}—{% endif %}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="fd-entrants">
+                {% for p in fight.participants %}
+                <a class="fd-entrant" href="{{ url_for('pages.fighter_profile', name=p.name) }}">
+                    <img src="{{ asset_variant('fighters', p.filename, 'sm') }}" alt="" loading="lazy">
+                    <span class="fd-entrant-name">{{ p.name }}<small>{{ p.streak.label }}</small></span>
+                    <span class="fd-entrant-stat"><b>{{ p.career.wins }}–{{ p.career.losses }}</b><small>career</small></span>
+                    <span class="fd-entrant-stat"><b>{{ p.season.wins }}–{{ p.season.losses }}</b><small>season</small></span>
+                    <span class="fd-entrant-stat"><b>{{ p.elo_before | round | int if p.get('elo_before') is not none else '—' }}</b><small>Elo</small></span>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </section>
+
+        <aside class="fd-side">
+            {% if fight.matchup_context %}
+            {% set mc = fight.matchup_context %}
+            {% set pa = fight.participants_raw[0] %}{% set pb = fight.participants_raw[1] %}
+            {% set w1 = 1 if pa.decision == 'W' else 0 %}{% set w2 = 1 if pb.decision == 'W' else 0 %}
+            {% set s1 = mc.post_h2h.fighter1_wins %}{% set s2 = mc.post_h2h.fighter2_wins %}
+            {% set p1 = mc.pre_h2h.fighter1_wins %}{% set p2 = mc.pre_h2h.fighter2_wins %}
+            <section class="fd-panel fd-rivalry">
+                <h3 class="fd-panel-title"><i data-lucide="swords"></i>The rivalry</h3>
+                <div class="fd-rival-head">
+                    <a class="fd-rival-side" href="/fighter/{{ mc.fighter1 | urlencode }}"><img src="{{ asset_variant('fighters', pa.filename, 'sm') }}" alt=""><span>{{ mc.fighter1 }}</span></a>
+                    <div class="fd-rival-score"><b class="{{ 'is-lead' if s1 > s2 }}">{{ s1 }}</b><span>–</span><b class="{{ 'is-lead' if s2 > s1 }}">{{ s2 }}</b></div>
+                    <a class="fd-rival-side is-right" href="/fighter/{{ mc.fighter2 | urlencode }}"><img src="{{ asset_variant('fighters', pb.filename, 'sm') }}" alt=""><span>{{ mc.fighter2 }}</span></a>
+                </div>
+                <p class="fd-rival-line">
+                    {% set winner = mc.fighter1 if w1 else (mc.fighter2 if w2 else none) %}
+                    {% if not winner %}No contest: the series stays {{ s1 }}–{{ s2 }}.
+                    {% elif p1 + p2 == 0 %}Their first head-to-head meeting.
+                    {% elif s1 == s2 %}{{ winner }} evened the series at {{ s1 }}–{{ s2 }} (was {{ p1 }}–{{ p2 }}).
+                    {% elif (s1 > s2) != (p1 > p2) or p1 == p2 %}{{ winner }} took the lead, {{ [s1, s2] | max }}–{{ [s1, s2] | min }} (was {{ p1 }}–{{ p2 }}).
+                    {% else %}{{ winner }} {{ 'extended their lead' if (winner == mc.fighter1) == (s1 > s2) else 'cut the lead' }} to {{ s1 }}–{{ s2 }} (was {{ p1 }}–{{ p2 }}).{% endif %}
+                </p>
+                {% set rec = mc.ppv_record if fight.ppv else mc.season_record %}
+                {% set splits = [] %}
+                {% if fight.location %}{% set _ = splits.append(('At ' ~ fight.location, mc.location_record)) %}{% endif %}
+                {% set _ = splits.append(('In ' ~ (fight.fight_type or 'this match type') ~ ' matches', mc.fight_type_record)) %}
+                {% set _ = splits.append(('At ' ~ fight.ppv if fight.ppv else 'In Season ' ~ fight.season, rec)) %}
+                {% if mc.championship_record %}{% set _ = splits.append(('For the ' ~ fight.championship ~ ' title', mc.championship_record)) %}{% endif %}
+                <div class="fd-rival-splits">
+                    <span class="fd-rival-splits-head">Including this fight</span>
+                    {% for label, r in splits %}
+                    {% set a1 = r[mc.fighter1].wins + w1 %}{% set a2 = r[mc.fighter2].wins + w2 %}
+                    {% if a1 + a2 %}
+                    <div class="fd-rival-split">
+                        <b class="{{ 'is-lead' if a1 > a2 }}">{{ a1 }}</b>
+                        <span class="fd-rival-split-label">{{ label }}</span>
+                        <b class="{{ 'is-lead' if a2 > a1 }}">{{ a2 }}</b>
+                        <span class="fd-rival-bar"><span style="width: {{ 100 * a1 / (a1 + a2) }}%"></span></span>
+                    </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
+                <a class="champ-history-link" href="/head2head?f1={{ mc.fighter1 | urlencode }}&f2={{ mc.fighter2 | urlencode }}">Full head to head <i data-lucide="arrow-right"></i></a>
+            </section>
             {% endif %}
+
+            {% if extras.stage %}
+            {% set st = extras.stage %}
+            <section class="fd-panel fd-stage-panel">
+                <img class="fd-stage-thumb" src="{{ asset_variant('stages', st.image, 'md') }}" alt="" loading="lazy" onerror="this.remove()">
+                <h3 class="fd-panel-title"><i data-lucide="map-pin"></i>{{ st.name }}</h3>
+                <p class="fd-panel-note">Fight #{{ st.number }} of {{ st.total }} here{% if st.first_season %} · in use since Season {{ st.first_season }}{% endif %}</p>
+                {% if st.leaders %}
+                <ol class="champ-leaders">
+                    {% for r in st.leaders %}
+                    <li><a href="/fighter/{{ r.name | urlencode }}"><span class="champ-leader-rank">{{ loop.index }}</span><img src="{{ asset_variant('fighters', r.filename, 'sm') }}" alt="" loading="lazy"><span class="champ-leader-name">{{ r.name }}<small>{{ r.wins }}–{{ r.losses }} here</small></span><span class="champ-leader-value">{{ r.wins }} <small>wins</small></span></a></li>
+                    {% endfor %}
+                </ol>
+                {% endif %}
+                <a class="champ-history-link" href="/fights?location={{ st.name | urlencode }}">Every fight here <i data-lucide="arrow-right"></i></a>
+            </section>
+            {% endif %}
+        </aside>
+    </div>
+
+    {% if extras.card | length > 1 %}
+    <section class="h2h-section">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="list"></i>{% if fight.ppv %}The {{ fight.ppv }} card{% else %}The rest of the night{% endif %}</h2>
+            <p class="h2h-section-note">{{ extras.card | length }} fights · {{ fight.hero_subtitle }}</p>
         </div>
-    </div>
+        <div id="fdCard" class="fight-list"></div>
+    </section>
+    {% endif %}
 
-    <div class="fight-detail-grid-page">
-        <section class="fight-detail-section glass-card">
-            <div class="fight-detail-section-header">
-                <span class="fight-detail-section-kicker">Before The Bell</span>
-                <h2 class="fight-detail-section-title">Participant Snapshots</h2>
-                <p class="fight-detail-section-copy">These numbers reflect where each fighter stood entering this fight, not their current-day totals.</p>
-            </div>
-            <div class="fight-pre-grid">
-                {% for participant in fight.participants %}
-                <div class="fight-pre-card">
-                    <div class="fight-pre-card-top">
-                        <img src="{{ asset_variant('fighters', participant.filename) }}" alt="{{ participant.name }}" class="fight-pre-portrait">
-                        <div>
-                            <a href="{{ url_for('pages.fighter_profile', name=participant.name) }}" class="fight-pre-name">{{ participant.name }}</a>
-                            <div class="fight-pre-status">{{ participant.status }}</div>
-                        </div>
-                    </div>
-                    <div class="fight-pre-stats">
-                        <div class="fight-pre-stat"><span>Career</span><strong>{{ participant.career.wins }}-{{ participant.career.losses }}</strong></div>
-                        <div class="fight-pre-stat"><span>Season</span><strong>{{ participant.season.wins }}-{{ participant.season.losses }}</strong></div>
-                        <div class="fight-pre-stat"><span>Win %</span><strong>{{ participant.career.win_pct }}</strong></div>
-                        <div class="fight-pre-stat"><span>ELO</span><strong>{{ participant.elo_before if participant.elo_before is not none else '--' }}</strong></div>
-                        <div class="fight-pre-stat"><span>At {{ fight.location or 'Site' }}</span><strong>{{ participant.location.wins }}-{{ participant.location.losses }}</strong></div>
-                        <div class="fight-pre-stat"><span>{{ fight.fight_type or 'Match' }}</span><strong>{{ participant.fight_type.wins }}-{{ participant.fight_type.losses }}</strong></div>
-                    </div>
-                    {% if participant.contextual_records %}
-                    <div class="fight-pre-stats fight-pre-stats-contextual">
-                        {% for item in participant.contextual_records %}
-                        <div class="fight-pre-stat">
-                            <span>{{ item.label }}</span>
-                            <strong>{{ item.record.wins }}-{{ item.record.losses }}</strong>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    <div class="fight-pre-streak">{{ participant.streak.label }}</div>
-                </div>
-                {% endfor %}
-            </div>
-        </section>
+    <nav class="fd-bottom-nav">
+        {% if fight.navigation.previous_fight_id %}<a href="{{ url_for('pages.fight_detail_page', fight_id=fight.navigation.previous_fight_id) }}"><i data-lucide="chevron-left"></i>Previous fight</a>{% else %}<span></span>{% endif %}
+        <a href="{{ url_for('pages.fights') }}">All fights</a>
+        {% if fight.navigation.next_fight_id %}<a href="{{ url_for('pages.fight_detail_page', fight_id=fight.navigation.next_fight_id) }}">Next fight<i data-lucide="chevron-right"></i></a>{% else %}<span></span>{% endif %}
+    </nav>
+</div>
+{% endblock %}
 
-        {% if fight.matchup_context %}
-        <section class="fight-detail-section glass-card">
-            <div class="fight-detail-section-header">
-                <span class="fight-detail-section-kicker">Matchup Context</span>
-                <h2 class="fight-detail-section-title">Rivalry Snapshot</h2>
-                <p class="fight-detail-section-copy">How the matchup looked before this fight, and how the result changed the rivalry.</p>
-            </div>
-            <div class="fight-matchup-scoreboard">
-                <div class="fight-matchup-side">
-                    <div class="fight-matchup-name">{{ fight.matchup_context.fighter1 }}</div>
-                    <div class="fight-matchup-score">{{ fight.matchup_context.pre_h2h.fighter1_wins }}</div>
-                </div>
-                <div class="fight-matchup-center">
-                    <div class="fight-matchup-label">Head-to-head entering fight</div>
-                    <div class="fight-matchup-post">After this fight: {{ fight.matchup_context.post_h2h.fighter1_wins }} - {{ fight.matchup_context.post_h2h.fighter2_wins }}</div>
-                </div>
-                <div class="fight-matchup-side">
-                    <div class="fight-matchup-name">{{ fight.matchup_context.fighter2 }}</div>
-                    <div class="fight-matchup-score">{{ fight.matchup_context.pre_h2h.fighter2_wins }}</div>
-                </div>
-            </div>
-            <div class="fight-context-grid">
-                <div class="fight-context-card">
-                    <h3 class="fight-context-title">Against Each Other At {{ fight.location or 'This Location' }}</h3>
-                    <div class="fight-context-rows">
-                        <div><span>{{ fight.matchup_context.fighter1 }}</span><strong>{{ fight.matchup_context.location_record[fight.matchup_context.fighter1].wins }}-{{ fight.matchup_context.location_record[fight.matchup_context.fighter1].losses }}</strong></div>
-                        <div><span>{{ fight.matchup_context.fighter2 }}</span><strong>{{ fight.matchup_context.location_record[fight.matchup_context.fighter2].wins }}-{{ fight.matchup_context.location_record[fight.matchup_context.fighter2].losses }}</strong></div>
-                    </div>
-                </div>
-                <div class="fight-context-card">
-                    <h3 class="fight-context-title">Against Each Other In {{ fight.fight_type or 'This Match Type' }}</h3>
-                    <div class="fight-context-rows">
-                        <div><span>{{ fight.matchup_context.fighter1 }}</span><strong>{{ fight.matchup_context.fight_type_record[fight.matchup_context.fighter1].wins }}-{{ fight.matchup_context.fight_type_record[fight.matchup_context.fighter1].losses }}</strong></div>
-                        <div><span>{{ fight.matchup_context.fighter2 }}</span><strong>{{ fight.matchup_context.fight_type_record[fight.matchup_context.fighter2].wins }}-{{ fight.matchup_context.fight_type_record[fight.matchup_context.fighter2].losses }}</strong></div>
-                    </div>
-                </div>
-                <div class="fight-context-card">
-                    <h3 class="fight-context-title">
-                        {% if fight.ppv %}
-                        Against Each Other At {{ fight.ppv }}
-                        {% else %}
-                        Against Each Other In Season {{ fight.season }}
-                        {% endif %}
-                    </h3>
-                    <div class="fight-context-rows">
-                        {% set seasonal_or_ppv = fight.matchup_context.ppv_record if fight.ppv else fight.matchup_context.season_record %}
-                        <div><span>{{ fight.matchup_context.fighter1 }}</span><strong>{{ seasonal_or_ppv[fight.matchup_context.fighter1].wins }}-{{ seasonal_or_ppv[fight.matchup_context.fighter1].losses }}</strong></div>
-                        <div><span>{{ fight.matchup_context.fighter2 }}</span><strong>{{ seasonal_or_ppv[fight.matchup_context.fighter2].wins }}-{{ seasonal_or_ppv[fight.matchup_context.fighter2].losses }}</strong></div>
-                    </div>
-                </div>
-                {% if fight.matchup_context.championship_record %}
-                <div class="fight-context-card">
-                    <h3 class="fight-context-title">Against Each Other For The {{ fight.championship }}</h3>
-                    <div class="fight-context-rows">
-                        <div><span>{{ fight.matchup_context.fighter1 }}</span><strong>{{ fight.matchup_context.championship_record[fight.matchup_context.fighter1].wins }}-{{ fight.matchup_context.championship_record[fight.matchup_context.fighter1].losses }}</strong></div>
-                        <div><span>{{ fight.matchup_context.fighter2 }}</span><strong>{{ fight.matchup_context.championship_record[fight.matchup_context.fighter2].wins }}-{{ fight.matchup_context.championship_record[fight.matchup_context.fighter2].losses }}</strong></div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </section>
-        {% endif %}
-
-        <section class="fight-detail-section glass-card">
-            <div class="fight-detail-section-header">
-                <span class="fight-detail-section-kicker">Aftermath</span>
-                <h2 class="fight-detail-section-title">What Changed</h2>
-                <p class="fight-detail-section-copy">The immediate consequences and context generated from the result.</p>
-            </div>
-            <div class="fight-insights-list">
-                {% for insight in fight.insights %}
-                <div class="fight-insight-row">{{ insight }}</div>
-                {% endfor %}
-                {% if not fight.insights %}
-                <div class="fight-insight-row">No derived insights were available for this fight yet.</div>
-                {% endif %}
-            </div>
-        </section>
-    </div>
-</section>
+{% block scripts %}
+<script>
+window.SSBStats = window.SSBStats || {};
+window.SSBStats.fightCard = {{ extras.card | tojson }};
+window.SSBStats.fightId = {{ fight.fight_id }};
+</script>
+<script src="{{ url_for('static', filename='js/pages/fight_detail.js') }}?v={{ static_v }}"></script>
 {% endblock %}
