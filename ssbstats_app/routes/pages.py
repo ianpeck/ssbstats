@@ -8,6 +8,7 @@ from ssbstats_app.repositories import lookups
 from ssbstats_app.repositories.seasons import get_all_seasons
 from ssbstats_app.security import RateLimiter, admin_ip_allowed, safe_next_url
 from ssbstats_app.services.content import get_autocomplete_data, get_fighter_blurb
+from ssbstats_app.services.championships import get_championship_detail, get_championships_overview
 from ssbstats_app.services.records import get_record_book
 from ssbstats_app.services.scheduling import (
     create_scheduled_match_from_form,
@@ -125,8 +126,17 @@ def seasons():
 
 @pages_bp.route("/championships")
 def championships():
-    """Render the championships history page shell."""
-    return render_template("championships.html")
+    """Render every title, grouped by tier, with its belt art and lineage summary."""
+    return render_template("championships.html", data=get_championships_overview())
+
+
+@pages_bp.route("/championships/<slug>")
+def championship_detail(slug):
+    """Render one title's full history: lineage, records and title-fight archive."""
+    data = get_championship_detail(slug.lower())
+    if data is None:
+        abort(404)
+    return render_template("championship_detail.html", **data)
 
 
 @pages_bp.route("/records")

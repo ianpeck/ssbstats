@@ -110,7 +110,7 @@ function renderAwards(rows, facts) {
     const groups = [];
     rows.forEach(r => {
         let g = groups.find(x => x.award === r.Award_Name);
-        if (!g) groups.push(g = { award: r.Award_Name, names: [] });
+        if (!g) groups.push(g = { award: r.Award_Name, names: [], note: r.note });
         if (!g.names.includes(r.Fighter_Name)) g.names.push(r.Fighter_Name);
     });
     const rank = a => { const i = AWARD_ORDER.findIndex(k => a.toLowerCase().includes(k)); return i < 0 ? AWARD_ORDER.length : i; };
@@ -123,8 +123,42 @@ function renderAwards(rows, facts) {
             <span class="season-award-faces">${g.names.map(n => `<a href="${fighterLink(n)}">${portrait(n, featured ? 'md' : 'sm')}</a>`).join('')}</span>
             <span class="season-award-name">${esc(g.award)}</span>
             <span class="season-award-winner">${g.names.map(n => `<a href="${fighterLink(n)}">${esc(n)}</a>`).join(' &amp; ')}</span>
+            ${awardNote(g.note)}
         </article>`;
     }).join('');
+}
+
+// The numbers behind an award: a before/after comparison, or a few stat tiles.
+function awardNote(note) {
+    if (!note) return '';
+    if (note.type === 'change') {
+        const side = (s, cls) => `<div class="award-delta-side ${cls}">
+            <span class="award-delta-season">S${s.season}</span>
+            <span class="award-delta-score ${getPowerScoreClass(s.score)}">${s.score.toFixed(1)}</span>
+            ${s.record ? `<span class="award-delta-record">${esc(s.record)}</span>` : ''}
+        </div>`;
+        const up = note.delta >= 0;
+        return `<div class="award-note award-delta" title="Power score and record, season over season">
+            ${side(note.before, 'is-before')}
+            <div class="award-delta-mid">
+                <span class="award-delta-arrow" aria-hidden="true">→</span>
+                <span class="award-delta-badge ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'} ${Math.abs(note.delta).toFixed(1)}</span>
+            </div>
+            ${side(note.after, 'is-after')}
+        </div>`;
+    }
+    const tiles = (note.items || []).map(i => `<div class="award-stat">
+            <span class="award-stat-value${i.score != null ? ' ' + getPowerScoreClass(i.score) : ''}">${esc(i.value)}</span>
+            <span class="award-stat-label">${esc(i.label)}</span>
+        </div>`).join('');
+    const belts = (note.titles || []).map(t => {
+        const belt = championshipToBeltAsset(t, 'sm');
+        return `<span class="lb-belt">${belt ? `<img src="${belt}" alt="" loading="lazy">` : ''}${esc(t)}</span>`;
+    }).join('');
+    return `<div class="award-note">
+        ${tiles ? `<div class="award-stats">${tiles}</div>` : ''}
+        ${belts ? `<div class="award-titles">${belts}</div>` : ''}
+    </div>`;
 }
 
 // ── Big events ─────────────────────────────────────────────────

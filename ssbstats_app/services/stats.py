@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from ssbstats_app.cache import ttl_cache
 from ssbstats_app.repositories.base import query_failure_count, select_view_dicts, select_view_row
 from ssbstats_app.repositories import comparisons, elo, events, fight_detail, fighters, fights, leaderboards, lookups, power, seasons
+from ssbstats_app.services.championships import get_championships_data
 from ssbstats_app.services.records import get_record_book
 from ssbstats_app.utils import event_to_slug, fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
 
@@ -332,11 +333,99 @@ def get_season_payload(season_id):
         row["slug"] = event_to_slug(row.get("PPV_Name"))
     for row in data.get("facts", []):
         row["in_progress"] = season_id == latest and (row.get("last_month") or 0) < 12
+    _add_award_notes(season_id, data, canonical_map)
+    data.pop("prev_records", None)
+    data.pop("team_records", None)
 
     return {
         key: [{field: serialize_value(value) for field, value in row.items()} for row in rows]
         for key, rows in data.items()
     }
+
+
+def _add_award_notes(season, data, canonical_map):
+    """The numbers behind each award, shown under the winner. Breakout and Most Disappointing compare
+    with the previous season, so fighters with no previous season (Season 1, Ultimate newcomers) get none.
+
+    Each note is {"type": "change", "before": {...}, "after": {...}, "delta": n} or
+    {"type": "stats", "items": [{"label", "value"}], "titles": [names]}.
+    """
+    key = lambda name: (name or "").lower().strip()
+    scores = power.get_all_season_power_scores()
+    now_ps, prev_ps = scores.get(season, {}), scores.get(season - 1, {})
+    now_rec = {key(r.get("Fighter_Name")): r for r in data.get("rankings", [])}
+    prev_rec = {key(r.get("Fighter_Name")): r for r in data.get("prev_records", [])}
+    titles = {key(r.get("Fighter_Name")): r.get("Titles_Held") for r in data.get("holistic", [])}
+
+    def record(row):
+        return f"{int(row.get('Wins') or 0)}–{int(row.get('Losses') or 0)}" if row else None
+
+    def change(name):
+        k = key(name)
+        if k not in prev_ps or k not in now_ps:
+            return None
+        before, after = prev_ps[k]["power_score"], now_ps[k]["power_score"]
+        return {
+            "type": "change",
+            "before": {"season": season - 1, "score": before, "record": record(prev_rec.get(k))},
+            "after": {"season": season, "score": after, "record": record(now_rec.get(k))},
+            "delta": round(after - before, 1),
+        }
+
+    def superstar(name):
+        k = key(name)
+        items = []
+        if k in now_ps:
+            items.append({"label": "Power rank", "value": f"#{now_ps[k]['power_rank']}", "score": now_ps[k]["power_score"]})
+        if record(now_rec.get(k)):
+            items.append({"label": "Record", "value": record(now_rec[k])})
+        held = [t.strip() for t in str(titles.get(k) or "").split(",") if t.strip()]
+        return {"type": "stats", "items": items, "titles": held} if items or held else None
+
+    def tag_months(names):
+        # Months this season the pair held the tag titles (same rule as the title timeline).
+        wanted = {key(n) for n in names}
+        reigns = {}
+        for r in data.get("champ_history", []):
+            if str(r.get("Championship_Name", "")).startswith("Unified Tag"):
+                reigns.setdefault((r["Season_Won"], r["Month_Won"], r["Season_Lost"], r["Month_Lost"]), []).append(r)
+        last = next((f.get("last_month") for f in data.get("facts", []) if f.get("in_progress")), 12)
+        months = 0
+        for (sw, mw, sl, ml), rows in reigns.items():
+            if {key(r["Fighter_Name"]) for r in rows} != wanted:
+                continue
+            start = 1 if sw < season else mw + (0 if any(r.get("inaugural") for r in rows) else 1)
+            end = last if sl is None else (12 if sl > season else ml)
+            months += max(0, end - start + 1)
+        return months
+
+    def tag_team(names):
+        a, b = sorted(key(n) for n in names)[:2]
+        row = next((r for r in data.get("team_records", []) if sorted([key(r["f1"]), key(r["f2"])]) == [a, b]), None)
+        items = []
+        if row and (row["wins"] or row["losses"]):
+            items.append({"label": "Team record", "value": f"{int(row['wins'])}–{int(row['losses'])}"})
+        months = tag_months(names)
+        if months:
+            items.append({"label": "With the tag titles", "value": f"{months} mo"})
+        return {"type": "stats", "items": items, "titles": []} if items else None
+
+    by_award = {}
+    for row in data.get("awards", []):
+        by_award.setdefault(row.get("Award_Name") or "", []).append(row)
+    for award, rows in by_award.items():
+        names = [r.get("Fighter_Name") for r in rows]
+        lower = award.lower()
+        if "superstar" in lower:
+            note = superstar(names[0])
+        elif "improved" in lower or "disappoint" in lower:
+            note = change(names[0])
+        elif "tag" in lower and len(names) >= 2:
+            note = tag_team(names)
+        else:
+            note = None
+        for r in rows:
+            r["note"] = note
 
 
 def get_fight_log_payload(filters, page):
@@ -951,6 +1040,7 @@ def keep_fighter_caches_warm():
                 lookups.get_fighter_brands.refresh()
                 get_home_summary.refresh()
                 get_record_book.refresh()
+                get_championships_data.refresh()
                 get_compare_roster_maxes.refresh()
                 get_compare_payload.cache_clear()  # pairs rebuild on demand from the per-fighter halves
                 latest = lookups.get_latest_season()

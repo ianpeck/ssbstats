@@ -58,6 +58,18 @@ def get_season_summary(season):
             (season, season),
         ),
         "calendar": ("SELECT DISTINCT Month, PPV_Name FROM FightLog WHERE Season = %s AND PPV_Name IS NOT NULL ORDER BY Month", (season,)),
+        # For award blurbs: last season's records, and how each pair did as tag partners.
+        "prev_records": ("SELECT Fighter_Name, Wins, Losses FROM CareerStatsBySeason WHERE Season = %s", (season - 1,)),
+        "team_records": (
+            """
+            SELECT a.Fighter_Name AS f1, b.Fighter_Name AS f2, SUM(a.Decision = 'w') AS wins, SUM(a.Decision = 'l') AS losses
+            FROM FightLog a
+            JOIN FightLog b ON b.Fight_ID = a.Fight_ID AND a.Fighter_Name < b.Fighter_Name AND a.Decision = b.Decision
+            WHERE a.Season = %s AND a.Description = 'Tag Team'
+            GROUP BY a.Fighter_Name, b.Fighter_Name
+            """,
+            (season,),
+        ),
         "cashins": ("SELECT Month, PPV_Name, Championship_Name, Fight_Winner_Name, Fight_Winner, Fight_Loser_Name FROM cashins WHERE Season_ID = %s ORDER BY Month", (season,)),
     }
 

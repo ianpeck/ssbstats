@@ -27,3 +27,16 @@ class RecordRoutesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ChampionshipSlugTests(unittest.TestCase):
+    def test_slugs_and_tag_halves(self):
+        from ssbstats_app.services.championships import display_name, title_slug
+        self.assertEqual(title_slug("Smash Bros."), "smashbros")
+        self.assertEqual(display_name("Unified Tag 1"), "Unified Tag")
+        self.assertEqual(display_name("Unified Tag 2"), "Unified Tag")
+        self.assertEqual(title_slug("Unified Tag 2"), "unifiedtag")
+
+    def test_title_route_registered(self):
+        routes = {str(rule) for rule in create_app().url_map.iter_rules()}
+        self.assertIn("/championships/<slug>", routes)

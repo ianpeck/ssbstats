@@ -71,7 +71,7 @@
                     <span class="nav-label-full">Seasons</span><span class="nav-label-short">Seasons</span>
                 </a>
 
-                <a href="/championships" class="nav-link {% if request.path == '/championships' %}active{% endif %}" title="Championships">
+                <a href="/championships" class="nav-link {% if request.path.startswith('/championships') %}active{% endif %}" title="Championships">
                     <i data-lucide="crown"></i>
                     <span class="nav-label-full">Championships</span><span class="nav-label-short">Titles</span>
                 </a>

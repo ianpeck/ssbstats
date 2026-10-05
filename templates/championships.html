@@ -1,45 +1,90 @@
 {% extends "base.html" %}
-{% block title %}SSB Stats - Championship History{% endblock %}
-{% block meta_description %}Every reign of every SSB league championship: current champions, longest reigns and full title lineages.{% endblock %}
+{% block title %}SSB Stats - Championships{% endblock %}
+{% block meta_description %}Every SSB league championship: current champions, longest reigns, full title lineages and every title fight.{% endblock %}
+{% block body_class %}page-championships{% endblock %}
+
+{% macro faces(people, size='sm') -%}
+<span class="champ-faces">{% for p in people %}<img src="{{ asset_variant('fighters', p.filename, size) }}" alt="" loading="lazy">{% endfor %}</span>
+{%- endmacro %}
+
+{% macro holder_line(title) -%}
+{% set cur = title.current %}
+{% if not cur %}Vacant
+{% elif title.trophy %}Season {{ cur.won.season }} winner
+{% elif cur.months == 0 %}New champion · won S{{ cur.won.season }} M{{ cur.won.month }}
+{% else %}Since S{{ cur.won.season }} M{{ cur.won.month }} · {{ cur.months }} month{{ '' if cur.months == 1 else 's' }}{% endif %}
+{%- endmacro %}
 
 {% block content %}
-<section class="seasons-section">
-    <h1 class="section-title">Championship History</h1>
-    <p class="section-subtitle">Full all-time reign history for every title</p>
+<div class="champ-page">
+    <header class="lb-hero">
+        <span class="lb-kicker">{{ data.totals.titles }} titles · {{ data.totals.reigns }} reigns · {{ data.totals.champions }} champions</span>
+        <h1 class="lb-title">Championships</h1>
+        <p class="lb-lede">Tap a belt to see it up close, or open its history for every reign and title fight.</p>
+    </header>
 
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-        <p>Loading championship history...</p>
-    </div>
+    {% for group in data.groups %}
+    <section class="champ-tier" id="tier-{{ group.tier | lower }}">
+        <h2 class="h2h-section-title champ-tier-title">{{ group.label }}</h2>
+        <div class="champ-grid{% if group.titles | length == 1 %} is-single{% endif %}">
+            {% for t in group.titles %}
+            <article class="champ-card{% if group.titles | length == 1 %} is-wide{% endif %}">
+                <button type="button" class="champ-belt-stage belt-zoom"
+                        data-belt="{{ t.belt }}" data-title="{{ t.name }}"
+                        data-meta="{{ t.reign_count }} {{ 'winners' if t.trophy else 'reigns' }} · {{ t.champion_count }} {{ 'different winners' if t.trophy else 'champions' }}{% if t.since %} · since Season {{ t.since.season }}{% endif %}"
+                        data-href="/championships/{{ t.slug }}" aria-label="View the {{ t.name }} belt full screen">
+                    <img src="{{ asset_variant('belts', t.belt, 'md') }}" alt="{{ t.name }} belt" loading="lazy">
+                    <span class="champ-zoom-hint" aria-hidden="true"><i data-lucide="maximize-2"></i></span>
+                </button>
+                <div class="champ-card-body">
+                    <div class="champ-card-head">
+                        <h3 class="champ-card-name">{{ t.name }}</h3>
+                        <a class="champ-history-link" href="/championships/{{ t.slug }}">History <i data-lucide="arrow-right"></i></a>
+                    </div>
 
-    <div id="champContent" style="display:none;">
-        <div class="champ-page-intro glass-card">
-            <div class="champ-page-copy">
-                <span class="champ-page-kicker">Title Lineage</span>
-                <h2 class="champ-page-heading">Every belt, every reign, one timeline per championship</h2>
-                <p class="champ-page-text">Current champions, longest reigns, and repeat winners are surfaced first so you can scan the prestige picture before digging into the full lineage.</p>
-            </div>
-            <p class="champ-legend">⭐ = Longest reign for that title</p>
-        </div>
-        <div id="champSummaryStrip" class="champ-summary-strip"></div>
-        <div id="champHistoryContainer" class="champ-all-time"></div>
-    </div>
+                    {% if t.current %}
+                    <a class="champ-holder" href="/fighter/{{ t.current.champions[0].name | urlencode }}">
+                        {{ faces(t.current.champions, 'sm') }}
+                        <span class="champ-holder-text">
+                            <small>{{ 'Reigning winner' if t.trophy else ('Champions' if t.current.champions | length > 1 else 'Champion') }}</small>
+                            <strong>{{ t.current.label }}</strong>
+                            <span>{{ holder_line(t) }}</span>
+                        </span>
+                    </a>
+                    {% else %}
+                    <div class="champ-holder is-vacant"><span class="champ-holder-text"><small>Champion</small><strong>Vacant</strong></span></div>
+                    {% endif %}
 
-    <div id="champBeltOverlay" class="event-overlay" style="display:none;" aria-hidden="true">
-        <div class="event-overlay-panel glass-card champ-belt-overlay-panel" role="dialog" aria-modal="true" aria-labelledby="champBeltOverlayTitle">
-            <div class="event-overlay-header">
-                <div>
-                    <h2 class="event-overlay-title" id="champBeltOverlayTitle">Championship Belt</h2>
-                    <p class="event-overlay-meta" id="champBeltOverlayMeta">Full-size title render</p>
+                    <dl class="champ-stats">
+                        <div><dt>{{ 'Winners' if t.trophy else 'Reigns' }}</dt><dd>{{ t.reign_count }}</dd></div>
+                        <div><dt>{{ 'Different winners' if t.trophy else 'Champions' }}</dt><dd>{{ t.champion_count }}</dd></div>
+                        {% if t.trophy %}
+                        {% if t.most_reigns %}<div><dt>Most wins</dt><dd>{{ t.most_reigns[0].name }} <small>{{ t.most_reigns[0].value }}</small></dd></div>{% endif %}
+                        {% elif t.longest %}
+                        <div><dt>Longest reign</dt><dd>{{ t.longest[0].label }} <small>{{ t.longest[0].months }} mo</small></dd></div>
+                        {% endif %}
+                    </dl>
+
+                    {% if t.recent %}
+                    <div class="champ-recent" aria-label="Recent {{ 'winners' if t.trophy else 'champions' }}">
+                        <span class="champ-recent-label">Recent</span>
+                        <span class="champ-recent-chain">
+                        {% for r in t.recent %}
+                            <a href="/fighter/{{ r.champions[0].name | urlencode }}" class="champ-recent-link{% if r.current %} is-current{% endif %}"
+                               title="{{ r.label }} · {% if t.trophy %}Season {{ r.won.season }}{% else %}S{{ r.won.season }} M{{ r.won.month }}{% if r.lost %}–S{{ r.lost.season }} M{{ r.lost.month }}{% else %} to now{% endif %}{% endif %}">{{ faces(r.champions[:2]) }}</a>
+                        {% endfor %}
+                        </span>
+                    </div>
+                    {% endif %}
                 </div>
-                <button type="button" class="event-overlay-close" id="champBeltOverlayClose" aria-label="Close belt viewer">&times;</button>
-            </div>
-            <div class="champ-belt-overlay-body">
-                <img id="champBeltOverlayImage" class="champ-belt-overlay-image" alt="">
-            </div>
+            </article>
+            {% endfor %}
         </div>
-    </div>
-</section>
+    </section>
+    {% endfor %}
+</div>
+
+{% include "partials/belt_viewer.html" %}
 {% endblock %}
 
 {% block scripts %}

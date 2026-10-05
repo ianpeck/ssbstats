@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% set t = title %}
+{% set noun = 'winner' if t.trophy else 'reign' %}
+{% block title %}SSB Stats - {{ t.name }}{% if not t.trophy %} Championship{% endif %}{% endblock %}
+{% block meta_description %}The {{ t.name }} {{ 'trophy' if t.trophy else 'title' }}: {{ t.reign_count }} {{ noun }}s{% if t.current %}, {{ 'reigning winner' if t.trophy else 'current champion' }} {{ t.current.label }}{% endif %}, every {{ noun }} and title fight in SSB league history.{% endblock %}
+{% block og_image %}
+    <meta property="og:image" content="{{ site_url }}{{ asset_variant('belts', t.belt, 'md') }}">
+    <meta name="twitter:card" content="summary_large_image">
+{% endblock %}
+{% block body_class %}page-championships{% endblock %}
+
+{% macro faces(people, size='sm') -%}
+<span class="champ-faces">{% for p in people %}<img src="{{ asset_variant('fighters', p.filename, size) }}" alt="" loading="lazy">{% endfor %}</span>
+{%- endmacro %}
+
+{% macro fighter_names(people) -%}
+{% for p in people %}<a href="/fighter/{{ p.name | urlencode }}">{{ p.name }}</a>{% if not loop.last %} &amp; {% endif %}{% endfor %}
+{%- endmacro %}
+
+{% macro leader_list(rows, unit) -%}
+<ol class="champ-leaders">
+    {% for r in rows %}
+    <li><a href="/fighter/{{ r.name | urlencode }}">
+        <span class="champ-leader-rank">{{ loop.index }}</span>
+        <img src="{{ asset_variant('fighters', r.filename, 'sm') }}" alt="" loading="lazy">
+        <span class="champ-leader-name">{{ r.name }}</span>
+        <span class="champ-leader-value">{{ r.value }} <small>{{ unit }}</small></span>
+    </a></li>
+    {% endfor %}
+</ol>
+{%- endmacro %}
+
+{% block content %}
+<div class="champ-page champ-detail">
+    <a class="champ-back" href="/championships"><i data-lucide="arrow-left"></i>All championships</a>
+
+    <header class="champ-hero">
+        <button type="button" class="champ-hero-belt belt-zoom" data-belt="{{ t.belt }}" data-title="{{ t.name }}"
+                data-meta="{{ t.reign_count }} {{ noun }}s · {{ t.champion_count }} {{ 'different winners' if t.trophy else 'champions' }}{% if t.since %} · since Season {{ t.since.season }}{% endif %}"
+                aria-label="View the {{ t.name }} belt full screen">
+            <img src="{{ asset_variant('belts', t.belt, 'md') }}" alt="{{ t.name }} belt">
+            <span class="champ-zoom-hint" aria-hidden="true"><i data-lucide="maximize-2"></i></span>
+        </button>
+        <div class="champ-hero-copy">
+            <span class="lb-kicker">{{ {'Major': 'Major title', 'Minor': 'Minor title', 'Tag': 'Tag team title', 'Specialty': 'Yearly trophy'}.get(t.tier, t.tier) }}</span>
+            <h1 class="champ-hero-title">{{ t.name }}{% if not t.trophy %} <span>Championship</span>{% endif %}</h1>
+            <div class="season-fact-row champ-hero-facts">
+                <div class="season-fact"><span class="season-fact-value">{{ t.reign_count }}</span><span class="season-fact-label">{{ noun }}s</span></div>
+                <div class="season-fact"><span class="season-fact-value">{{ t.champion_count }}</span><span class="season-fact-label">{{ 'Winners' if t.trophy else 'Champions' }}</span></div>
+                <div class="season-fact"><span class="season-fact-value">{{ t.title_fights }}</span><span class="season-fact-label">Title fights</span></div>
+                {% if t.since %}<div class="season-fact"><span class="season-fact-value">S{{ t.since.season }}</span><span class="season-fact-label">Debut</span></div>{% endif %}
+            </div>
+
+            {% set cur = t.current %}
+            {% if cur %}
+            <a class="champ-spotlight" href="/fighter/{{ cur.champions[0].name | urlencode }}">
+                {{ faces(cur.champions, 'md') }}
+                <span class="champ-spotlight-text">
+                    <small>{{ 'Reigning winner' if t.trophy else ('Current champions' if cur.champions | length > 1 else 'Current champion') }}</small>
+                    <strong>{{ cur.label }}</strong>
+                    <span>
+                        {% if t.trophy %}Season {{ cur.won.season }} winner
+                        {% else %}{% if cur.months == 0 %}New champion · won S{{ cur.won.season }} M{{ cur.won.month }}{% else %}Since S{{ cur.won.season }} M{{ cur.won.month }} · {{ cur.months }} month{{ '' if cur.months == 1 else 's' }}{% endif %}
+                        · {{ cur.defenses }} defense{{ '' if cur.defenses == 1 else 's' }}{% if cur.bracket_defenses %} ({{ cur.bracket_defenses }} in brackets){% endif %}{% endif %}
+                    </span>
+                </span>
+            </a>
+            {% else %}
+            <div class="champ-spotlight is-vacant"><span class="champ-spotlight-text"><small>Current champion</small><strong>Vacant</strong></span></div>
+            {% endif %}
+        </div>
+    </header>
+
+    <nav class="fighter-page-nav h2h-page-nav season-page-nav" id="champPageNav" aria-label="Jump to section">
+        <a class="page-nav-pill" data-section="recordsSection" href="#recordsSection"><i data-lucide="trophy"></i>Records</a>
+        <a class="page-nav-pill" data-section="lineageSection" href="#lineageSection"><i data-lucide="git-commit-vertical"></i>{{ 'Winners' if t.trophy else 'Lineage' }}</a>
+        <a class="page-nav-pill" data-section="fightsSection" href="#fightsSection"><i data-lucide="swords"></i>Title fights</a>
+    </nav>
+
+    <section class="h2h-section" id="recordsSection">
+        <div class="h2h-section-head"><h2 class="h2h-section-title"><i data-lucide="trophy"></i>Records</h2></div>
+        <div class="champ-records">
+            {% if t.longest %}
+            <article class="champ-record-card">
+                <h3>Longest reigns</h3>
+                <ol class="champ-leaders">
+                    {% for r in t.longest %}
+                    <li><a href="/fighter/{{ r.champions[0].name | urlencode }}">
+                        <span class="champ-leader-rank">{{ loop.index }}</span>
+                        {{ faces(r.champions[:1]) }}
+                        <span class="champ-leader-name">{{ r.label }}<small>S{{ r.won.season }} M{{ r.won.month }}{% if r.lost %}–S{{ r.lost.season }} M{{ r.lost.month }}{% else %} to now{% endif %}</small></span>
+                        <span class="champ-leader-value">{{ r.months }} <small>mo</small></span>
+                    </a></li>
+                    {% endfor %}
+                </ol>
+            </article>
+            {% endif %}
+            <article class="champ-record-card">
+                <h3>{{ 'Most wins' if t.trophy else 'Most reigns' }}</h3>
+                {{ leader_list(t.most_reigns, 'wins' if t.trophy else 'reigns') }}
+            </article>
+            {% if t.most_defenses %}
+            <article class="champ-record-card">
+                <h3>Most defenses</h3>
+                {{ leader_list(t.most_defenses, 'defenses') }}
+            </article>
+            {% endif %}
+            {% if t.most_months %}
+            <article class="champ-record-card">
+                <h3>Most months as champion</h3>
+                {{ leader_list(t.most_months, 'mo') }}
+            </article>
+            {% endif %}
+        </div>
+    </section>
+
+    {% set longest_months = (t.longest[0].months if t.longest else 1) or 1 %}
+    <section class="h2h-section" id="lineageSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="git-commit-vertical"></i>{{ 'Winners' if t.trophy else 'Lineage' }}</h2>
+            <p class="h2h-section-note">Every {{ noun }}, newest first{% if not t.trophy %}. Defenses are title fights won as champion{% if t.tier == 'Major' %}, including bracket rounds{% endif %}{% endif %}.</p>
+        </div>
+
+        <div class="champ-lineage{% if t.trophy %} is-trophy{% endif %}">
+            {% if not t.trophy %}
+            <div class="champ-reign champ-reign-head" aria-hidden="true">
+                <span>#</span><span>Champion</span><span>Held</span><span class="champ-reign-head-def">Defenses</span><span>Reign</span>
+            </div>
+            {% endif %}
+            {% set rev = t.reigns | reverse | list %}
+            {% for r in rev %}
+            {% if loop.first or r.won.season != rev[loop.index0 - 1].won.season %}
+            <div class="champ-lineage-season">Season {{ r.won.season }}</div>
+            {% endif %}
+            <article class="champ-reign{% if r.current %} is-current{% endif %}" id="reign-{{ r.number }}">
+                <span class="champ-reign-number">#{{ r.number }}</span>
+                <div class="champ-reign-who">
+                    {{ faces(r.champions) }}
+                    <div class="champ-reign-name">
+                        {{ fighter_names(r.champions) }}
+                        <span class="champ-reign-tags">
+                            {% if r.current %}<span class="record-badge">{{ 'Reigning' if t.trophy else 'Champion' }}</span>{% endif %}
+                            {% if r.inaugural %}<span class="record-badge is-tie">Inaugural</span>{% endif %}
+                            {% if r.won.fight_type == 'Cash In' %}<span class="champ-chip-cashin">Cash-in</span>{% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% macro held_end(e, fallback) -%}
+                {% if e.fight_id %}<a class="champ-held-end" href="/fight/{{ e.fight_id }}"><strong>S{{ e.season }} · M{{ e.month }}</strong><small>{{ e.ppv or 'Weekly show' }}</small></a>
+                {% else %}<span class="champ-held-end"><strong>S{{ e.season }} · M{{ e.month }}</strong><small>{{ fallback }}</small></span>{% endif %}
+                {%- endmacro %}
+                <div class="champ-reign-held">
+                    <span class="champ-reign-label">{{ 'Won' if t.trophy else 'Held' }}</span>
+                    <div class="champ-held-span">
+                        {{ held_end(r.won, 'Awarded the title' if r.inaugural else '—') }}
+                        {% if not t.trophy %}
+                        <span class="champ-held-arrow" aria-label="to">→</span>
+                        {% if r.current %}<span class="champ-held-end is-now"><strong>Now</strong><small>Still champion</small></span>
+                        {% else %}{{ held_end(r.lost, '—') }}{% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% if not t.trophy %}
+                <div class="champ-reign-defenses"><span class="champ-reign-label">Defenses</span><strong>{{ r.defenses }}</strong>{% if r.bracket_defenses %}<small title="{{ r.title_defenses }} title fight{{ '' if r.title_defenses == 1 else 's' }} + {{ r.bracket_defenses }} Tournament/Scramble round{{ '' if r.bracket_defenses == 1 else 's' }}">{{ r.bracket_defenses }} in brackets</small>{% endif %}</div>
+                <div class="champ-reign-length">
+                    <span class="champ-reign-label">Reign</span>
+                    <span class="champ-reign-bar"><span style="width: {{ [100 * r.months / longest_months, 3] | max }}%"></span></span>
+                    <span class="champ-reign-months">{% if r.months %}{{ r.months }} mo{% else %}&lt;1 mo{% endif %}</span>
+                </div>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="h2h-section" id="fightsSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="swords"></i>Title fights</h2>
+            <p class="h2h-section-note">{{ t.title_fights }} fights, newest first</p>
+        </div>
+        <div id="titleFights" class="fight-list"></div>
+        <button type="button" class="season-show-all" id="moreFightsBtn" hidden>Show more</button>
+    </section>
+
+    <nav class="champ-others" aria-label="Other championships">
+        {% for o in others if o.slug != t.slug %}
+        <a href="/championships/{{ o.slug }}" class="champ-other">
+            <img src="{{ asset_variant('belts', o.belt, 'sm') }}" alt="" loading="lazy">
+            <span>{{ o.name }}</span>
+        </a>
+        {% endfor %}
+    </nav>
+</div>
+
+{% include "partials/belt_viewer.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.SSBStats = window.SSBStats || {};
+window.SSBStats.titleFights = {{ t.fights | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/pages/championships.js') }}?v={{ static_v }}"></script>
+{% endblock %}
