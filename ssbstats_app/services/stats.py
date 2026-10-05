@@ -244,8 +244,10 @@ def get_fighter_advanced_payload(name):
     }
 
 
+@ttl_cache(_FIGHTER_CACHE_SECONDS)
 def get_leaderboard_payload(season):
-    """Return leaderboard rows with awards and title badges merged in."""
+    """Return leaderboard rows with awards and title badges merged in. Cached per season
+    ("" is all-time); rebuilt by the warmer when data changes."""
     if season:
         season_int = int(season)
         with ThreadPoolExecutor(max_workers=2) as pool:
@@ -268,8 +270,9 @@ def get_leaderboard_payload(season):
     return fighters
 
 
+@ttl_cache(_FIGHTER_CACHE_SECONDS)
 def get_season_payload(season_id):
-    """Assemble the payload for a single season detail page."""
+    """Assemble the payload for a single season detail page. Cached; rebuilt by the warmer."""
     with ThreadPoolExecutor(max_workers=3) as pool:
         summary_future = pool.submit(seasons.get_season_summary, season_id)
         ps_future = pool.submit(power.get_season_power_scores, season_id)
@@ -599,93 +602,67 @@ def get_fight_detail_payload(fight_id):
     }
 
 
-def get_compare_payload(f1, f2):
-    """Assemble the full fighter-vs-fighter comparison payload."""
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        raw_future = pool.submit(comparisons.get_comparison_data, f1, f2)
-        ps_future = pool.submit(power.get_all_season_power_scores)
-        ps_career_future = pool.submit(power.get_career_power_scores)
-        raw = raw_future.result()
-        ps_all = ps_future.result()
-        ps_career = ps_career_future.result()
+def _record_summary(rows):
+    """First row of a W/L view in the compare page's summary shape."""
+    if not rows:
+        return {"wins": 0, "losses": 0, "win_pct": "0.00%"}
+    row = rows[0]
+    return {"wins": serialize_value(row.get("Wins", 0)), "losses": serialize_value(row.get("Losses", 0)), "win_pct": str(row.get("Win Percentage", "0.00%"))}
 
-    def career(rows):
-        """Convert career rows into the compare page's summary shape."""
-        if not rows:
-            return {"wins": 0, "losses": 0, "win_pct": "0.00%"}
-        row = rows[0]
-        return {"wins": serialize_value(row.get("Wins", 0)), "losses": serialize_value(row.get("Losses", 0)), "win_pct": str(row.get("Win Percentage", "0.00%"))}
 
-    def by_season(rows):
-        """Convert season rows into the compare page's season-summary shape."""
-        return [{"season": str(row.get("Season", "")), "wins": serialize_value(row.get("Wins", 0)), "losses": serialize_value(row.get("Losses", 0)), "win_pct": str(row.get("Win Percentage", "0.00%"))} for row in rows]
+@ttl_cache(_FIGHTER_CACHE_SECONDS)
+def get_compare_side(name):
+    """One fighter's half of the comparison payload. Opponent-independent, so it's cached per
+    fighter and rebuilt by the warmer; a comparison then only queries what's specific to the pair."""
+    raw = comparisons.get_fighter_comparison_rows(name)
+    ps_all = power.get_all_season_power_scores()
+    ps_career = power.get_career_power_scores()
 
-    def holistic(rows):
-        """Normalize holistic rows for compare-page rendering."""
-        output = []
-        for row in rows:
-            serialized = {key: serialize_value(value) for key, value in row.items()}
-            if serialized.get("Titles_Held"):
-                serialized["Titles_Held"] = normalize_champ_name(serialized["Titles_Held"])
-            output.append(serialized)
-        return output
+    holistic = []
+    for row in raw.get("holistic", []):
+        serialized = {key: serialize_value(value) for key, value in row.items()}
+        if serialized.get("Titles_Held"):
+            serialized["Titles_Held"] = normalize_champ_name(serialized["Titles_Held"])
+        holistic.append(serialized)
 
-    def running(rows):
-        """Convert running win-rate rows for the momentum chart."""
-        return [{"season": row.get("Season"), "month": row.get("Month"), "week": row.get("Week"), "decision": row.get("Decision"), "career_win_pct": str(row.get("Career_Running_Win_Pct", "0.00%"))} for row in rows]
+    champs = raw.get("champs", [])
+    nk = name.lower()
+    return {
+        "name": name,
+        "image": fighter_to_filename(name) + ".png",
+        "career": _record_summary(raw.get("career", [])),
+        "by_season": [
+            {"season": str(row.get("Season", "")), "wins": serialize_value(row.get("Wins", 0)), "losses": serialize_value(row.get("Losses", 0)), "win_pct": str(row.get("Win Percentage", "0.00%"))}
+            for row in raw.get("season", [])
+        ],
+        "holistic": holistic,
+        "running": [
+            {"season": row.get("Season"), "month": row.get("Month"), "week": row.get("Week"), "decision": row.get("Decision"), "career_win_pct": str(row.get("Career_Running_Win_Pct", "0.00%"))}
+            for row in raw.get("running", [])
+        ],
+        "unique_champs": int(champs[0].get("total", 0)) if champs else 0,
+        "champ_stats": _record_summary(raw.get("champ_stats", [])),
+        "awards": [{"season": int(row.get("Season_ID", 0)), "name": str(row.get("Award_Name", ""))} for row in raw.get("awards", [])],
+        "elo_history": [
+            {"fight_id": int(row.get("fight_id", 0)), "season": int(row.get("season", 0)), "month": int(row.get("month", 0)), "week": row.get("week"), "elo_before": float(row.get("elo_before", 0)), "elo_after": float(row.get("elo_after", 0))}
+            for row in raw.get("elo_history", [])
+        ],
+        "career_power_score": ps_career.get(nk, {}),
+        "power_scores_by_season": {str(season): ps_all[season][nk] for season in sorted(ps_all.keys()) if nk in ps_all[season]},
+        "brand": lookups.get_fighter_brands().get(nk, ""),
+    }
 
-    def unique_champs(rows):
-        """Extract the distinct championship count from an aggregate query."""
-        return int(rows[0].get("total", 0)) if rows else 0
 
-    def champ_stats(rows):
-        """Convert championship rows into the compare page's summary shape."""
-        if not rows:
-            return {"wins": 0, "losses": 0, "win_pct": "0.00%"}
-        row = rows[0]
-        return {"wins": serialize_value(row.get("Wins", 0)), "losses": serialize_value(row.get("Losses", 0)), "win_pct": str(row.get("Win Percentage", "0.00%"))}
-
-    def awards(rows):
-        """Convert award rows into a small season/name structure."""
-        return [{"season": int(row.get("Season_ID", 0)), "name": str(row.get("Award_Name", ""))} for row in rows]
-
-    def elo_history(rows):
-        """Convert Elo history rows into the compare page's chart shape."""
-        return [{"fight_id": int(row.get("fight_id", 0)), "season": int(row.get("season", 0)), "month": int(row.get("month", 0)), "week": row.get("week"), "elo_before": float(row.get("elo_before", 0)), "elo_after": float(row.get("elo_after", 0))} for row in rows]
-
-    h2h = raw.get("h2h", [])
-    fights = [{key: serialize_value(value) for key, value in row.items()} for row in raw.get("fights", [])]
-
-    def fighter_payload(name, prefix):
-        """Assemble one side of the compare payload from the raw query bundle."""
-        nk = name.lower()
-        return {
-            "name": name,
-            "image": fighter_to_filename(name) + ".png",
-            "career": career(raw.get(f"{prefix}_career", [])),
-            "by_season": by_season(raw.get(f"{prefix}_season", [])),
-            "holistic": holistic(raw.get(f"{prefix}_holistic", [])),
-            "running": running(raw.get(f"{prefix}_running", [])),
-            "unique_champs": unique_champs(raw.get(f"{prefix}_champs", [])),
-            "champ_stats": champ_stats(raw.get(f"{prefix}_champ_stats", [])),
-            "awards": awards(raw.get(f"{prefix}_awards", [])),
-            "elo_history": elo_history(raw.get(f"{prefix}_elo_history", [])),
-            "h2h_wins": int(h2h[0 if prefix == "f1" else 1].get("Wins", 0)) if len(h2h) > 1 else 0,
-            "h2h_losses": int(h2h[0 if prefix == "f1" else 1].get("Losses", 0)) if len(h2h) > 1 else 0,
-            "career_power_score": ps_career.get(nk, {}),
-            "power_scores_by_season": {str(season): ps_all[season][nk] for season in sorted(ps_all.keys()) if nk in ps_all[season]},
-        }
-
+@ttl_cache(_FIGHTER_CACHE_SECONDS)
+def get_compare_roster_maxes():
+    """Roster-wide maximums for scaling the comparison radar (career and single-season)."""
+    raw = comparisons.get_roster_max_rows()
     months = (raw.get("roster_max_months") or [{}])[0]
     wr_row = (raw.get("roster_max_wr") or [{}])[0]
     ev_row = (raw.get("roster_max_ev") or [{}])[0]
     tc_row = (raw.get("roster_max_champs") or [{}])[0]
     season_row = (raw.get("season_roster_max_holistic") or [{}])[0]
-
     return {
-        "fighter1": fighter_payload(f1, "f1"),
-        "fighter2": fighter_payload(f2, "f2"),
-        "fights_between": fights,
         "roster_maxes": {
             "max_wr": float(serialize_value(wr_row.get("max_wr")) or 100),
             "max_major": float(serialize_value(months.get("max_major")) or 1),
@@ -700,6 +677,44 @@ def get_compare_payload(f1, f2):
             "max_ev": int(serialize_value(season_row.get("max_ev")) or 1),
             "max_champs": int(serialize_value(season_row.get("max_tc")) or 1),
         },
+    }
+
+
+def _shared_fights(f1, f2):
+    """Every fight both fighters were in, newest first, shaped like the fight log rows."""
+    rows = fights.get_fight_log({"fighter": f1, "fighter2": f2, "fighter_op2": "and"}, page=1, per_page=500)
+    return [
+        {**{key: serialize_value(value) for key, value in fight.items() if key != "fighters"},
+         "fighters": [{key: serialize_value(value) for key, value in fighter.items()} for fighter in fight["fighters"]]}
+        for fight in rows
+    ]
+
+
+@ttl_cache(_FIGHTER_CACHE_SECONDS)
+def get_compare_payload(f1, f2):
+    """Assemble the full fighter-vs-fighter comparison payload.
+
+    Both fighters' halves and the roster maximums come from caches, so only the pair's
+    head-to-head record and shared fights are queried. The warmer clears this cache when
+    data changes.
+    """
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        side1 = pool.submit(get_compare_side, f1)
+        side2 = pool.submit(get_compare_side, f2)
+        maxes = pool.submit(get_compare_roster_maxes)
+        h2h = pool.submit(comparisons.get_head_to_head_record, f1, f2)
+        shared = pool.submit(_shared_fights, f1, f2)
+        side1, side2, maxes, h2h, shared = side1.result(), side2.result(), maxes.result(), h2h.result(), shared.result()
+
+    def with_record(side, index):
+        row = h2h[index] if len(h2h) > 1 else {}
+        return {**side, "h2h_wins": int(row.get("Wins", 0) or 0), "h2h_losses": int(row.get("Losses", 0) or 0)}
+
+    return {
+        "fighter1": with_record(side1, 0),
+        "fighter2": with_record(side2, 1),
+        "shared_fights": shared,
+        **maxes,
     }
 
 
@@ -925,10 +940,19 @@ def keep_fighter_caches_warm():
                 lookups.get_fighter_brands.refresh()
                 get_home_summary.refresh()
                 get_record_book.refresh()
+                get_compare_roster_maxes.refresh()
+                get_compare_payload.cache_clear()  # pairs rebuild on demand from the per-fighter halves
+                latest = lookups.get_latest_season()
+                get_leaderboard_payload.refresh("")
+                for season in range(1, latest + 1):
+                    get_leaderboard_payload.refresh(str(season))
+                    get_season_payload.refresh(season)
+                    time.sleep(0.2)
                 names = lookups.get_all_fighters()
                 for name in names:
                     get_fighter_profile_payload.refresh(name)
                     get_fighter_advanced_payload.refresh(name)
+                    get_compare_side.refresh(name)
                     time.sleep(0.2)  # spread the rebuild out so it never spikes the database
                 # Only mark this data version done if every query succeeded; otherwise retry next check.
                 if query_failure_count() == failures_before:

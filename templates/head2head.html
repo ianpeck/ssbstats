@@ -1,12 +1,13 @@
 {% extends "base.html" %}
-{% block title %}SSB Stats - Compare{% endblock %}
+{% block title %}SSB Stats - Head to Head{% endblock %}
 {% block og_title %}{% if request.args.get('f1') and request.args.get('f2') %}{{ request.args.get('f1') }} vs {{ request.args.get('f2') }} · Head to Head{% else %}Head to Head · SSB Stats{% endif %}{% endblock %}
 {% block meta_description %}{% if request.args.get('f1') and request.args.get('f2') %}{{ request.args.get('f1') }} vs {{ request.args.get('f2') }}: their head-to-head record, title fights and every meeting in the SSB league.{% else %}Compare any two SSB league fighters: head-to-head record, title fights, Elo and every meeting.{% endif %}{% endblock %}
 
-{% block content %}
-<section class="compare-page">
-    <h1 class="section-title">Fighter Comparison</h1>
+{% block body_class %}page-h2h{% endblock %}
 
+{% block content %}
+<div class="h2h-page">
+    <h1 class="visually-hidden">Head to Head</h1>
     {% include "partials/head2head/selector.html" %}
 
     <div class="loading-overlay" id="compareLoading" style="display:none;">
@@ -15,9 +16,9 @@
     </div>
 
     {% include "partials/head2head/results.html" %}
-</section>
+</div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/pages/head2head.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/head2head.js') }}?v={{ static_v }}"></script>
 {% endblock %}

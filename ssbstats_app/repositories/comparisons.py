@@ -3,51 +3,62 @@ from concurrent.futures import ThreadPoolExecutor
 from ssbstats_app.repositories.base import h2h_query_sql, select_view_dicts, select_view_row
 
 
-def get_comparison_data(f1, f2):
-    """Return the raw datasets required for the fighter comparison page."""
-    queries = {
-        "f1_career": ("SELECT * FROM careerstats WHERE Fighter_Name = %s", (f1,)),
-        "f2_career": ("SELECT * FROM careerstats WHERE Fighter_Name = %s", (f2,)),
-        "f1_season": ("SELECT * FROM CareerStatsBySeason WHERE Fighter_Name = %s ORDER BY Season", (f1,)),
-        "f2_season": ("SELECT * FROM CareerStatsBySeason WHERE Fighter_Name = %s ORDER BY Season", (f2,)),
-        "f1_holistic": ("SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season", (f1,)),
-        "f2_holistic": ("SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season", (f2,)),
-        "f1_running": ("SELECT Season, Month, Week, Fight_ID, Decision, Career_Running_Win_Pct FROM CareerRunningStats WHERE Fighter_Name = %s ORDER BY Season, Month, Week, Fight_ID", (f1,)),
-        "f2_running": ("SELECT Season, Month, Week, Fight_ID, Decision, Career_Running_Win_Pct FROM CareerRunningStats WHERE Fighter_Name = %s ORDER BY Season, Month, Week, Fight_ID", (f2,)),
-        "f1_elo_history": ("SELECT e.fight_id, f.Season_ID AS season, f.Month AS month, f.Week AS week, ROUND(e.elo_before, 2) AS elo_before, ROUND(e.elo_after, 2) AS elo_after FROM Elo e JOIN Fight f ON e.fight_id = f.Fight_ID WHERE e.fighter_name = %s ORDER BY f.Season_ID, f.Month, f.Week, f.Fight_ID", (f1,)),
-        "f2_elo_history": ("SELECT e.fight_id, f.Season_ID AS season, f.Month AS month, f.Week AS week, ROUND(e.elo_before, 2) AS elo_before, ROUND(e.elo_after, 2) AS elo_after FROM Elo e JOIN Fight f ON e.fight_id = f.Fight_ID WHERE e.fighter_name = %s ORDER BY f.Season_ID, f.Month, f.Week, f.Fight_ID", (f2,)),
-        "f1_champs": ("SELECT COUNT(DISTINCT Championship_Name) AS total FROM ChampionshipHistory WHERE Fighter_Name = %s", (f1,)),
-        "f2_champs": ("SELECT COUNT(DISTINCT Championship_Name) AS total FROM ChampionshipHistory WHERE Fighter_Name = %s", (f2,)),
-        "f1_champ_stats": ("SELECT * FROM champfightstats WHERE Fighter_Name = %s", (f1,)),
-        "f2_champ_stats": ("SELECT * FROM champfightstats WHERE Fighter_Name = %s", (f2,)),
-        "f1_awards": ("SELECT ah.Season_ID, a.Award_Name FROM AwardHistory ah JOIN Award a ON ah.Award_ID = a.Award_ID WHERE ah.Fighter_Name = %s ORDER BY ah.Season_ID", (f1,)),
-        "f2_awards": ("SELECT ah.Season_ID, a.Award_Name FROM AwardHistory ah JOIN Award a ON ah.Award_ID = a.Award_ID WHERE ah.Fighter_Name = %s ORDER BY ah.Season_ID", (f2,)),
-        "fights": ("""SELECT fl.Season, fl.Month, fl.Week, fl.Fight_ID, fl.Fighter_Name, fl.Decision, fl.Championship_Name, fl.Description, fl.PPV_Name, fl.Location_Name, (SELECT GROUP_CONCAT(w.Fighter_Name ORDER BY w.Fighter_Name SEPARATOR ' & ') FROM FightLog w WHERE w.Fight_ID = fl.Fight_ID AND w.Decision = 'w') AS Winners FROM FightLog fl WHERE fl.Fight_ID IN (SELECT r1.Fight_ID FROM Results r1 JOIN Results r2 ON r1.Fight_ID = r2.Fight_ID AND r1.Fighter_Name = %s AND r2.Fighter_Name = %s) AND fl.Fighter_Name IN (%s, %s) ORDER BY fl.Season DESC, fl.Month DESC, COALESCE(fl.Week, 99) DESC, fl.Fight_ID DESC""", (f1, f2, f1, f2)),
-        "roster_max_months": ("""SELECT MAX(total_major) AS max_major, MAX(total_title) AS max_title FROM (SELECT Fighter_Name, SUM(COALESCE(Months_With_Major, 0)) AS total_major, SUM(COALESCE(Months_With_Title, 0)) AS total_title FROM holistic_view GROUP BY Fighter_Name) t""", ()),
-        "roster_max_wr": ("""SELECT MAX(CAST(REPLACE(`Win Percentage`, '%', '') AS DECIMAL(5,2))) AS max_wr FROM careerstats""", ()),
-        "roster_max_ev": ("""SELECT MAX(ev_count) AS max_ev FROM (SELECT Fighter_Name, MAX(CASE WHEN Won_Tournament        IS NOT NULL AND Won_Tournament        != '' THEN 1 ELSE 0 END) + MAX(CASE WHEN Won_Royal_Rumble      IS NOT NULL AND Won_Royal_Rumble      != '' THEN 1 ELSE 0 END) + MAX(CASE WHEN Won_Scramble          IS NOT NULL AND Won_Scramble          != '' THEN 1 ELSE 0 END) + MAX(CASE WHEN Won_Smash_Series      IS NOT NULL AND Won_Smash_Series      != '' THEN 1 ELSE 0 END) + MAX(CASE WHEN Won_Money_In_The_Bank IS NOT NULL AND Won_Money_In_The_Bank != '' THEN 1 ELSE 0 END) + MAX(CASE WHEN Won_Smash_Bros        IS NOT NULL AND Won_Smash_Bros        != '' THEN 1 ELSE 0 END) AS ev_count FROM holistic_view GROUP BY Fighter_Name) t""", ()),
-        "roster_max_champs": ("""SELECT MAX(cnt) AS max_tc FROM (SELECT COUNT(DISTINCT Championship_Name) AS cnt FROM ChampionshipHistory GROUP BY Fighter_Name) t""", ()),
-        "season_roster_max_holistic": ("""SELECT MAX(CAST(REPLACE(Win_Percentage, '%', '') AS DECIMAL(5,2))) AS max_wr, MAX(COALESCE(Months_With_Major, 0)) AS max_major, MAX(COALESCE(Months_With_Title, 0)) AS max_title, MAX(COALESCE(Title_Count, 0)) AS max_tc, MAX((CASE WHEN Won_Tournament IS NOT NULL AND Won_Tournament != '' THEN 1 ELSE 0 END) + (CASE WHEN Won_Royal_Rumble IS NOT NULL AND Won_Royal_Rumble != '' THEN 1 ELSE 0 END) + (CASE WHEN Won_Scramble IS NOT NULL AND Won_Scramble != '' THEN 1 ELSE 0 END) + (CASE WHEN Won_Smash_Series IS NOT NULL AND Won_Smash_Series != '' THEN 1 ELSE 0 END) + (CASE WHEN Won_Money_In_The_Bank IS NOT NULL AND Won_Money_In_The_Bank != '' THEN 1 ELSE 0 END) + (CASE WHEN Won_Smash_Bros IS NOT NULL AND Won_Smash_Bros != '' THEN 1 ELSE 0 END)) AS max_ev FROM holistic_view""", ()),
-    }
+_FIGHTER_QUERIES = {
+    "career": "SELECT * FROM careerstats WHERE Fighter_Name = %s",
+    "season": "SELECT * FROM CareerStatsBySeason WHERE Fighter_Name = %s ORDER BY Season",
+    "holistic": "SELECT * FROM holistic_view WHERE Fighter_Name = %s ORDER BY Season",
+    "running": "SELECT Season, Month, Week, Fight_ID, Decision, Career_Running_Win_Pct FROM CareerRunningStats WHERE Fighter_Name = %s ORDER BY Season, Month, Week, Fight_ID",
+    "elo_history": "SELECT e.fight_id, f.Season_ID AS season, f.Month AS month, f.Week AS week, ROUND(e.elo_before, 2) AS elo_before, ROUND(e.elo_after, 2) AS elo_after FROM Elo e JOIN Fight f ON e.fight_id = f.Fight_ID WHERE e.fighter_name = %s ORDER BY f.Season_ID, f.Month, f.Week, f.Fight_ID",
+    "champs": "SELECT COUNT(DISTINCT Championship_Name) AS total FROM ChampionshipHistory WHERE Fighter_Name = %s",
+    "champ_stats": "SELECT * FROM champfightstats WHERE Fighter_Name = %s",
+    "awards": "SELECT ah.Season_ID, a.Award_Name FROM AwardHistory ah JOIN Award a ON ah.Award_ID = a.Award_ID WHERE ah.Fighter_Name = %s ORDER BY ah.Season_ID",
+}
 
-    with ThreadPoolExecutor(max_workers=20) as pool:
-        view_futures = {key: pool.submit(select_view_dicts, query, params) for key, (query, params) in queries.items()}
-        h2h_future = pool.submit(h2h_query_sql, "CALL SmashBros.headtohead(%s, %s)", (f1, f2))
+_EVENT_WON = " + ".join(
+    f"MAX(CASE WHEN {col} IS NOT NULL AND {col} != '' THEN 1 ELSE 0 END)"
+    for col in ("Won_Tournament", "Won_Royal_Rumble", "Won_Scramble", "Won_Smash_Series", "Won_Money_In_The_Bank", "Won_Smash_Bros")
+)
+_ROSTER_QUERIES = {
+    "roster_max_months": """SELECT MAX(total_major) AS max_major, MAX(total_title) AS max_title FROM (SELECT Fighter_Name, SUM(COALESCE(Months_With_Major, 0)) AS total_major, SUM(COALESCE(Months_With_Title, 0)) AS total_title FROM holistic_view GROUP BY Fighter_Name) t""",
+    "roster_max_wr": """SELECT MAX(CAST(REPLACE(`Win Percentage`, '%', '') AS DECIMAL(5,2))) AS max_wr FROM careerstats""",
+    "roster_max_ev": f"""SELECT MAX(ev_count) AS max_ev FROM (SELECT Fighter_Name, {_EVENT_WON} AS ev_count FROM holistic_view GROUP BY Fighter_Name) t""",
+    "roster_max_champs": """SELECT MAX(cnt) AS max_tc FROM (SELECT COUNT(DISTINCT Championship_Name) AS cnt FROM ChampionshipHistory GROUP BY Fighter_Name) t""",
+    "season_roster_max_holistic": """SELECT MAX(CAST(REPLACE(Win_Percentage, '%', '') AS DECIMAL(5,2))) AS max_wr, MAX(COALESCE(Months_With_Major, 0)) AS max_major, MAX(COALESCE(Months_With_Title, 0)) AS max_title, MAX(COALESCE(Title_Count, 0)) AS max_tc, MAX((CASE WHEN Won_Tournament IS NOT NULL AND Won_Tournament != '' THEN 1 ELSE 0 END) + (CASE WHEN Won_Royal_Rumble IS NOT NULL AND Won_Royal_Rumble != '' THEN 1 ELSE 0 END) + (CASE WHEN Won_Scramble IS NOT NULL AND Won_Scramble != '' THEN 1 ELSE 0 END) + (CASE WHEN Won_Smash_Series IS NOT NULL AND Won_Smash_Series != '' THEN 1 ELSE 0 END) + (CASE WHEN Won_Money_In_The_Bank IS NOT NULL AND Won_Money_In_The_Bank != '' THEN 1 ELSE 0 END) + (CASE WHEN Won_Smash_Bros IS NOT NULL AND Won_Smash_Bros != '' THEN 1 ELSE 0 END)) AS max_ev FROM holistic_view""",
+}
 
+
+def _run_all(queries):
+    """Run named queries in parallel; a failed query yields an empty list (and is counted)."""
+    with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+        futures = {key: pool.submit(select_view_dicts, query, params) for key, (query, params) in queries.items()}
     result = {}
-    for key, future in view_futures.items():
+    for key, future in futures.items():
         try:
             result[key] = future.result()
         except Exception:
             result[key] = []
+    return result
+
+
+def get_fighter_comparison_rows(name):
+    """One fighter's half of a comparison. Doesn't depend on the opponent, so it's cached per fighter."""
+    return _run_all({key: (query, (name,)) for key, query in _FIGHTER_QUERIES.items()})
+
+
+def get_roster_max_rows():
+    """Roster-wide maximums used to scale the comparison radar. Same for every pair."""
+    return _run_all({key: (query, ()) for key, query in _ROSTER_QUERIES.items()})
+
+
+def get_head_to_head_record(f1, f2):
+    """The two fighters' head-to-head wins, from the headtohead procedure."""
     try:
-        result["h2h"] = h2h_future.result()
+        return h2h_query_sql("CALL SmashBros.headtohead(%s, %s)", (f1, f2))
     except Exception:
-        result["h2h"] = [
+        return [
             {"Fighter": f1, "Wins": "0", "Losses": "0", "W/L %": "0.00%"},
             {"Fighter": f2, "Wins": "0", "Losses": "0", "W/L %": "0.00%"},
         ]
-    return result
 
 
 def get_h2h_data(fighter1, fighter2, filters):

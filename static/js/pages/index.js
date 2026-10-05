@@ -274,39 +274,58 @@
             const [nx, ny, nz] = piece.face.n;
             const z1 = -nx * sy + nz * cy;
             const facing = ny * sp + z1 * cp;       // 1 = facing the viewer, -1 = far side
-            piece.el.style.setProperty('--facing', facing.toFixed(3));
-            piece.el.classList.toggle('is-back', facing < 0.08);
+            // Shading in 1/50 steps (invisible), written only when it changes: each write
+            // makes the browser restyle that piece, and most pieces barely move per frame.
+            const shade = Math.round(facing * 50);
+            if (shade !== piece.shade) {
+                piece.shade = shade;
+                piece.el.style.setProperty('--facing', (shade / 50).toFixed(2));
+            }
+            const back = facing < 0.08;
+            if (back !== piece.back) {
+                piece.back = back;
+                piece.el.classList.toggle('is-back', back);
+            }
         }
     }
 
-    function frame() {
+    let lastFrame = 0;
+
+    function frame(now) {
         running = false;
-        if (!visible || section.dataset.view !== 'globe') return;
+        // Motion is tuned per 60Hz frame; scale it by real elapsed time so the spin runs at
+        // the same speed (just smoother) on 120Hz screens, and doesn't jump after a stall.
+        const step = lastFrame ? Math.min((now - lastFrame) / (1000 / 60), 3) : 1;
+        lastFrame = now;
+        if (!visible || section.dataset.view !== 'globe') { lastFrame = 0; return; }
         let moving = false;
         if (target) {
             const dYaw = shortest(target.yaw - yaw);
             const dPitch = target.pitch - pitch;
-            yaw += dYaw * target.ease;
-            pitch += dPitch * target.ease;
+            const ease = 1 - Math.pow(1 - target.ease, step);
+            yaw += dYaw * ease;
+            pitch += dPitch * ease;
             if (Math.abs(dYaw) < 0.05 && Math.abs(dPitch) < 0.05) {
                 yaw = target.yaw; pitch = target.pitch; target = null;
             }
             moving = true;
         } else if (!dragging) {
             if (Math.abs(vYaw) > 0.01 || Math.abs(vPitch) > 0.01) {
-                yaw += vYaw; pitch += vPitch;
-                vYaw *= 0.95; vPitch *= 0.95;
+                yaw += vYaw * step; pitch += vPitch * step;
+                const decay = Math.pow(0.95, step);
+                vYaw *= decay; vPitch *= decay;
                 moving = true;
             }
             if (!reduceMotion && selected < 0) {
                 // keep ticking so the idle spin resumes a moment after the last interaction
-                if (performance.now() - lastInteraction > 2500) yaw += 0.07;
+                if (now - lastInteraction > 2500) yaw += 0.07 * step;
                 moving = true;
             }
         }
         pitch = clampPitch(pitch);
         render();
         if (moving || dragging) wake();
+        else lastFrame = 0;
     }
 
     function wake() {

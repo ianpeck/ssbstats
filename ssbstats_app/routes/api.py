@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 
+from ssbstats_app.repositories import lookups
 from ssbstats_app.repositories.seasons import get_all_seasons
 from ssbstats_app.security import DailyQuota, RateLimiter, admin_ips, get_client_ip
 from ssbstats_app.services.chat import answer_question
@@ -101,9 +102,12 @@ def fighter_advanced(name):
 @api_bp.route("/leaderboard")
 def leaderboard():
     """Return leaderboard data for all time or a specific season."""
-    season = request.args.get("season", "")
+    season = request.args.get("season", "").strip()
+    # Only real seasons reach the cache, so junk query strings can't grow it.
+    if season and not (season.isdigit() and 1 <= int(season) <= lookups.get_latest_season()):
+        return jsonify({"error": "Unknown season"}), 404
     try:
-        return jsonify(get_leaderboard_payload(season))
+        return jsonify(get_leaderboard_payload(str(int(season)) if season else ""))
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 
@@ -120,6 +124,8 @@ def seasons():
 @api_bp.route("/season/<int:season_id>")
 def season(season_id):
     """Return the full payload for a specific season page."""
+    if not 1 <= season_id <= lookups.get_latest_season():
+        return jsonify({"error": "Unknown season"}), 404
     try:
         return jsonify(get_season_payload(season_id))
     except Exception as exc:
@@ -175,8 +181,14 @@ def compare():
     fighter2 = (data.get("fighter2") or "").strip()
     if not fighter1 or not fighter2:
         return jsonify({"error": "Both fighters required"}), 400
+    names = [_canonical_fighter(fighter1), _canonical_fighter(fighter2)]
+    if not all(names):
+        missing = fighter1 if not names[0] else fighter2
+        return jsonify({"error": f"No fighter named \"{missing}\""}), 404
+    if names[0] == names[1]:
+        return jsonify({"error": "Pick two different fighters"}), 400
     try:
-        return jsonify(get_compare_payload(fighter1, fighter2))
+        return jsonify(get_compare_payload(*names))
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 

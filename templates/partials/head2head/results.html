@@ -1,87 +1,65 @@
-<div id="compareResults" style="display:none;">
-    <div id="modeBar" class="mode-bar">
-        <div class="mode-toggle">
-            <button id="btnCareer" class="mode-btn active">Career</button>
-            <button id="btnSeason" class="mode-btn">Season</button>
+<div id="compareResults" class="h2h-results" hidden>
+    <div class="h2h-modebar">
+        <div class="h2h-mode-toggle" role="tablist" aria-label="Compare careers or seasons">
+            <button type="button" id="btnCareer" class="active">Career</button>
+            <button type="button" id="btnSeason">Season</button>
         </div>
-        <div id="seasonPickers" class="season-pickers" style="display:none;">
-            <span class="season-picker-label f1-color" id="seasonF1Name"></span>
-            <select id="seasonF1" class="season-select"></select>
-            <span class="season-picker-vs">vs</span>
-            <span class="season-picker-label f2-color" id="seasonF2Name"></span>
-            <select id="seasonF2" class="season-select"></select>
+        <div id="seasonPickers" class="h2h-season-pickers" hidden>
+            <label><span class="h2h-dot h2h-dot-f1"></span><span id="seasonF1Name"></span>
+                <select id="seasonF1" class="h2h-select"></select></label>
+            <span class="h2h-season-vs">vs</span>
+            <label><span class="h2h-dot h2h-dot-f2"></span><span id="seasonF2Name"></span>
+                <select id="seasonF2" class="h2h-select"></select></label>
         </div>
     </div>
 
-    <div class="glass-card compare-scoreboard">
-        <div class="sb-side sb-left">
-            <img class="sb-portrait" id="sbImg1" src="" alt="">
-            <div class="sb-name f1-color" id="sbName1"></div>
+    <section class="h2h-section">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="ruler"></i><span id="tapeTitle">Tale of the Tape</span></h2>
+            <p class="h2h-section-note" id="tapeSummary"></p>
         </div>
-        <div class="sb-center">
-            <div class="sb-scores">
-                <span class="sb-score f1-color" id="sbScore1"></span>
-                <span class="sb-dash">-</span>
-                <span class="sb-score f2-color" id="sbScore2"></span>
+        <div class="h2h-tape" id="statsGrid"></div>
+    </section>
+
+    <section class="h2h-section" id="fightsSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="swords"></i>The Rivalry</h2>
+            <p class="h2h-section-note" id="fightCountLabel"></p>
+        </div>
+        <div class="h2h-meetings" id="h2hMeetings"></div>
+        <div id="fightsBetweenWrap" class="fight-list"></div>
+    </section>
+
+    <section class="h2h-section">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="chart-line"></i>Analytics</h2>
+        </div>
+        <div class="h2h-charts">
+            <div class="h2h-panel h2h-panel-radar">
+                <h3 class="h2h-panel-title">Career Fingerprint</h3>
+                <p class="h2h-panel-sub">Normalized career performance across five dimensions</p>
+                <div class="h2h-radar-box"><canvas id="compareRadar"></canvas></div>
             </div>
-            <div class="sb-bar-track">
-                <div class="sb-bar-fill sb-bar-f1" id="sbBarF1" style="width:50%"></div>
-                <div class="sb-bar-fill sb-bar-f2" id="sbBarF2" style="width:50%"></div>
+            <div id="powerScoreSection" class="h2h-panel">
+                <h3 class="h2h-panel-title">Season Power Score</h3>
+                <p class="h2h-panel-sub">End-of-season composite score and rank</p>
+                <div id="powerScoreCompareWrap"></div>
             </div>
-            <div class="sb-label" id="sbLabel">Head to Head</div>
+            <div class="h2h-panel h2h-panel-wide">
+                <h3 class="h2h-panel-title" id="momentumTitle">Career Win Rate Momentum</h3>
+                <p class="h2h-panel-sub" id="momentumSubtitle">Running career win rate after each fight</p>
+                <div class="analytics-chart-scroll"><canvas id="compareMomentum"></canvas></div>
+            </div>
+            <div id="eloSection" class="h2h-panel h2h-panel-wide">
+                <h3 class="h2h-panel-title">Elo Rating History</h3>
+                <p class="h2h-panel-sub">Rating after every fight</p>
+                <div class="analytics-chart-scroll"><canvas id="compareElo"></canvas></div>
+            </div>
+            <div id="seasonsSection" class="h2h-panel h2h-panel-wide">
+                <h3 class="h2h-panel-title">Season by Season</h3>
+                <p class="h2h-panel-sub">Wins (solid) and losses (faded) each season</p>
+                <div class="h2h-seasons-box"><canvas id="compareSeasons"></canvas></div>
+            </div>
         </div>
-        <div class="sb-side sb-right">
-            <img class="sb-portrait" id="sbImg2" src="" alt="">
-            <div class="sb-name f2-color" id="sbName2"></div>
-        </div>
-    </div>
-
-    <div class="glass-card compare-card">
-        <table class="compare-grid-table" id="statsGrid"></table>
-    </div>
-
-    <div class="glass-card compare-card">
-        <h3 class="analytics-chart-title">Career Fingerprint</h3>
-        <p class="analytics-chart-subtitle">Normalized career performance across five dimensions</p>
-        <div style="height:420px;max-width:600px;margin:0 auto;">
-            <canvas id="compareRadar"></canvas>
-        </div>
-    </div>
-
-    <div class="glass-card compare-card">
-        <h3 class="analytics-chart-title" id="momentumTitle">Career Win Rate Momentum</h3>
-        <p class="analytics-chart-subtitle" id="momentumSubtitle">Running career win rate after each fight - fight number as x-axis</p>
-        <div class="analytics-chart-scroll">
-            <canvas id="compareMomentum"></canvas>
-        </div>
-    </div>
-
-    <div id="eloSection" class="glass-card compare-card">
-        <h3 class="analytics-chart-title">ELO Rating History</h3>
-        <p class="analytics-chart-subtitle">Career ELO trajectory over time - each point is a fight</p>
-        <div class="analytics-chart-scroll">
-            <canvas id="compareElo"></canvas>
-        </div>
-    </div>
-
-    <div id="powerScoreSection" class="glass-card compare-card">
-        <h3 class="analytics-chart-title">Season Power Score</h3>
-        <p class="analytics-chart-subtitle">End-of-season composite score and rank by season</p>
-        <div id="powerScoreCompareWrap"></div>
-    </div>
-
-    <div id="seasonsSection" class="glass-card compare-card">
-        <h3 class="analytics-chart-title">Season by Season</h3>
-        <p class="analytics-chart-subtitle">Wins per season, side by side</p>
-        <div style="height:300px;">
-            <canvas id="compareSeasons"></canvas>
-        </div>
-    </div>
-
-    <div id="fightsSection" class="glass-card compare-card">
-        <h3 class="analytics-chart-title">Their Fights</h3>
-        <p class="analytics-chart-subtitle" id="fightCountLabel"></p>
-        <div id="fightsBetweenWrap"></div>
-    </div>
+    </section>
 </div>
-

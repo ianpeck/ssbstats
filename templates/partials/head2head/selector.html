@@ -1,28 +1,38 @@
-<div class="compare-hero">
-    <div class="compare-fighter-slot">
-        <div class="portrait-frame" id="f1Frame">
-            <img id="f1Img" src="{{ url_for('static', filename='assets/other/placeholder-fighter1.svg') }}" alt="Fighter 1">
+<section class="h2h-hero" id="h2hHero">
+    {% for side in ('f1', 'f2') %}
+    <div class="h2h-corner h2h-{{ side }}" id="{{ side }}Corner">
+        <div class="h2h-portrait is-empty" id="{{ side }}Frame">
+            <img id="{{ side }}Img" src="" alt="">
+            <span class="h2h-portrait-q" aria-hidden="true">?</span>
         </div>
-        <div class="autocomplete-wrapper">
-            <input type="text" id="f1Input" class="fighter-input" placeholder="Fighter 1" data-category="fighters" autocomplete="off">
-            <div class="autocomplete-dropdown" id="f1Dropdown"></div>
-        </div>
-    </div>
-
-    <div class="compare-vs-col">
-        <div class="vs-text">VS</div>
-        <button class="btn btn-primary btn-lg" id="compareBtn" onclick="doCompare()">Compare</button>
-        <div id="compareError" class="error-msg"></div>
-    </div>
-
-    <div class="compare-fighter-slot">
-        <div class="portrait-frame" id="f2Frame">
-            <img id="f2Img" src="{{ url_for('static', filename='assets/other/placeholder-fighter2.svg') }}" alt="Fighter 2">
-        </div>
-        <div class="autocomplete-wrapper">
-            <input type="text" id="f2Input" class="fighter-input" placeholder="Fighter 2" data-category="fighters" autocomplete="off">
-            <div class="autocomplete-dropdown" id="f2Dropdown"></div>
+        <span class="fighter-brand-chip h2h-brand" id="{{ side }}Brand" hidden></span>
+        <h2 class="h2h-name" id="{{ side }}Name">{{ 'Fighter 1' if side == 'f1' else 'Fighter 2' }}</h2>
+        <p class="h2h-sub" id="{{ side }}Sub">&nbsp;</p>
+        <div class="autocomplete-wrapper h2h-search">
+            <input type="text" id="{{ side }}Input" class="fighter-input" placeholder="Search a fighter…" data-category="fighters" autocomplete="off" aria-label="{{ 'First' if side == 'f1' else 'Second' }} fighter">
+            <div class="autocomplete-dropdown" id="{{ side }}Dropdown"></div>
         </div>
     </div>
-</div>
-
+    {% if side == 'f1' %}
+    <div class="h2h-center">
+        <span class="h2h-kicker">Head to Head</span>
+        <div class="h2h-vs" id="h2hVs">VS</div>
+        <div class="h2h-score" id="h2hScore" hidden>
+            <span class="h2h-score-f1" id="sbScore1">0</span>
+            <span class="h2h-score-dash">–</span>
+            <span class="h2h-score-f2" id="sbScore2">0</span>
+        </div>
+        <div class="h2h-split" id="h2hSplit" hidden>
+            <span class="h2h-split-f1" id="sbBarF1"></span>
+            <span class="h2h-split-f2" id="sbBarF2"></span>
+        </div>
+        <p class="h2h-score-label" id="sbLabel" hidden></p>
+        <div class="h2h-actions">
+            <button type="button" class="h2h-go" id="compareBtn">Compare <i data-lucide="arrow-right"></i></button>
+            <button type="button" class="h2h-swap" id="swapBtn" title="Swap sides" aria-label="Swap sides"><i data-lucide="arrow-left-right"></i></button>
+        </div>
+        <div id="compareError" class="h2h-error" role="alert"></div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</section>
