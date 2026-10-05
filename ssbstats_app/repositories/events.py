@@ -137,3 +137,20 @@ def get_event_editions(ppv_name):
 def get_championship_history_by_season_alltime():
     """Return championship history grouped at the season level."""
     return select_view_dicts("SELECT * FROM ChampionshipHistoryBySeason ORDER BY Championship_Name, Season, Month_Won, Fighter_Name")
+
+
+def get_event_winners():
+    """Who won each season's marquee events (one row per fighter per season they won something)."""
+    return select_view_dicts(
+        """
+        SELECT Season, Fighter_Name, Won_Royal_Rumble, Won_Money_In_The_Bank, Won_Tournament, Won_Scramble, Won_Smash_Series
+        FROM holistic_view
+        WHERE Won_Royal_Rumble IS NOT NULL OR Won_Money_In_The_Bank IS NOT NULL OR Won_Tournament IS NOT NULL
+           OR Won_Scramble IS NOT NULL OR Won_Smash_Series IS NOT NULL
+        """
+    )
+
+
+def get_ppv_descriptions():
+    """What makes each PPV different (its match rules), keyed by PPV name."""
+    return {row["PPV_Name"]: row["Description"] for row in select_view_dicts("SELECT PPV_Name, Description FROM PPV")}

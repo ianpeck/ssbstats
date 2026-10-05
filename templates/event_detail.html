@@ -1,205 +1,111 @@
 {% extends "base.html" %}
-{% block title %}SSB Stats - {{ event.event.PPV_Name }}{% endblock %}
-{% block meta_description %}{{ event.event.PPV_Name }}: every edition, winner, title change and upset in SSB league history.{% endblock %}
+{% from "partials/ppv_macros.html" import night_row with context %}
+{% set p = hub.ppv %}
+{% block title %}SSB Stats - {{ p.name }}{% endblock %}
+{% block meta_description %}{{ p.name }}: {{ p.editions }} events, {{ p.fights }} fights and {{ p.title_changes }} title changes in SSB league history, with the best and worst records there and every fight.{% endblock %}
 {% block og_image %}
-    <meta property="og:image" content="{{ site_url }}{{ asset_variant('ppv', event.event.logo_filename, 'md') }}">
+    <meta property="og:image" content="{{ site_url }}{{ asset_variant('ppv', p.logo, 'md') }}">
     <meta name="twitter:card" content="summary_large_image">
 {% endblock %}
+{% block body_class %}page-events{% endblock %}
 
 {% block content %}
-<section class="seasons-section">
-    <div class="event-detail-hero glass-card">
-        <div class="event-detail-hero-logo">
-            <img src="{{ asset_variant('ppv', event.event.logo_filename, 'md') }}" alt="{{ event.event.PPV_Name }}" onerror="this.style.display='none';this.parentElement.classList.add('event-detail-hero-logo--fallback');this.parentElement.textContent='{{ event.event.PPV_Name }}';">
-        </div>
-        <div class="event-detail-hero-copy">
-            <span class="season-page-kicker">All-Time Event Hub</span>
-            <h1 class="section-title">{{ event.event.PPV_Name }}</h1>
-            <p class="section-subtitle">From Season {{ event.event.first_season }}{% if event.event.first_month %} Month {{ event.event.first_month }}{% endif %} to Season {{ event.event.last_season }}{% if event.event.last_month %} Month {{ event.event.last_month }}{% endif %}</p>
-            <p class="event-detail-hero-note">The all-time read on this PPV: biggest singles upsets, strongest and roughest overall records, volume leaders, event history, and the full fight archive.</p>
-            <div class="event-detail-hero-chips">
-                <div class="event-detail-hero-chip">
-                    <span class="event-detail-hero-chip-label">First Run</span>
-                    <strong>Season {{ event.event.first_season }}{% if event.event.first_month %} · Month {{ event.event.first_month }}{% endif %}</strong>
-                </div>
-                <div class="event-detail-hero-chip">
-                    <span class="event-detail-hero-chip-label">Latest Run</span>
-                    <strong>Season {{ event.event.last_season }}{% if event.event.last_month %} · Month {{ event.event.last_month }}{% endif %}</strong>
-                </div>
-                <div class="event-detail-hero-chip">
-                    <span class="event-detail-hero-chip-label">Event Reach</span>
-                    <strong>{{ event.event.editions_count }} editions · {{ event.event.unique_fighters }} fighters</strong>
-                </div>
-            </div>
-        </div>
-        <div class="event-detail-hero-rail">
-            <div class="event-detail-hero-rail-label">Event Snapshot</div>
-            <div class="event-detail-hero-rail-value">{{ event.event.fight_count }}</div>
-            <div class="event-detail-hero-rail-copy">total fights across every edition of {{ event.event.PPV_Name }}</div>
-            <div class="event-detail-hero-rail-stats">
-                <div>
-                    <span>Title Matches</span>
-                    <strong>{{ event.event.title_fights }}</strong>
-                </div>
-                <div>
-                    <span>Editions</span>
-                    <strong>{{ event.event.editions_count }}</strong>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="champ-page events-page champ-detail">
+    <a class="champ-back" href="/events"><i data-lucide="arrow-left"></i>All events</a>
 
-    <div class="event-detail-stat-grid">
-        <div class="event-detail-stat glass-card">
-            <span class="event-detail-stat-label">Fights</span>
-            <strong>{{ event.event.fight_count }}</strong>
-            <span class="event-detail-stat-copy">Every logged match under this banner.</span>
+    <header class="champ-hero">
+        <div class="champ-hero-belt ppv-hero-art"><img src="{{ asset_variant('ppv', p.logo, 'md') }}" alt="{{ p.name }}"></div>
+        <div class="champ-hero-copy">
+            <span class="lb-kicker">Month {{ p.months | join(' / ') }} pay-per-view · since Season {{ p.first }}</span>
+            <h1 class="champ-hero-title">{{ p.name }}</h1>
+            {% if p.about %}<p class="ppv-hero-about">{{ p.about }}</p>{% endif %}
+            <div class="season-fact-row champ-hero-facts">
+                <div class="season-fact"><span class="season-fact-value">{{ p.editions }}</span><span class="season-fact-label">Events</span></div>
+                <div class="season-fact"><span class="season-fact-value">{{ p.fights }}</span><span class="season-fact-label">Fights</span></div>
+                <div class="season-fact"><span class="season-fact-value">{{ p.title_changes }}</span><span class="season-fact-label">Title changes</span></div>
+                <div class="season-fact"><span class="season-fact-value">{{ hub.unique_fighters }}</span><span class="season-fact-label">Fighters</span></div>
+            </div>
         </div>
-        <div class="event-detail-stat glass-card">
-            <span class="event-detail-stat-label">Title Matches</span>
-            <strong>{{ event.event.title_fights }}</strong>
-            <span class="event-detail-stat-copy">Championship stakes on the card.</span>
-        </div>
-        <div class="event-detail-stat glass-card">
-            <span class="event-detail-stat-label">Unique Fighters</span>
-            <strong>{{ event.event.unique_fighters }}</strong>
-            <span class="event-detail-stat-copy">Different names who have appeared here.</span>
-        </div>
-        <div class="event-detail-stat glass-card">
-            <span class="event-detail-stat-label">Editions</span>
-            <strong>{{ event.event.editions_count }}</strong>
-            <span class="event-detail-stat-copy">Distinct season-month versions of the event.</span>
-        </div>
-    </div>
+    </header>
 
-    <div class="event-detail-grid">
-        <div class="glass-card event-detail-card">
-            <div class="event-detail-card-head">
-                <div>
-                    <div class="season-card-kicker">Shock Value</div>
-                    <h2 class="season-card-title">Biggest Upsets</h2>
-                </div>
-            </div>
-            {% if event.biggest_upsets %}
-            <div class="event-insight-list">
-                {% for row in event.biggest_upsets %}
-                <a class="event-insight-item" href="/fight/{{ row.Fight_ID }}">
-                    <div>
-                        <div class="event-insight-title">{{ row.winner_name }} def. {{ row.loser_name }}</div>
-                        <div class="event-insight-meta">Season {{ row.Season }} · Month {{ row.Month }} · {{ row.Description or 'Match' }}{% if row.Championship_Name %} · {{ row.Championship_Name }}{% endif %}{% if row.Location_Name %} · {{ row.Location_Name }}{% endif %} · Favorite gap {{ row.upset_gap }}</div>
-                    </div>
-                    <div class="event-insight-value-wrap">
-                        <div class="event-insight-value">{% if row.elo_swing > 0 %}+{% endif %}{{ row.elo_swing }}</div>
-                        <div class="event-insight-value-label">Elo swing</div>
-                    </div>
-                </a>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="event-detail-empty">No singles Elo upset data available for this event.</p>
+    <nav class="fighter-page-nav h2h-page-nav season-page-nav" id="eventsPageNav" aria-label="Jump to section">
+        <a class="page-nav-pill" data-section="recordsSection" href="#recordsSection"><i data-lucide="trophy"></i>Records</a>
+        <a class="page-nav-pill" data-section="editionsSection" href="#editionsSection"><i data-lucide="calendar"></i>Every event</a>
+        <a class="page-nav-pill" data-section="fightsSection" href="#fightsSection"><i data-lucide="swords"></i>Fights</a>
+    </nav>
+
+    <section class="h2h-section" id="recordsSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="trophy"></i>Records</h2>
+            <p class="h2h-section-note">At {{ p.name }} across every season (best and worst need 3+ fights)</p>
+        </div>
+        <div class="champ-records">
+            <article class="champ-record-card">
+                <h3>Best records</h3>
+                {% if not hub.best %}<p class="h2h-section-note">Nobody has 3+ fights here yet.</p>{% endif %}
+                <ol class="champ-leaders">
+                    {% for r in hub.best %}
+                    <li><a href="/fighter/{{ r.name | urlencode }}"><span class="champ-leader-rank">{{ loop.index }}</span><img src="{{ asset_variant('fighters', r.filename, 'sm') }}" alt="" loading="lazy"><span class="champ-leader-name">{{ r.name }}<small>{{ r.wins }}–{{ r.losses }}</small></span><span class="champ-leader-value">{{ '%.0f' | format(r.win_pct) }}<small>%</small></span></a></li>
+                    {% endfor %}
+                </ol>
+            </article>
+            <article class="champ-record-card">
+                <h3>Worst records</h3>
+                {% if not hub.worst %}<p class="h2h-section-note">Nobody has 3+ fights here yet.</p>{% endif %}
+                <ol class="champ-leaders">
+                    {% for r in hub.worst %}
+                    <li><a href="/fighter/{{ r.name | urlencode }}"><span class="champ-leader-rank">{{ loop.index }}</span><img src="{{ asset_variant('fighters', r.filename, 'sm') }}" alt="" loading="lazy"><span class="champ-leader-name">{{ r.name }}<small>{{ r.wins }}–{{ r.losses }}</small></span><span class="champ-leader-value is-bad">{{ '%.0f' | format(r.win_pct) }}<small>%</small></span></a></li>
+                    {% endfor %}
+                </ol>
+            </article>
+            <article class="champ-record-card">
+                <h3>Most appearances</h3>
+                <ol class="champ-leaders">
+                    {% for r in hub.most_active %}
+                    <li><a href="/fighter/{{ r.name | urlencode }}"><span class="champ-leader-rank">{{ loop.index }}</span><img src="{{ asset_variant('fighters', r.filename, 'sm') }}" alt="" loading="lazy"><span class="champ-leader-name">{{ r.name }}<small>{{ r.wins }}–{{ r.losses }}</small></span><span class="champ-leader-value">{{ r.total }} <small>fights</small></span></a></li>
+                    {% endfor %}
+                </ol>
+            </article>
+            {% if hub.upsets %}
+            <article class="champ-record-card">
+                <h3>Biggest upsets</h3>
+                <ol class="champ-leaders">
+                    {% for u in hub.upsets %}
+                    <li><a href="/fight/{{ u.fight_id }}"><span class="champ-leader-rank">{{ loop.index }}</span><img src="{{ asset_variant('fighters', u.winner.filename, 'sm') }}" alt="" loading="lazy"><span class="champ-leader-name">{{ u.winner.name }}<small>over {{ u.loser.name }} · S{{ u.season }}{% if u.title %} · {{ u.title }}{% endif %}</small></span><span class="champ-leader-value">+{{ u.gap }} <small>Elo</small></span></a></li>
+                    {% endfor %}
+                </ol>
+            </article>
             {% endif %}
         </div>
+    </section>
 
-        <div class="glass-card event-detail-card">
-            <div class="event-detail-card-head">
-                <div>
-                    <div class="season-card-kicker">Sample-Aware</div>
-                    <h2 class="season-card-title">Best Records</h2>
-                </div>
-            </div>
-            <p class="event-detail-card-copy">Cards show the real win percentage from the record. Ordering uses a weighted score so tiny undefeated samples do not outrank much tougher nights.</p>
-            <div class="event-record-list">
-                {% for row in event.best_records %}
-                <a class="event-record-item event-record-item--good" href="/fighter/{{ row.fighter_name | urlencode }}">
-                    <div class="event-record-main">
-                        <div class="event-record-name">{{ row.fighter_name }}</div>
-                        <div class="event-record-meta">{{ row.wins }}-{{ row.losses }} · {{ row.total }} fights · weighted {{ '%.1f'|format(row.weighted_win_pct) }}%</div>
-                    </div>
-                    <div class="event-record-score">{{ '%.1f'|format(row.win_pct) }}%</div>
-                </a>
-                {% endfor %}
-            </div>
+    <section class="h2h-section" id="editionsSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="calendar"></i>Every event</h2>
+            <p class="h2h-section-note">Newest first, with the champions crowned and winners each night</p>
         </div>
+        <div class="ppv-season">
+            {% for e in hub.editions %}{{ night_row(e, 'S' ~ e.season) }}{% endfor %}
+        </div>
+    </section>
 
-        <div class="glass-card event-detail-card">
-            <div class="event-detail-card-head">
-                <div>
-                    <div class="season-card-kicker">Sample-Aware</div>
-                    <h2 class="season-card-title">Worst Records</h2>
-                </div>
-            </div>
-            <p class="event-detail-card-copy">Cards show the real win percentage from the record. Ordering still uses the weighted score so a long rough night lands worse than a single loss.</p>
-            <div class="event-record-list">
-                {% for row in event.worst_records %}
-                <a class="event-record-item event-record-item--bad" href="/fighter/{{ row.fighter_name | urlencode }}">
-                    <div class="event-record-main">
-                        <div class="event-record-name">{{ row.fighter_name }}</div>
-                        <div class="event-record-meta">{{ row.wins }}-{{ row.losses }} · {{ row.total }} fights · weighted {{ '%.1f'|format(row.weighted_win_pct) }}%</div>
-                    </div>
-                    <div class="event-record-score">{{ '%.1f'|format(row.win_pct) }}%</div>
-                </a>
-                {% endfor %}
-            </div>
+    <section class="h2h-section" id="fightsSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="swords"></i>Fights</h2>
+            <p class="h2h-section-note">{{ p.fights }} fights, newest first</p>
         </div>
+        <div id="eventFights" class="fight-list"></div>
+        <button type="button" class="season-show-all" id="moreFightsBtn" hidden>Show more</button>
+    </section>
+</div>
 
-        <div class="glass-card event-detail-card">
-            <div class="event-detail-card-head">
-                <div>
-                    <div class="season-card-kicker">Volume</div>
-                    <h2 class="season-card-title">Most Active Fighters</h2>
-                </div>
-            </div>
-            <div class="event-record-list">
-                {% for row in event.most_active %}
-                <a class="event-record-item" href="/fighter/{{ row.fighter_name | urlencode }}">
-                    <div class="event-record-main">
-                        <div class="event-record-name">{{ row.fighter_name }}</div>
-                        <div class="event-record-meta">{{ row.wins }}-{{ row.losses }} record</div>
-                    </div>
-                    <div class="event-record-score">{{ row.total }}</div>
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-
-    <div class="glass-card event-detail-card event-detail-card-full">
-        <div class="event-detail-card-head">
-            <div>
-                <div class="season-card-kicker">History</div>
-                <h2 class="season-card-title">Event Editions</h2>
-            </div>
-        </div>
-        <div class="event-record-list">
-            {% for row in event.editions %}
-            <div class="event-record-item event-edition-item">
-                <div class="event-edition-badge">S{{ row.Season }}</div>
-                <div class="event-record-main">
-                    <div class="event-record-name">Season {{ row.Season }} · Month {{ row.Month }}</div>
-                    <div class="event-record-meta">{% if row.Location_Name %}{{ row.Location_Name }} · {% endif %}{{ row.fight_count }} fights{% if row.title_fights %} · {{ row.title_fights }} title matches{% endif %}</div>
-                </div>
-                <div class="event-edition-trace" aria-hidden="true"></div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="glass-card event-detail-card event-detail-card-full">
-        <div class="event-detail-card-head">
-            <div>
-                <div class="season-card-kicker">Archive</div>
-                <h2 class="season-card-title">Fight History</h2>
-            </div>
-        </div>
-        <div id="eventDetailFights" class="fight-list"></div>
-    </div>
-</section>
+{% include "partials/fight_card_overlay.html" %}
 {% endblock %}
 
 {% block scripts %}
 <script>
 window.SSBStats = window.SSBStats || {};
-window.SSBStats.eventDetail = {{ event | tojson }};
+window.SSBStats.eventFights = {{ hub.fights | tojson }};
 </script>
-<script src="{{ url_for('static', filename='js/pages/event_detail.js') }}?v={{ static_v }}"></script>
+<script src="{{ url_for('static', filename='js/pages/events.js') }}?v={{ static_v }}"></script>
 {% endblock %}

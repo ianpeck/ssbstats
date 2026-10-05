@@ -1,0 +1,16 @@
+<div class="fight-card-overlay" id="fightCardOverlay" hidden>
+    <div class="fight-card-panel" role="dialog" aria-modal="true" aria-labelledby="fightCardTitle">
+        <div class="fight-card-head">
+            <img class="fight-card-logo" id="fightCardLogo" alt="">
+            <div>
+                <h2 class="fight-card-title" id="fightCardTitle"></h2>
+                <p class="fight-card-meta" id="fightCardMeta"></p>
+            </div>
+            <button type="button" class="belt-viewer-close fight-card-close" id="fightCardClose" aria-label="Close"><i data-lucide="x"></i></button>
+        </div>
+        <div class="fight-card-body">
+            <div class="loading-overlay" id="fightCardLoading" style="display:none;position:relative;min-height:80px;"><div class="spinner"></div></div>
+            <div id="fightCardFights" class="fight-list"></div>
+        </div>
+    </div>
+</div>

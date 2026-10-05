@@ -8842,7 +8842,8 @@ body.page-rankings #particleCanvas { opacity: 0.35; }
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .lb-page .season-pill,
-.season-page .season-pill {
+.season-page .season-pill,
+.champ-page .season-pill {
     padding: 6px 15px;
     border: none;
     border-radius: 999px;
@@ -8852,8 +8853,8 @@ body.page-rankings #particleCanvas { opacity: 0.35; }
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
-.lb-page .season-pill:hover, .season-page .season-pill:hover { color: #fff; }
-.lb-page .season-pill.active, .season-page .season-pill.active { background: var(--accent); color: #1c1404; }
+.lb-page .season-pill:hover, .season-page .season-pill:hover, .champ-page .season-pill:hover { color: #fff; }
+.lb-page .season-pill.active, .season-page .season-pill.active, .champ-page .season-pill.active { background: var(--accent); color: #1c1404; }
 #leaderboardWrapper[hidden] { display: none; }
 
 /* Podium: 2nd, 1st, 3rd */
@@ -9762,4 +9763,165 @@ a.champ-held-end:hover strong { color: var(--accent-light); }
 
     .belt-viewer { padding: 1rem; }
     .belt-viewer-title { font-size: 1.5rem; }
+}
+
+/* ============================================
+   EVENTS (redesign: the PPV calendar)
+   ============================================ */
+body.page-events #particleCanvas { opacity: 0.35; }
+.ppv-calendar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.ppv-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    background: #0f1117;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+}
+.ppv-card:hover { border-color: rgba(245, 184, 61, 0.4); transform: translateY(-2px); }
+.ppv-card-link { display: flex; flex-direction: column; align-items: center; flex: 1; padding: 0 0.9rem 0.9rem; color: #fff; text-align: center; }
+.ppv-card-link:hover { color: #fff; }
+.ppv-card-month {
+    align-self: stretch;
+    margin: 0 -0.9rem;
+    padding: 0.35rem;
+    background: rgba(245, 184, 61, 0.1);
+    border-bottom: 1px solid rgba(245, 184, 61, 0.2);
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+.ppv-card-art {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 150px;
+    margin: 0.5rem 0;
+    background: radial-gradient(ellipse 60% 70% at 50% 55%, rgba(245, 184, 61, 0.12), transparent 70%);
+}
+.ppv-card-art img { max-width: 92%; max-height: 140px; object-fit: contain; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.6)); transition: transform 0.3s; }
+.ppv-card:hover .ppv-card-art img { transform: scale(1.06); }
+.ppv-card-name { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; letter-spacing: 0.03em; line-height: 1.15; text-transform: uppercase; }
+.ppv-card-meta { margin-top: 0.25rem; font-size: 0.74rem; color: var(--text-secondary); }
+.ppv-card-prev { padding: 0 0.9rem 0.8rem; font-size: 0.72rem; color: var(--text-muted); text-align: center; }
+.ppv-card-prev a { color: var(--accent-light); }
+.ppv-card-prev a:hover { color: #fff; }
+
+.ppv-season-pills { margin: 0; }
+.ppv-season { display: flex; flex-direction: column; gap: 0.45rem; }
+.ppv-season[hidden] { display: none; }
+.ppv-night {
+    display: grid;
+    grid-template-columns: 44px 72px minmax(170px, 1fr) minmax(0, 2.2fr) auto;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 12px;
+    background: #0f1117;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.ppv-night-when { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; color: var(--accent); text-align: center; }
+.ppv-night-logo { display: flex; align-items: center; justify-content: center; height: 46px; }
+.ppv-night-logo img { max-width: 72px; max-height: 46px; object-fit: contain; }
+.ppv-night-main { display: flex; flex-direction: column; min-width: 0; }
+.ppv-night-name { font-family: var(--font-display); font-size: 1rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: #fff; }
+.ppv-night-name:hover { color: var(--accent-light); }
+.ppv-night-main small { font-size: 0.72rem; color: var(--text-muted); }
+.ppv-night-results { display: flex; flex-wrap: wrap; gap: 0.4rem; min-width: 0; }
+.ppv-night-quiet { font-size: 0.76rem; color: var(--text-muted); }
+.ppv-result {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    max-width: 100%;
+    padding: 0.25rem 0.6rem 0.25rem 0.3rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+.ppv-result:hover { color: #fff; border-color: rgba(245, 184, 61, 0.45); }
+.ppv-result.is-crowned { background: rgba(245, 184, 61, 0.09); border-color: rgba(245, 184, 61, 0.25); }
+.ppv-result.is-winner { background: rgba(96, 165, 250, 0.08); border-color: rgba(96, 165, 250, 0.2); }
+.ppv-result-faces { display: inline-flex; flex-shrink: 0; }
+.ppv-result-faces img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; background: #1a1d26; }
+.ppv-result-faces img + img { margin-left: -9px; box-shadow: 0 0 0 2px #0f1117; }
+.ppv-result-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.ppv-result-text strong { font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ppv-result-text small { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.66rem; color: var(--text-secondary); white-space: nowrap; }
+.ppv-result.is-crowned small { color: var(--accent-light); }
+.ppv-result-belt { width: 22px; height: 12px; object-fit: contain; }
+.ppv-view-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    font: 600 0.78rem var(--font-body);
+    white-space: nowrap;
+    cursor: pointer;
+}
+.ppv-view-card svg { width: 15px; height: 15px; }
+.ppv-view-card:hover { color: #fff; border-color: rgba(245, 184, 61, 0.5); }
+
+/* Fight card popup */
+.fight-card-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(4, 5, 8, 0.86);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+.fight-card-overlay[hidden] { display: none; }
+.fight-card-panel {
+    display: flex;
+    flex-direction: column;
+    width: min(1100px, 100%);
+    max-height: calc(100vh - 3rem);
+    border-radius: 18px;
+    background: #0f1117;
+    border: 1px solid rgba(245, 184, 61, 0.2);
+    overflow: hidden;
+}
+.fight-card-head { position: relative; display: flex; align-items: center; gap: 1rem; padding: 1rem 3.5rem 1rem 1.2rem; border-bottom: 1px solid rgba(245, 184, 61, 0.2); }
+.fight-card-logo { width: 84px; height: 48px; object-fit: contain; }
+.fight-card-title { margin: 0; font-family: 'Oswald', 'Inter', sans-serif; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #fff; }
+.fight-card-meta { margin: 0; font-size: 0.82rem; color: var(--text-secondary); }
+.fight-card-close { top: 50%; right: 1rem; transform: translateY(-50%); }
+.fight-card-body { padding: 1rem; overflow-y: auto; }
+
+/* Event history page */
+.ppv-hero-art { cursor: default; }
+.ppv-hero-about { margin: 0; max-width: 46ch; font-size: 0.98rem; line-height: 1.5; color: var(--text-secondary); }
+.ppv-hero-art img { max-height: 300px; }
+.champ-leader-value.is-bad { color: #f87171; }
+
+@media (max-width: 980px) {
+    .ppv-calendar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ppv-night { grid-template-columns: 40px 60px minmax(0, 1fr) auto; }
+    .ppv-night-results { grid-column: 2 / -1; grid-row: 2; }
+}
+@media (max-width: 640px) {
+    .ppv-calendar { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+    .ppv-card-art { height: 110px; }
+    .ppv-card-art img { max-height: 100px; }
+    .ppv-card-name { font-size: 0.98rem; }
+    .ppv-night { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 0.6rem; }
+    .ppv-night-logo { display: none; }
+    .ppv-night-results { grid-column: 1 / -1; }
+    .ppv-view-card span { display: none; }
+    .fight-card-overlay { padding: 0.5rem; }
 }

@@ -9,6 +9,7 @@ from ssbstats_app.repositories.seasons import get_all_seasons
 from ssbstats_app.security import RateLimiter, admin_ip_allowed, safe_next_url
 from ssbstats_app.services.content import get_autocomplete_data, get_fighter_blurb
 from ssbstats_app.services.championships import get_championship_detail, get_championships_overview
+from ssbstats_app.services.ppv import get_event_hub, get_events_data
 from ssbstats_app.services.records import get_record_book
 from ssbstats_app.services.scheduling import (
     create_scheduled_match_from_form,
@@ -16,7 +17,7 @@ from ssbstats_app.services.scheduling import (
     get_schedule_admin_payload,
     update_scheduled_match_from_form,
 )
-from ssbstats_app.services.stats import build_index_payload, get_fighter_profile_payload, get_home_summary, home_belts, home_champions, home_top_fighters, get_event_detail_payload, get_fight_detail_payload, get_fights_page_filters
+from ssbstats_app.services.stats import build_index_payload, get_fighter_profile_payload, get_home_summary, home_belts, home_champions, home_top_fighters, get_fight_detail_payload, get_fights_page_filters
 from ssbstats_app.utils import fighter_to_filename
 
 
@@ -147,17 +148,17 @@ def records():
 
 @pages_bp.route("/events")
 def events():
-    """Render the PPV and event history page shell."""
-    return render_template("events.html")
+    """Render the PPV calendar and every season's event cards."""
+    return render_template("events.html", data=get_events_data())
 
 
 @pages_bp.route("/events/<slug>")
 def event_detail(slug):
     """Render the dedicated event detail page."""
-    payload = get_event_detail_payload(slug)
-    if payload is None:
+    hub = get_event_hub(slug.lower())
+    if hub is None:
         abort(404)
-    return render_template("event_detail.html", event=payload)
+    return render_template("event_detail.html", hub=hub)
 
 
 @pages_bp.route("/about")

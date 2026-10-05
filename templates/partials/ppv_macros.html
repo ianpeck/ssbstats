@@ -1,0 +1,29 @@
+{# One night on a PPV: when, which event, what happened, and a button for the full fight card. #}
+{% macro night_row(e, label) -%}
+<article class="ppv-night">
+    <div class="ppv-night-when">{{ label }}</div>
+    <a class="ppv-night-logo" href="/events/{{ e.slug }}"><img src="{{ asset_variant('ppv', e.logo, 'sm') }}" alt="" loading="lazy" onerror="this.remove()"></a>
+    <div class="ppv-night-main">
+        <a class="ppv-night-name" href="/events/{{ e.slug }}">{{ e.ppv }}</a>
+        <small>{% if e.location %}{{ e.location }} · {% endif %}{{ e.fights }} fight{{ '' if e.fights == 1 else 's' }}{% if e.title_fights %} · {{ e.title_fights }} title fight{{ '' if e.title_fights == 1 else 's' }}{% endif %}</small>
+    </div>
+    <div class="ppv-night-results">
+        {% for c in e.crowned %}
+        <a class="ppv-result is-crowned" href="/fight/{{ c.fight_id }}" title="New {{ c.title }} champion{{ 's' if c.champions | length > 1 }}{% if c.cash_in %} (cash-in){% endif %}">
+            <span class="ppv-result-faces">{% for p in c.champions %}<img src="{{ asset_variant('fighters', p.filename, 'sm') }}" alt="" loading="lazy">{% endfor %}</span>
+            <span class="ppv-result-text"><strong>{{ c.label }}</strong><small><img class="ppv-result-belt" src="{{ asset_variant('belts', c.belt, 'sm') }}" alt="" loading="lazy">New {{ c.title }} champ{% if c.cash_in %} · cash-in{% endif %}</small></span>
+        </a>
+        {% endfor %}
+        {% for w in e.winners %}
+        <a class="ppv-result is-winner" href="/fighter/{{ w.name | urlencode }}">
+            <span class="ppv-result-faces"><img src="{{ asset_variant('fighters', w.filename, 'sm') }}" alt="" loading="lazy"></span>
+            <span class="ppv-result-text"><strong>{{ w.name }}</strong><small>{{ w.detail or ('Won the ' ~ e.ppv) }}</small></span>
+        </a>
+        {% endfor %}
+        {% if not e.crowned and not e.winners %}<span class="ppv-night-quiet">{% if e.title_fights %}Every champion retained{% else %}No title changes{% endif %}</span>{% endif %}
+    </div>
+    <button type="button" class="ppv-view-card" data-ppv="{{ e.ppv }}" data-season="{{ e.season }}" data-month="{{ e.month }}">
+        <i data-lucide="list"></i><span>Fight card</span>
+    </button>
+</article>
+{%- endmacro %}

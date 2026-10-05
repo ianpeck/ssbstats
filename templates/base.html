@@ -81,7 +81,7 @@
                     <span class="nav-label-full">Records</span><span class="nav-label-short">Records</span>
                 </a>
 
-                <a href="/events" class="nav-link {% if request.path == '/events' %}active{% endif %}" title="Events (PPVs)">
+                <a href="/events" class="nav-link {% if request.path.startswith('/events') %}active{% endif %}" title="Events (PPVs)">
                     <i data-lucide="tv"></i>
                     <span class="nav-label-full">Events (PPVs)</span><span class="nav-label-short">Events</span>
                 </a>

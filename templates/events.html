@@ -1,42 +1,63 @@
 {% extends "base.html" %}
+{% from "partials/ppv_macros.html" import night_row with context %}
 {% block title %}SSB Stats - Events{% endblock %}
-{% block meta_description %}Every SSB league pay-per-view: winners, title changes and the biggest upsets at each event.{% endblock %}
+{% block meta_description %}Every SSB league pay-per-view: the yearly calendar, the champions crowned and event winners at every edition, and each event's full history.{% endblock %}
+{% block body_class %}page-events{% endblock %}
 
 {% block content %}
-<section class="seasons-section">
-    <h1 class="section-title">PPV Events</h1>
-    <p class="section-subtitle">Use the button to open a specific event card. Use the subtle all-time link on each title to jump to the event hub.</p>
+<div class="champ-page events-page">
+    <header class="lb-hero">
+        <span class="lb-kicker">{{ data.totals.ppvs }} PPVs · {{ data.totals.editions }} events · {{ data.totals.fights }} fights</span>
+        <h1 class="lb-title">Events</h1>
+        <p class="lb-lede">Every month of a season ends with a pay-per-view. Open an event for its all-time history, or pick a season to see each night's results.</p>
+    </header>
 
-    <div class="season-pills" id="seasonPills">
-        <button class="season-pill active" data-season="">All Seasons</button>
-    </div>
+    <nav class="fighter-page-nav h2h-page-nav season-page-nav" id="eventsPageNav" aria-label="Jump to section">
+        <a class="page-nav-pill" data-section="calendarSection" href="#calendarSection"><i data-lucide="calendar"></i>The calendar</a>
+        <a class="page-nav-pill" data-section="seasonsSection" href="#seasonsSection"><i data-lucide="tv"></i>Season by season</a>
+    </nav>
 
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-        <p>Loading events...</p>
-    </div>
-
-    <div id="eventsContent" style="display:none;">
-        <div id="seasonGroups"></div>
-    </div>
-
-    <!-- Fight card overlay -->
-    <div id="eventOverlay" class="event-overlay" style="display:none;" onclick="closeOverlay(event)">
-        <div class="event-overlay-panel glass-card">
-            <div class="event-overlay-header">
-                <div>
-                    <h2 class="event-overlay-title" id="overlayTitle"></h2>
-                    <p class="event-overlay-meta" id="overlayMeta"></p>
-                </div>
-                <button class="event-overlay-close" onclick="closeOverlay()">&times;</button>
-            </div>
-            <div class="loading-overlay" id="overlayLoading" style="display:none;position:relative;min-height:80px;">
-                <div class="spinner"></div>
-            </div>
-            <div id="overlayFights" class="fight-list"></div>
+    <section class="h2h-section" id="calendarSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="calendar"></i>The calendar</h2>
+            <p class="h2h-section-note">One PPV closes out every month of the season</p>
         </div>
-    </div>
-</section>
+        <div class="ppv-calendar">
+            {% for slot in data.calendar %}
+            {% set p = slot.ppv %}
+            <article class="ppv-card">
+                <a class="ppv-card-link" href="/events/{{ p.slug }}">
+                    <span class="ppv-card-month">Month {{ slot.month }}</span>
+                    <span class="ppv-card-art"><img src="{{ asset_variant('ppv', p.logo, 'md') }}" alt="{{ p.name }}" loading="lazy"></span>
+                    <span class="ppv-card-name">{{ p.name }}</span>
+                    <span class="ppv-card-meta">{{ p.editions }} event{{ '' if p.editions == 1 else 's' }} · {{ p.fights }} fights · {{ p.title_changes }} title change{{ '' if p.title_changes == 1 else 's' }}</span>
+                </a>
+                {% if slot.previously %}
+                <span class="ppv-card-prev">Previously {% for o in slot.previously %}<a href="/events/{{ o.slug }}">{{ o.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="h2h-section" id="seasonsSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="tv"></i>Season by season</h2>
+            <nav class="lb-seasons ppv-season-pills" id="ppvSeasonPills" aria-label="Choose a season">
+                {% for s in data.seasons %}
+                <button type="button" class="season-pill{% if loop.last %} active{% endif %}" data-season="{{ s }}">S{{ s }}</button>
+                {% endfor %}
+            </nav>
+        </div>
+        {% for s in data.seasons %}
+        <div class="ppv-season" data-season="{{ s }}"{% if not loop.last %} hidden{% endif %}>
+            {% for e in data.editions_by_season[s] %}{{ night_row(e, 'M' ~ e.month) }}{% endfor %}
+        </div>
+        {% endfor %}
+    </section>
+</div>
+
+{% include "partials/fight_card_overlay.html" %}
 {% endblock %}
 
 {% block scripts %}

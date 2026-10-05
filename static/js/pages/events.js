@@ -1,148 +1,110 @@
-let allEvents = [];
-let activeSeason = "";
+// Events page and event history pages: season switcher, fight-card popup, section bar
+// and the fight archive.
 
-function ppvToFilename(name) {
-    if (!name) return "";
-    return stageToFilename(name);
+const $ = id => document.getElementById(id);
+const EVENT_FIGHTS = (window.SSBStats && window.SSBStats.eventFights) || null;
+
+// ── Season switcher (Events page) ──────────────────────────────
+function initSeasonPills() {
+    const pills = document.querySelectorAll('#ppvSeasonPills .season-pill');
+    pills.forEach(pill => pill.addEventListener('click', () => {
+        pills.forEach(p => p.classList.toggle('active', p === pill));
+        document.querySelectorAll('.ppv-season[data-season]').forEach(block => {
+            block.hidden = block.dataset.season !== pill.dataset.season;
+        });
+    }));
 }
 
-function eventDetailHref(event) {
-    return `/events/${event.ppv_slug}`;
-}
+// ── Fight card popup ───────────────────────────────────────────
+function initFightCard() {
+    const overlay = $('fightCardOverlay');
+    if (!overlay) return;
+    const list = $('fightCardFights');
+    let lastTrigger = null;
 
-function renderEventCards(events) {
-    const container = document.getElementById("seasonGroups");
-    container.innerHTML = "";
+    const close = () => {
+        overlay.hidden = true;
+        document.body.classList.remove('belt-viewer-open');
+        if (lastTrigger) lastTrigger.focus();
+    };
+    const render = fights => {
+        $('fightCardLoading').style.display = 'none';
+        list.innerHTML = '';
+        if (!fights.length) { list.innerHTML = '<div class="fight-empty">No fights found.</div>'; return; }
+        fights.forEach(fight => {
+            const row = appendFight(list, fight, { hideEvent: true });
+            row.classList.add('clickable-row');
+            row.addEventListener('click', e => { if (!e.target.closest('a')) window.location.href = `/fight/${fight.fight_id}`; });
+        });
+    };
 
-    const bySeason = {};
-    const seasonOrder = [];
-    events.forEach(event => {
-        const season = event.Season;
-        if (!bySeason[season]) {
-            bySeason[season] = [];
-            seasonOrder.push(season);
+    document.querySelectorAll('.ppv-view-card').forEach(btn => btn.addEventListener('click', () => {
+        lastTrigger = btn;
+        const { ppv, season, month } = btn.dataset;
+        $('fightCardTitle').textContent = ppv;
+        $('fightCardMeta').textContent = `Season ${season} · Month ${month}`;
+        $('fightCardLogo').src = assetVariant('ppv', stageToFilename(ppv), 'sm');
+        list.innerHTML = '';
+        $('fightCardLoading').style.display = 'flex';
+        overlay.hidden = false;
+        document.body.classList.add('belt-viewer-open');
+        $('fightCardClose').focus();
+
+        // Event pages already have every fight; the Events page asks the server for one night.
+        if (EVENT_FIGHTS) {
+            render(EVENT_FIGHTS.filter(f => String(f.season) === season && String(f.month) === month));
+            return;
         }
-        bySeason[season].push(event);
-    });
-
-    seasonOrder.forEach(season => {
-        const group = document.createElement("div");
-        group.className = "event-season-group";
-
-        const heading = document.createElement("h2");
-        heading.className = "event-season-heading";
-        heading.textContent = `Season ${season}`;
-        group.appendChild(heading);
-
-        const grid = document.createElement("div");
-        grid.className = "event-grid";
-
-        bySeason[season].forEach(event => {
-            const card = document.createElement("div");
-            card.className = "event-card glass-card";
-            const ppvFile = ppvToFilename(event.PPV_Name);
-            const fallbackLabel = (event.PPV_Name || "PPV Event").replace(/'/g, "\\'");
-            const imgHTML = ppvFile
-                ? `<div class="event-card-stage-wrap event-card-stage-wrap--logo"><img src="${assetVariant('ppv', ppvFile)}" alt="${event.PPV_Name}" class="event-card-stage event-card-stage--logo" onerror="var p=this.parentElement;this.remove();p.classList.add('event-card-stage-fallback');p.textContent='${fallbackLabel}';"></div>`
-                : "";
-            card.innerHTML = `
-                ${imgHTML}
-                <div class="event-card-body">
-                    <div class="event-card-name-row">
-                        <div class="event-card-name">${event.PPV_Name}</div>
-                        <a href="${eventDetailHref(event)}" class="event-card-title-link" aria-label="Open all-time event page for ${event.PPV_Name}" title="Open all-time event page">All-time</a>
-                    </div>
-                    <div class="event-card-meta">Season ${event.Season} &bull; Month ${event.Month}${event.Location_Name ? ` &bull; ${event.Location_Name}` : ""}</div>
-                    <div class="event-card-stats">
-                        <span class="event-stat">${event.fight_count} fight${event.fight_count != 1 ? "s" : ""}</span>
-                        ${parseInt(event.title_fights) > 0 ? `<span class="event-stat event-stat-title">👑 ${event.title_fights} title match${event.title_fights != 1 ? "es" : ""}</span>` : ""}
-                    </div>
-                    <button type="button" class="event-card-action">View Card</button>
-                </div>
-            `;
-            const titleLink = card.querySelector(".event-card-title-link");
-            if (titleLink) titleLink.addEventListener("click", event => event.stopPropagation());
-            const actionButton = card.querySelector(".event-card-action");
-            if (actionButton) actionButton.addEventListener("click", event => {
-                event.stopPropagation();
-                openEvent(event.currentTarget.__eventData);
-            });
-            if (actionButton) actionButton.__eventData = event;
-            card.addEventListener("click", () => openEvent(event));
-            grid.appendChild(card);
-        });
-
-        group.appendChild(grid);
-        container.appendChild(group);
-    });
+        fetch(`/api/fights?${new URLSearchParams({ ppv, season, month, page: 1 })}`)
+            .then(r => r.json())
+            .then(fights => render(Array.isArray(fights) ? fights : []))
+            .catch(() => { $('fightCardLoading').style.display = 'none'; list.innerHTML = '<div class="fight-empty">Couldn\'t load the fight card.</div>'; });
+    }));
+    $('fightCardClose').addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) close(); });
 }
 
-function openEvent(ev) {
-    document.getElementById("overlayTitle").textContent = ev.PPV_Name;
-    document.getElementById("overlayMeta").textContent = `Season ${ev.Season} · Month ${ev.Month}`;
-    document.getElementById("overlayFights").innerHTML = "";
-    document.getElementById("overlayLoading").style.display = "flex";
-    document.getElementById("eventOverlay").style.display = "flex";
-    document.body.style.overflow = "hidden";
-
-    fetch(`/api/fights?ppv=${encodeURIComponent(ev.PPV_Name)}&season=${ev.Season}&page=1`)
-        .then(r => r.json())
-        .then(fights => {
-            document.getElementById("overlayLoading").style.display = "none";
-            const list = document.getElementById("overlayFights");
-            if (!Array.isArray(fights) || !fights.length) {
-                list.innerHTML = '<div class="fight-empty">No fights found.</div>';
-                return;
-            }
-            fights.forEach(fight => appendFight(list, fight, { hideEvent: true }));
-        })
-        .catch(() => {
-            document.getElementById("overlayLoading").style.display = "none";
-            document.getElementById("overlayFights").innerHTML = '<div class="fight-empty">Error loading fights.</div>';
-        });
+// ── Section bar ────────────────────────────────────────────────
+function initSectionNav() {
+    const pills = document.querySelectorAll('#eventsPageNav .page-nav-pill');
+    if (!pills.length) return;
+    const jump = id => {
+        const el = $(id);
+        if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - (64 + 56), behavior: 'smooth' });
+    };
+    pills.forEach(p => p.addEventListener('click', e => { e.preventDefault(); jump(p.dataset.section); }));
+    const spy = new IntersectionObserver(entries => entries.forEach(entry => {
+        if (entry.isIntersecting) pills.forEach(p => p.classList.toggle('active', p.dataset.section === entry.target.id));
+    }), { rootMargin: '-15% 0px -70% 0px' });
+    pills.forEach(p => spy.observe($(p.dataset.section)));
 }
 
-function closeOverlay(e) {
-    if (e && e.target !== document.getElementById("eventOverlay")) return;
-    document.getElementById("eventOverlay").style.display = "none";
-    document.body.style.overflow = "";
+// ── Event page: every fight, 20 at a time ──────────────────────
+function initFightArchive() {
+    const list = $('eventFights');
+    if (!list || !EVENT_FIGHTS) return;
+    if (!EVENT_FIGHTS.length) { list.innerHTML = '<div class="fight-empty">No fights found.</div>'; return; }
+    const PAGE = 20;
+    let shown = 0;
+    const btn = $('moreFightsBtn');
+    const more = () => {
+        EVENT_FIGHTS.slice(shown, shown + PAGE).forEach(fight => {
+            const row = appendFight(list, fight, { hideEvent: true });
+            row.classList.add('clickable-row');
+            row.addEventListener('click', e => { if (!e.target.closest('a')) window.location.href = `/fight/${fight.fight_id}`; });
+        });
+        shown = Math.min(EVENT_FIGHTS.length, shown + PAGE);
+        btn.hidden = shown >= EVENT_FIGHTS.length;
+        btn.textContent = `Show more (${EVENT_FIGHTS.length - shown} left)`;
+    };
+    btn.addEventListener('click', more);
+    more();
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    fetch("/api/events")
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById("loadingOverlay").style.display = "none";
-            document.getElementById("eventsContent").style.display = "block";
-            allEvents = data;
-
-            const seasons = [...new Set(data.map(event => event.Season))].sort((a, b) => a - b);
-            const pillsEl = document.getElementById("seasonPills");
-            seasons.forEach(season => {
-                const btn = document.createElement("button");
-                btn.className = "season-pill";
-                btn.dataset.season = season;
-                btn.textContent = `S${season}`;
-                pillsEl.appendChild(btn);
-            });
-            pillsEl.querySelectorAll(".season-pill").forEach(pill => {
-                pill.addEventListener("click", function() {
-                    pillsEl.querySelectorAll(".season-pill").forEach(p => p.classList.remove("active"));
-                    this.classList.add("active");
-                    activeSeason = this.dataset.season;
-                    const filtered = activeSeason ? allEvents.filter(event => String(event.Season) === activeSeason) : allEvents;
-                    renderEventCards(filtered);
-                });
-            });
-
-            renderEventCards(data);
-        })
-        .catch(() => {
-            document.getElementById("loadingOverlay").innerHTML = "<p>Error loading events.</p>";
-        });
-
-    document.addEventListener("keydown", event => {
-        if (event.key === "Escape") closeOverlay();
-    });
-    window.closeOverlay = closeOverlay;
+document.addEventListener('DOMContentLoaded', () => {
+    initSeasonPills();
+    initFightCard();
+    initSectionNav();
+    initFightArchive();
 });
