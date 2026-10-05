@@ -2,14 +2,19 @@
 {% block title %}SSB Stats - About{% endblock %}
 {% block meta_description %}How SSB Stats works: the league, the data behind it and how the site is built.{% endblock %}
 
-{% block content %}
-<section class="seasons-section about-section">
-    <h1 class="section-title">About SSB Stats</h1>
-    <p class="section-subtitle">How this all came to be — and how it works under the hood</p>
+{% block body_class %}page-about{% endblock %}
 
-    <!-- Origin Story -->
-    <div class="about-block glass-card">
-        <h2 class="about-heading">The Origin</h2>
+{% block content %}
+<div class="champ-page about-page">
+    <header class="lb-hero">
+        <span class="lb-kicker">Behind the site</span>
+        <h1 class="lb-title">About SSB Stats</h1>
+        <p class="lb-lede">How this all came to be — and how it works under the hood</p>
+    </header>
+
+    <section class="h2h-section about-block">
+        <div class="h2h-section-head"><h2 class="h2h-section-title"><i data-lucide="notebook-pen"></i>The Origin</h2></div>
+        <div class="about-prose">
         <p>
             This all started as data in a school notebook. My brother and I playing Super Smash Bros. Brawl on Wii regularly,
             and one day we decided to create a WWE style season on the game — who fought who, what stage, what the result was,
@@ -24,17 +29,19 @@
             The first version of this site was a desktop app built with Python and PyQt5 — a dark-themed GUI with a Head-to-Head tab that ran queries against a database and displayed results in a table. It worked, but it was clunky to share. A web app was the obvious next step. SSB Stats is that web app.
             A place where we could easily look up fighter stats, head-to-head records, championship histories, and all the other fun insights that come from a rich dataset like this — without having to write SQL queries ourselves every time.
         </p>
-    </div>
+        </div>
+    </section>
 
-    <!-- Data -->
-    <div class="about-block glass-card">
-        <h2 class="about-heading">The Data</h2>
+    <section class="h2h-section about-block">
+        <div class="h2h-section-head"><h2 class="h2h-section-title"><i data-lucide="database"></i>The Data</h2></div>
+        <div class="about-prose">
         <p>
             Every fight is recorded manually in a phsycial notebook or parsed out using a parser on my GitHub page — this includes fighter names, result, stocks remaining,
             stage, fight type (1v1, Tag Team, Handicap, etc.), championship stakes, brand, PPV event, and more.
             Records are loaded into a MySQL database hosted on <strong>Amazon RDS</strong>, organized across
             several normalized tables.
         </p>
+        </div>
         <div class="about-schema">
             <div class="schema-item">
                 <span class="schema-table">Fighters</span>
@@ -65,49 +72,50 @@
                 <span class="schema-desc">There are other dimension tables that support the main data model</span>
             </div>
         </div>
+        <div class="about-prose">
         <p>
             On top of the base tables, a set of <strong>MySQL views</strong> pre-compute the aggregations
             the app queries most often — career stats per fighter, head-to-head records, championship history
             by season, win/loss streaks, and a holistic season-level summary view.
             These views keep the application queries simple and fast.
         </p>
-    </div>
+        </div>
+    </section>
 
-    <!-- Architecture -->
-    <div class="about-block glass-card">
-        <h2 class="about-heading">How It Works</h2>
+    <section class="h2h-section about-block">
+        <div class="h2h-section-head"><h2 class="h2h-section-title"><i data-lucide="workflow"></i>How It Works</h2></div>
         <div class="about-arch-diagram">
             <div class="arch-node">
-                <span class="arch-icon">&#128202;</span>
+                <span class="arch-icon"><i data-lucide="file-spreadsheet"></i></span>
                 <span class="arch-label">Fight/Result Records</span>
                 <span class="arch-sub">Loaded into database via CSV after manual notetaking/Excel parsing</span>
             </div>
-            <div class="arch-arrow">&#8594;</div>
+            <div class="arch-arrow"><i data-lucide="chevron-right"></i></div>
             <div class="arch-node">
-                <span class="arch-icon">&#128451;</span>
+                <span class="arch-icon"><i data-lucide="database"></i></span>
                 <span class="arch-label">Amazon RDS</span>
                 <span class="arch-sub">MySQL — normalized tables + views</span>
             </div>
-            <div class="arch-arrow">&#8594;</div>
+            <div class="arch-arrow"><i data-lucide="chevron-right"></i></div>
             <div class="arch-node">
-                <span class="arch-icon">&#128013;</span>
+                <span class="arch-icon"><i data-lucide="code-xml"></i></span>
                 <span class="arch-label">Python / Flask</span>
                 <span class="arch-sub">Backend API + server-side rendering</span>
             </div>
-            <div class="arch-arrow">&#8594;</div>
+            <div class="arch-arrow"><i data-lucide="chevron-right"></i></div>
             <div class="arch-node">
-                <span class="arch-icon">&#9729;</span>
+                <span class="arch-icon"><i data-lucide="cloud"></i></span>
                 <span class="arch-label">AWS Elastic Beanstalk</span>
                 <span class="arch-sub">Managed deployment + auto-scaling</span>
             </div>
-            <div class="arch-arrow">&#8594;</div>
+            <div class="arch-arrow"><i data-lucide="chevron-right"></i></div>
             <div class="arch-node">
-                <span class="arch-icon">&#128065;</span>
+                <span class="arch-icon"><i data-lucide="monitor"></i></span>
                 <span class="arch-label">You</span>
                 <span class="arch-sub">The browser</span>
             </div>
         </div>
-
+        <div class="about-prose">
         <h3 class="about-subheading">Backend</h3>
         <p>
             The backend is a <strong>Python Flask</strong> application. It handles two types of requests:
@@ -135,11 +143,11 @@
             Deployments are one command via the EB CLI, triggered from a Git-tracked codebase.
             Static assets (fighter portraits, stage images) are served directly by the app instance.
         </p>
-    </div>
+        </div>
+    </section>
 
-    <!-- Tech Stack -->
-    <div class="about-block glass-card">
-        <h2 class="about-heading">Tech Stack</h2>
+    <section class="h2h-section about-block">
+        <div class="h2h-section-head"><h2 class="h2h-section-title"><i data-lucide="layers"></i>Tech Stack</h2></div>
         <div class="about-stack-grid">
             <div class="stack-item">
                 <span class="stack-name">Python 3.11</span>
@@ -182,7 +190,6 @@
                 <span class="stack-role">Autocomplete, AJAX, animated counters</span>
             </div>
         </div>
-    </div>
-
-</section>
+    </section>
+</div>
 {% endblock %}

@@ -1,13 +1,17 @@
 {% extends "base.html" %}
 {% block title %}SSB Stats - Ask AI{% endblock %}
 {% block meta_description %}Ask anything about the SSB league in plain English and get answers straight from the stats database.{% endblock %}
+{% block body_class %}page-ai{% endblock %}
 
 {% block content %}
-<section class="chat-page">
-    <h1 class="section-title">Ask the Stats AI <span class="beta-badge">Beta</span></h1>
-    <p class="section-subtitle">Ask anything about the league in plain English. The AI looks it up in the stats database.</p>
+<div class="champ-page ai-page">
+    <header class="lb-hero">
+        <span class="lb-kicker"><i data-lucide="sparkles"></i> Beta</span>
+        <h1 class="lb-title">Ask the Stats AI</h1>
+        <p class="lb-lede">Ask anything about the league in plain English. The AI looks it up in the stats database.</p>
+    </header>
 
-    <div class="chat-container glass-card" data-chat-root>
+    <div class="chat-container ai-chat" data-chat-root>
         <div class="chat-messages" id="chatMessages">
             <div class="chat-message chat-message-ai">
                 <div class="chat-bubble">
@@ -27,10 +31,10 @@
 
         <div class="chat-input-row">
             <input type="text" id="chatInput" class="chat-input" placeholder="e.g. Who has the most title reigns?" maxlength="500" autocomplete="off">
-            <button type="button" class="btn btn-primary chat-send-btn" id="chatSendBtn">Ask</button>
+            <button type="button" class="chat-send-btn ai-send" id="chatSendBtn"><span>Ask</span><i data-lucide="arrow-up"></i></button>
         </div>
     </div>
-</section>
+</div>
 {% endblock %}
 
 {% block scripts %}
