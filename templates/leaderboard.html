@@ -1,83 +1,89 @@
 {% extends "base.html" %}
 {% block title %}SSB Stats - Power Rankings{% endblock %}
 {% block meta_description %}All-time and season power rankings for every SSB league fighter, blending record, Elo, titles and big-event wins.{% endblock %}
+{% block body_class %}page-rankings{% endblock %}
 
 {% block content %}
-<section class="leaderboard-section">
-    <h1 class="section-title">Power Rankings</h1>
-    <p class="section-subtitle" id="rankingsSubtitle">All-time rankings by win rate</p>
+<div class="lb-page">
+    <header class="lb-hero">
+        <span class="lb-kicker" id="rankingsKicker">All-time</span>
+        <h1 class="lb-title">Power Rankings</h1>
+        <p class="lb-lede">One score out of 100 that blends win rate, Elo, strength of schedule, title success and big-event wins.</p>
+        <nav class="lb-seasons" id="seasonPills" aria-label="Choose a season">
+            <button type="button" class="season-pill active" data-season="">All Time</button>
+        </nav>
+    </header>
 
-    <!-- Season toggle pills -->
-    <div class="season-pills" id="seasonPills">
-        <button class="season-pill active" data-season="">All Time</button>
-    </div>
-
-    <div class="leaderboard-controls">
-        <input type="text" id="leaderboardSearch" class="search-input" placeholder="Search fighters...">
-        <div class="lb-filter-group">
-            <label class="lb-filter-label">Min fights</label>
-            <div class="lb-min-pills">
-                <button class="lb-min-pill active" data-min="0">All</button>
-                <button class="lb-min-pill" data-min="5">5+</button>
-                <button class="lb-min-pill" data-min="10">10+</button>
-                <button class="lb-min-pill" data-min="20">20+</button>
-            </div>
-        </div>
-    </div>
-
-    <details class="lb-color-guide">
-        <summary><i data-lucide="palette"></i> Color guide</summary>
-        <table class="lb-color-guide-table">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th><span class="lb-swatch ps-tier-7"></span>Elite</th>
-                    <th><span class="lb-swatch ps-tier-6"></span>Great</th>
-                    <th><span class="lb-swatch ps-tier-5"></span>Good</th>
-                    <th><span class="lb-swatch ps-tier-4"></span>Average</th>
-                    <th><span class="lb-swatch ps-tier-3"></span>Below</th>
-                    <th><span class="lb-swatch ps-tier-2"></span>Poor</th>
-                    <th><span class="lb-swatch ps-tier-1"></span>Rough</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td>Power Score</td><td>90+</td><td>80&ndash;89</td><td>70&ndash;79</td><td>60&ndash;69</td><td>50&ndash;59</td><td>35&ndash;49</td><td>&lt;35</td></tr>
-                <tr><td>Win %</td><td>80%+</td><td>65&ndash;79%</td><td>55&ndash;64%</td><td>50&ndash;54%</td><td>40&ndash;49%</td><td>30&ndash;39%</td><td>&lt;30%</td></tr>
-                <tr><td>Elo</td><td>1700+</td><td>1600s</td><td>1500s</td><td>1450&ndash;1499</td><td>1400&ndash;1449</td><td>1350&ndash;1399</td><td>&lt;1350</td></tr>
-            </tbody>
-        </table>
-    </details>
-
-    <!-- Loading -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
         <p>Loading rankings...</p>
     </div>
 
-    <div class="leaderboard-wrapper glass-card" id="leaderboardWrapper" style="display: none;">
-        <table class="leaderboard-table" id="leaderboardTable">
-            <thead>
-                <tr>
-                    <th class="rank-col">#</th>
-                    <th class="fighter-col">Fighter</th>
-                    <th class="sortable active power-col" data-sort="power_score">Power Score</th>
-                    <th class="sortable" data-sort="wins">Wins</th>
-                    <th class="sortable" data-sort="losses">Losses</th>
-                    <th class="sortable" data-sort="win_pct">Win %</th>
-                    <th class="sortable" data-sort="total_fights">Fights</th>
-                    <th class="sortable" data-sort="major_months">Major Months</th>
-                    <th class="sortable" data-sort="champ_months">Champ Months</th>
-                    <th class="sortable" data-sort="event_wins">Event Wins</th>
-                    <th class="sortable" data-sort="unique_titles">Titles Held</th>
-                    <th class="sortable elo-col" data-sort="current_elo" id="eloCol1Th">Current ELO</th>
-                    <th class="sortable elo-col" data-sort="avg_elo" id="eloCol2Th">Career ELO</th>
-                    <th class="sortable elo-col" data-sort="peak_elo" id="eloCol3Th">Peak ELO</th>
-                </tr>
-            </thead>
-            <tbody id="leaderboardTbody"></tbody>
-        </table>
+    <div id="leaderboardWrapper" hidden>
+        <section class="lb-podium" id="lbPodium" aria-label="Top three"></section>
+
+        <div class="lb-toolbar">
+            <input type="text" id="leaderboardSearch" class="fighter-input lb-search" placeholder="Search fighters…" aria-label="Search fighters">
+            <div class="lb-filter-group">
+                <span class="lb-filter-label">Min fights</span>
+                <div class="lb-min-pills">
+                    <button type="button" class="lb-min-pill active" data-min="0">All</button>
+                    <button type="button" class="lb-min-pill" data-min="5">5+</button>
+                    <button type="button" class="lb-min-pill" data-min="10">10+</button>
+                    <button type="button" class="lb-min-pill" data-min="20">20+</button>
+                </div>
+            </div>
+            <button type="button" class="lb-more-toggle" id="moreStatsBtn" aria-pressed="false"><i data-lucide="columns-3"></i><span>More stats</span></button>
+        </div>
+
+        <details class="lb-color-guide">
+            <summary><i data-lucide="palette"></i> Color guide</summary>
+            <table class="lb-color-guide-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th><span class="lb-swatch ps-tier-7"></span>Elite</th>
+                        <th><span class="lb-swatch ps-tier-6"></span>Great</th>
+                        <th><span class="lb-swatch ps-tier-5"></span>Good</th>
+                        <th><span class="lb-swatch ps-tier-4"></span>Average</th>
+                        <th><span class="lb-swatch ps-tier-3"></span>Below</th>
+                        <th><span class="lb-swatch ps-tier-2"></span>Poor</th>
+                        <th><span class="lb-swatch ps-tier-1"></span>Rough</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Power Score</td><td>90+</td><td>80&ndash;89</td><td>70&ndash;79</td><td>60&ndash;69</td><td>50&ndash;59</td><td>35&ndash;49</td><td>&lt;35</td></tr>
+                    <tr><td>Win %</td><td>80%+</td><td>65&ndash;79%</td><td>55&ndash;64%</td><td>50&ndash;54%</td><td>40&ndash;49%</td><td>30&ndash;39%</td><td>&lt;30%</td></tr>
+                    <tr><td>Elo</td><td>1700+</td><td>1600s</td><td>1500s</td><td>1450&ndash;1499</td><td>1400&ndash;1449</td><td>1350&ndash;1399</td><td>&lt;1350</td></tr>
+                </tbody>
+            </table>
+        </details>
+
+        <div class="lb-table-wrap" id="lbTableWrap">
+            <table class="lb-table" id="leaderboardTable">
+                <thead>
+                    <tr>
+                        <th class="lb-col-rank sortable" data-sort="power_rank" title="Power rank">#</th>
+                        <th class="lb-col-fighter">Fighter</th>
+                        <th class="lb-col-power sortable active" data-sort="power_score">Power Score</th>
+                        <th class="sortable" data-sort="wins">Record</th>
+                        <th class="sortable lb-col-pct" data-sort="win_pct">Win %</th>
+                        <th class="sortable lb-col-elo" data-sort="current_elo" id="eloMainTh">Elo</th>
+                        <th class="sortable lb-extra" data-sort="total_fights">Fights</th>
+                        <th class="sortable lb-extra" data-sort="major_months" title="Months holding a major title">Major Mo.</th>
+                        <th class="sortable lb-extra" data-sort="champ_months" title="Months holding any title">Title Mo.</th>
+                        <th class="sortable lb-extra" data-sort="event_count" title="Different marquee events won (of 6)">Events</th>
+                        <th class="sortable lb-extra" data-sort="unique_titles" title="Different titles won">Titles</th>
+                        <th class="sortable lb-extra" data-sort="avg_elo" id="eloAvgTh">Avg Elo</th>
+                        <th class="sortable lb-extra" data-sort="peak_elo" id="eloPeakTh">Peak Elo</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardTbody"></tbody>
+            </table>
+            <p class="lb-empty" id="lbEmpty" hidden>No fighters match.</p>
+        </div>
     </div>
-</section>
+</div>
 {% endblock %}
 
 {% block scripts %}

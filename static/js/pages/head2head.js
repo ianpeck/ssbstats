@@ -19,6 +19,9 @@ const EVENT_NAMES = {
     Won_Money_In_The_Bank: 'Money in the Bank', Won_Smash_Bros: 'Smash Bros'
 };
 
+// Lucide "trophy", inlined because these blocks are drawn after the page's icons are set up.
+const TROPHY_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>';
+
 const charts = {};
 let currentData = null;
 let currentMode = 'career';
@@ -42,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if ($('f1Input').value && $('f2Input').value) doCompare();
     });
 
+    setupSectionNav();
+    $('sbLabel').addEventListener('click', () => { if (!$('fightsSection').hidden) jumpTo('fightsSection'); });
+
     $('btnCareer').addEventListener('click', () => setMode('career'));
     $('btnSeason').addEventListener('click', () => setMode('season'));
     ['seasonF1', 'seasonF2'].forEach(id => $(id).addEventListener('change', () => {
@@ -61,6 +67,24 @@ document.addEventListener('DOMContentLoaded', function() {
         doCompare();
     }
 });
+
+// ── Section nav (same behavior as the fighter page) ──────────
+const NAV_OFFSET = 64 + 56;   // site navbar + this page's sticky section bar
+
+function jumpTo(id) {
+    const el = $(id);
+    if (!el) return;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - NAV_OFFSET, behavior: 'smooth' });
+}
+
+function setupSectionNav() {
+    const pills = document.querySelectorAll('#h2hPageNav .page-nav-pill');
+    pills.forEach(pill => pill.addEventListener('click', e => { e.preventDefault(); jumpTo(pill.dataset.section); }));
+    const spy = new IntersectionObserver(entries => entries.forEach(entry => {
+        if (entry.isIntersecting) pills.forEach(p => p.classList.toggle('active', p.dataset.section === entry.target.id));
+    }), { rootMargin: '-15% 0px -70% 0px' });
+    pills.forEach(p => spy.observe($(p.dataset.section)));
+}
 
 // ── Corners ───────────────────────────────────────────────────
 function previewCorner(side) {
@@ -207,6 +231,7 @@ function renderAll(d, mode) {
     renderRadar({ fighter1: d1, fighter2: d2, roster_maxes: maxes }, isSeason);
     renderMomentum({ fighter1: d1, fighter2: d2 }, isSeason);
     $('fightsSection').hidden = !fights;
+    document.querySelector('#h2hPageNav [data-section="fightsSection"]').hidden = !fights;
     if (fights) renderFights(d, fights);
     $('seasonsSection').hidden = isSeason;
     if (isSeason) {
@@ -255,6 +280,8 @@ function renderScoreboard(d, fights, season) {
         $('sbBarF2').style.width = (100 - pct) + '%';
     });
     $('sbLabel').textContent = label;
+    $('sbLabel').classList.toggle('is-link', !!(fights && fights.length));
+    $('sbLabel').title = fights && fights.length ? 'See every meeting' : '';
     $('f1Corner').classList.toggle('is-leading', w1 > w2);
     $('f2Corner').classList.toggle('is-leading', w2 > w1);
 }
@@ -333,16 +360,25 @@ function renderFights(d, fights) {
         : fights.length === direct ? `${direct} meeting${direct === 1 ? '' : 's'}, newest first`
         : `${fights.length} shared fights · ${direct} head to head, ${fights.length - direct} won by someone else or as teammates`;
 
-    // Oldest to newest, one square per head-to-head meeting, colored by who won.
+    // Oldest to newest, one block per head-to-head meeting, colored by who won;
+    // title fights carry a trophy.
     const meetings = fights.map((f, i) => ({ f, r: results[i] })).filter(m => m.r).reverse();
+    const hasTitle = meetings.some(m => m.f.championship);
     $('h2hMeetings').innerHTML = meetings.length ? `
-        <span class="h2h-meetings-label">First</span>
-        <div class="h2h-meetings-track">${meetings.map(({ f, r }) => {
-            const who = r === 'f1' ? f1Name : f2Name;
-            const title = `S${f.season} M${f.month}${f.championship ? ' · ' + f.championship + ' title' : ''} · ${who} won`;
-            return `<a href="/fight/${f.fight_id}" class="h2h-meeting h2h-meeting-${r}${f.championship ? ' is-title' : ''}" title="${escapeHTML(title)}" aria-label="${escapeHTML(title)}"></a>`;
-        }).join('')}</div>
-        <span class="h2h-meetings-label">Latest</span>` : '';
+        <div class="h2h-meetings-row">
+            <span class="h2h-meetings-label">First</span>
+            <div class="h2h-meetings-track">${meetings.map(({ f, r }) => {
+                const who = r === 'f1' ? f1Name : f2Name;
+                const title = `S${f.season} M${f.month}${f.championship ? ' · ' + f.championship + ' title fight' : ''} · ${who} won`;
+                return `<a href="/fight/${f.fight_id}" class="h2h-meeting h2h-meeting-${r}${f.championship ? ' is-title' : ''}" title="${escapeHTML(title)}" aria-label="${escapeHTML(title)}">${f.championship ? TROPHY_SVG : ''}</a>`;
+            }).join('')}</div>
+            <span class="h2h-meetings-label">Latest</span>
+        </div>
+        <div class="h2h-meetings-key">
+            <span><i class="h2h-key-swatch h2h-meeting-f1"></i>${escapeHTML(f1Name)} won</span>
+            <span><i class="h2h-key-swatch h2h-meeting-f2"></i>${escapeHTML(f2Name)} won</span>
+            ${hasTitle ? `<span><i class="h2h-key-swatch h2h-key-title">${TROPHY_SVG}</i>Title fight</span>` : ''}
+        </div>` : '';
 
     if (!fights.length) {
         list.innerHTML = '<div class="fight-empty">These two have never shared a fight.</div>';

@@ -13,7 +13,13 @@
         </div>
     </div>
 
-    <section class="h2h-section">
+    <nav class="fighter-page-nav h2h-page-nav" id="h2hPageNav" aria-label="Jump to section">
+        <a class="page-nav-pill" data-section="tapeSection" href="#tapeSection"><i data-lucide="ruler"></i>Tale of the Tape</a>
+        <a class="page-nav-pill" data-section="analyticsSection" href="#analyticsSection"><i data-lucide="chart-line"></i>Analytics</a>
+        <a class="page-nav-pill" data-section="fightsSection" href="#fightsSection"><i data-lucide="swords"></i>The Rivalry</a>
+    </nav>
+
+    <section class="h2h-section" id="tapeSection">
         <div class="h2h-section-head">
             <h2 class="h2h-section-title"><i data-lucide="ruler"></i><span id="tapeTitle">Tale of the Tape</span></h2>
             <p class="h2h-section-note" id="tapeSummary"></p>
@@ -21,16 +27,7 @@
         <div class="h2h-tape" id="statsGrid"></div>
     </section>
 
-    <section class="h2h-section" id="fightsSection">
-        <div class="h2h-section-head">
-            <h2 class="h2h-section-title"><i data-lucide="swords"></i>The Rivalry</h2>
-            <p class="h2h-section-note" id="fightCountLabel"></p>
-        </div>
-        <div class="h2h-meetings" id="h2hMeetings"></div>
-        <div id="fightsBetweenWrap" class="fight-list"></div>
-    </section>
-
-    <section class="h2h-section">
+    <section class="h2h-section" id="analyticsSection">
         <div class="h2h-section-head">
             <h2 class="h2h-section-title"><i data-lucide="chart-line"></i>Analytics</h2>
         </div>
@@ -61,5 +58,14 @@
                 <div class="h2h-seasons-box"><canvas id="compareSeasons"></canvas></div>
             </div>
         </div>
+    </section>
+
+    <section class="h2h-section" id="fightsSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="swords"></i>The Rivalry</h2>
+            <p class="h2h-section-note" id="fightCountLabel"></p>
+        </div>
+        <div class="h2h-meetings" id="h2hMeetings"></div>
+        <div id="fightsBetweenWrap" class="fight-list"></div>
     </section>
 </div>
