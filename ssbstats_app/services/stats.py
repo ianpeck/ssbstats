@@ -9,6 +9,8 @@ from ssbstats_app.services.championships import get_championships_data
 from ssbstats_app.services.fight_story import get_upset_ranks
 from ssbstats_app.services.ppv import get_event_hub, get_events_data
 from ssbstats_app.services.records import get_record_book
+from ssbstats_app.services.search import get_search_index
+from ssbstats_app.services.stages import get_stage_hub, get_stages_data
 from ssbstats_app.utils import event_to_slug, fighter_to_filename, normalize_champ_name, serialize_value, stage_to_filename
 
 
@@ -980,10 +982,13 @@ def keep_fighter_caches_warm():
                 get_championships_data.refresh()
                 get_events_data.refresh()
                 get_event_hub.cache_clear()   # event pages rebuild on demand from the fresh data
+                get_stages_data.refresh()
+                get_stage_hub.cache_clear()   # stage pages too
                 get_upset_ranks.refresh()
                 get_compare_roster_maxes.refresh()
                 get_compare_payload.cache_clear()  # pairs rebuild on demand from the per-fighter halves
                 latest = lookups.get_latest_season()
+                get_search_index.refresh()
                 get_leaderboard_payload.refresh("")
                 for season in range(1, latest + 1):
                     get_leaderboard_payload.refresh(str(season))

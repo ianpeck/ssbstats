@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}SSB Stats - Stages{% endblock %}
+{% block meta_description %}Every stage the SSB league has fought on: how often it's used, the titles won there and who rules it.{% endblock %}
+{% block body_class %}page-stages{% endblock %}
+
+{% block content %}
+<div class="champ-page stage-page">
+    <header class="lb-hero">
+        <span class="lb-kicker"><i data-lucide="map"></i> {{ data.stages | length }} stages</span>
+        <h1 class="lb-title">Stages</h1>
+        <p class="lb-lede">Every stage the league has fought on, how often it's used and who rules it.</p>
+    </header>
+
+    <div class="stage-controls">
+        <div class="stage-search">
+            <i data-lucide="search"></i>
+            <input type="text" id="stageSearch" class="fighter-input" placeholder="Find a stage or series..." autocomplete="off" aria-label="Find a stage">
+        </div>
+        <div class="stage-filters" id="stageFilters" role="group" aria-label="Debut game">
+            <button type="button" class="stage-chip active" data-origin="">All</button>
+            {% for o in data.origins %}<button type="button" class="stage-chip" data-origin="{{ o }}">{{ o }}</button>{% endfor %}
+        </div>
+        <div class="roster-view-toggle stage-sort" id="stageSort" role="group" aria-label="Sort">
+            <button type="button" class="active" data-sort="fights">Most fights</button>
+            <button type="button" data-sort="titles">Most titles</button>
+            <button type="button" data-sort="name">A–Z</button>
+        </div>
+    </div>
+
+    <div class="stage-grid" id="stageGrid">
+        {% for s in data.stages %}
+        <a class="stage-card" href="/stages/{{ s.slug }}" data-name="{{ s.name | lower }} {{ (s.series or '') | lower }}" data-origin="{{ s.origin or '' }}" data-fights="{{ s.fights }}" data-titles="{{ s.title_changes }}" data-order="{{ loop.index0 }}">
+            <span class="stage-card-art{% if not s.image %} no-art{% endif %}">
+                {% if s.image %}<img src="{{ asset_variant('stages', s.image, 'sm') }}" alt="" loading="lazy">{% else %}<i data-lucide="map-pin"></i>{% endif %}
+                {% if s.origin %}<span class="stage-card-origin">{{ s.origin }}</span>{% endif %}
+            </span>
+            <span class="stage-card-body">
+                <strong class="stage-card-name">{{ s.name }}</strong>
+                <small class="stage-card-series">{{ s.series or 'Stage' }}</small>
+                <span class="stage-card-stats">
+                    <span><b>{{ s.fights }}</b> fights</span>
+                    {% if s.title_changes %}<span><b>{{ s.title_changes }}</b> title{{ '' if s.title_changes == 1 else 's' }} won</span>{% endif %}
+                </span>
+                {% if s.king %}
+                <span class="stage-card-king">
+                    <img src="{{ asset_variant('fighters', s.king.filename, 'sm') }}" alt="" loading="lazy">
+                    <span>{{ s.king.name }}<small>Most wins · {{ s.king.wins }}–{{ s.king.losses }}</small></span>
+                </span>
+                {% endif %}
+            </span>
+        </a>
+        {% endfor %}
+    </div>
+    <p class="h2h-section-note stage-empty" id="stageEmpty" hidden>No stages match.</p>
+
+    {% if data.unused %}
+    <section class="h2h-section">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="map-pin-off"></i>Not fought on yet</h2>
+            <p class="h2h-section-note">In the stage list, still waiting for a first fight</p>
+        </div>
+        <div class="stage-unused">
+            {% for s in data.unused %}<span>{{ s.name }}{% if s.origin %}<small>{{ s.origin }}</small>{% endif %}</span>{% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/stages.js') }}?v={{ static_v }}"></script>
+{% endblock %}

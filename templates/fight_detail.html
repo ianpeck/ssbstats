@@ -3,10 +3,10 @@
 {% block og_title %}{{ fight.hero_title }} · SSB Stats{% endblock %}
 {% block meta_description %}{% if extras.story %}{{ extras.story[0].text }} {% endif %}{{ fight.hero_subtitle }}{% if fight.location %} · {{ fight.location }}{% endif %}{% endblock %}
 {% block og_image %}
-{% if fight.stage_image %}
-    <meta property="og:image" content="{{ site_url }}{{ asset_variant('stages', fight.stage_image, 'md') }}">
+    <meta property="og:image" content="{{ site_url }}/share/fight/{{ fight.fight_id }}.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-{% else %}{{ super() }}{% endif %}
 {% endblock %}
 {% block body_class %}page-fight{% endblock %}
 
@@ -81,7 +81,7 @@
             {% endif %}
         </div>
 
-        {% if fight.location %}<span class="fd-stage-tag"><i data-lucide="map-pin"></i>{{ fight.location }}</span>{% endif %}
+        {% if fight.location %}<a class="fd-stage-tag" href="/stages/{{ extras.stage.image if extras.stage else '' }}"><i data-lucide="map-pin"></i>{{ fight.location }}</a>{% endif %}
     </header>
 
     {% if extras.story %}
@@ -208,7 +208,7 @@
             {% set st = extras.stage %}
             <section class="fd-panel fd-stage-panel">
                 <img class="fd-stage-thumb" src="{{ asset_variant('stages', st.image, 'md') }}" alt="" loading="lazy" onerror="this.remove()">
-                <h3 class="fd-panel-title"><i data-lucide="map-pin"></i>{{ st.name }}</h3>
+                <h3 class="fd-panel-title"><i data-lucide="map-pin"></i><a href="/stages/{{ st.image }}">{{ st.name }}</a></h3>
                 <p class="fd-panel-note">Fight #{{ st.number }} of {{ st.total }} here{% if st.first_season %} · in use since Season {{ st.first_season }}{% endif %}</p>
                 {% if st.leaders %}
                 <ol class="champ-leaders">
@@ -217,7 +217,7 @@
                     {% endfor %}
                 </ol>
                 {% endif %}
-                <a class="champ-history-link" href="/fights?location={{ st.name | urlencode }}">Every fight here <i data-lucide="arrow-right"></i></a>
+                <a class="champ-history-link" href="/stages/{{ st.image }}">Stage history <i data-lucide="arrow-right"></i></a>
             </section>
             {% endif %}
         </aside>

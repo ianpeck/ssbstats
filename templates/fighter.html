@@ -3,8 +3,10 @@
 {% block og_title %}{{ fighter_name }} · SSB Stats{% endblock %}
 {% block meta_description %}{{ preview }}{% endblock %}
 {% block og_image %}
-    <meta property="og:image" content="{{ site_url }}{{ asset_variant('fighters', filename, 'md') }}">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="{{ site_url }}/share/fighter/{{ fighter_name | urlencode }}.jpg?v={{ share_v }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
 {% endblock %}
 
 {% block body_class %}page-fighter{% endblock %}

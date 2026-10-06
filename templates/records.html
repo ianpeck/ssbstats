@@ -30,7 +30,7 @@
 
     {% for section in book.sections %}
     <section class="records-section" id="{{ section.key }}">
-        <h2 class="records-section-title"><i data-lucide="{{ section.icon }}"></i>{{ section.title }}</h2>
+        <h2 class="records-section-title"><i data-lucide="{{ section.icon }}"></i>{{ section.title }}{% if section.key == 'stages' %}<a class="records-section-link" href="/stages">Every stage <i data-lucide="arrow-right"></i></a>{% endif %}</h2>
         <div class="records-grid">
             {% for record in section.records if record.entries %}
             {% set top = record.entries[0] %}

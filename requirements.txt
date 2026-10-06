@@ -2,6 +2,7 @@ Flask
 PyMySQL
 python-dotenv
 PyYAML
+Pillow
 gunicorn
 cryptography
 groq

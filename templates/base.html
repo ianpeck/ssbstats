@@ -86,6 +86,11 @@
                     <span class="nav-label-full">Events (PPVs)</span><span class="nav-label-short">Events</span>
                 </a>
 
+                <a href="/stages" class="nav-link {% if request.path.startswith('/stages') %}active{% endif %}" title="Stages">
+                    <i data-lucide="map"></i>
+                    <span class="nav-label-full">Stages</span><span class="nav-label-short">Stages</span>
+                </a>
+
                 <a href="/fights" class="nav-link {% if request.path.startswith('/fights') or request.path.startswith('/fight/') %}active{% endif %}" title="Fight Logs">
                     <i data-lucide="notebook"></i>
                     <span class="nav-label-full">Fight Logs</span><span class="nav-label-short">Fights</span>
@@ -129,11 +134,27 @@
                 {% endif %}
 
             </div>
+            <button type="button" class="nav-search-btn" id="searchOpen" title="Search (press /)" aria-label="Search the site" aria-haspopup="dialog">
+                <i data-lucide="search"></i><span class="nav-search-label">Search</span><kbd class="nav-search-kbd">/</kbd>
+            </button>
             <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
                 <span></span><span></span><span></span>
             </button>
         </div>
     </nav>
+
+    <div class="site-search" id="siteSearch" role="dialog" aria-modal="true" aria-label="Search the site" hidden>
+        <div class="site-search-panel">
+            <div class="site-search-bar">
+                <i data-lucide="search"></i>
+                <input type="text" id="siteSearchInput" placeholder="Fighters, stages, events, titles, fight #…" autocomplete="off" spellcheck="false"
+                       role="combobox" aria-expanded="true" aria-controls="siteSearchResults" aria-autocomplete="list">
+                <kbd>Esc</kbd>
+            </div>
+            <ul class="site-search-results" id="siteSearchResults" role="listbox"></ul>
+            <div class="site-search-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span>Try “Kirby vs Wario” or “fight 1225”</span></div>
+        </div>
+    </div>
 
     <main class="main-content">
         {% block content %}{% endblock %}
@@ -151,6 +172,7 @@
 
     <script src="{{ url_for('static', filename='js/app.js') }}?v={{ static_v }}"></script>
     <script src="{{ url_for('static', filename='js/chat-client.js') }}?v={{ static_v }}"></script>
+    <script src="{{ url_for('static', filename='js/search.js') }}?v={{ static_v }}"></script>
     {% block scripts %}{% endblock %}
 
     {% if request.path != '/chat' %}

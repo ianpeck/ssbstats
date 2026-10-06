@@ -1,8 +1,9 @@
+import hashlib
 import hmac
 import os
 from functools import wraps
 
-from flask import Blueprint, abort, current_app, redirect, render_template, request, send_from_directory, session, url_for
+from flask import Blueprint, Response, abort, current_app, redirect, render_template, request, send_from_directory, session, url_for
 
 from ssbstats_app.repositories import lookups
 from ssbstats_app.repositories.seasons import get_all_seasons
@@ -12,6 +13,8 @@ from ssbstats_app.services.championships import get_championship_detail, get_cha
 from ssbstats_app.services.fight_story import build_fight_extras
 from ssbstats_app.services.ppv import get_event_hub, get_events_data
 from ssbstats_app.services.records import get_record_book
+from ssbstats_app.services.share_cards import fighter_card_facts, render_fight_card, render_fighter_card
+from ssbstats_app.services.stages import get_stage_hub, get_stages_data
 from ssbstats_app.services.scheduling import (
     create_scheduled_match_from_form,
     delete_scheduled_match_from_form,
@@ -111,7 +114,38 @@ def fighter_profile(name):
         filename=fighter_to_filename(name),
         blurb=get_fighter_blurb(name),
         preview=_fighter_preview(name),
+        share_v=_share_version(name),
     )
+
+
+def _share_version(name):
+    """Changes whenever the fighter's preview card would, so link previews don't stay stale."""
+    try:
+        return hashlib.md5(repr(fighter_card_facts(name)).encode()).hexdigest()[:8]
+    except Exception:
+        return "0"
+
+
+def _jpeg_response(data):
+    return Response(data, mimetype="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@pages_bp.route("/share/fighter/<name>.jpg")
+def fighter_share_card(name):
+    """The link-preview image for a fighter page."""
+    canonical = {fighter.lower(): fighter for fighter in get_autocomplete_data("fighters")}
+    if name.lower() not in canonical:
+        abort(404)
+    return _jpeg_response(render_fighter_card(fighter_card_facts(canonical[name.lower()])))
+
+
+@pages_bp.route("/share/fight/<int:fight_id>.jpg")
+def fight_share_card(fight_id):
+    """The link-preview image for a fight page."""
+    data = render_fight_card(fight_id)
+    if data is None:
+        abort(404)
+    return _jpeg_response(data)
 
 
 @pages_bp.route("/leaderboard")
@@ -160,6 +194,21 @@ def event_detail(slug):
     if hub is None:
         abort(404)
     return render_template("event_detail.html", hub=hub)
+
+
+@pages_bp.route("/stages")
+def stages():
+    """Render every stage the league has fought on."""
+    return render_template("stages.html", data=get_stages_data())
+
+
+@pages_bp.route("/stages/<slug>")
+def stage_detail(slug):
+    """Render one stage's history: who rules it, titles won there and every fight."""
+    hub = get_stage_hub(slug.lower())
+    if hub is None:
+        abort(404)
+    return render_template("stage_detail.html", hub=hub)
 
 
 @pages_bp.route("/about")

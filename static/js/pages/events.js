@@ -3,6 +3,8 @@
 
 const $ = id => document.getElementById(id);
 const EVENT_FIGHTS = (window.SSBStats && window.SSBStats.eventFights) || null;
+// Event pages hide the event column (it's always this event); stage pages keep it.
+const FIGHT_OPTS = (window.SSBStats && window.SSBStats.fightOpts) || { hideEvent: true };
 
 // ── Season switcher (Events page) ──────────────────────────────
 function initSeasonPills() {
@@ -80,7 +82,7 @@ function initSectionNav() {
     pills.forEach(p => spy.observe($(p.dataset.section)));
 }
 
-// ── Event page: every fight, 20 at a time ──────────────────────
+// ── Event and stage pages: every fight, 20 at a time ──────────────────────
 function initFightArchive() {
     const list = $('eventFights');
     if (!list || !EVENT_FIGHTS) return;
@@ -90,7 +92,7 @@ function initFightArchive() {
     const btn = $('moreFightsBtn');
     const more = () => {
         EVENT_FIGHTS.slice(shown, shown + PAGE).forEach(fight => {
-            const row = appendFight(list, fight, { hideEvent: true });
+            const row = appendFight(list, fight, FIGHT_OPTS);
             row.classList.add('clickable-row');
             row.addEventListener('click', e => { if (!e.target.closest('a')) window.location.href = `/fight/${fight.fight_id}`; });
         });

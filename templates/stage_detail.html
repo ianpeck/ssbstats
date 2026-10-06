@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% set s = hub.stage %}
+{% block title %}SSB Stats - {{ s.name }}{% endblock %}
+{% block meta_description %}{{ s.name }}: {{ s.fights }} fights{% if s.title_changes %} and {{ s.title_changes }} title changes{% endif %} in SSB league history{% if s.king %}. Most wins: {{ s.king.name }} ({{ s.king.wins }}–{{ s.king.losses }}){% endif %}.{% endblock %}
+{% block og_image %}
+{% if s.image %}
+    <meta property="og:image" content="{{ site_url }}{{ asset_variant('stages', s.image, 'md') }}">
+    <meta name="twitter:card" content="summary_large_image">
+{% else %}{{ super() }}{% endif %}
+{% endblock %}
+{% block body_class %}page-stages{% endblock %}
+
+{% macro leader(href, rank, face, name, sub, value, unit, bad=false) -%}
+<li><a href="{{ href }}"><span class="champ-leader-rank">{{ rank }}</span><img src="{{ asset_variant('fighters', face, 'sm') }}" alt="" loading="lazy"><span class="champ-leader-name">{{ name }}<small>{{ sub }}</small></span><span class="champ-leader-value{% if bad %} is-bad{% endif %}">{{ value }}<small>{{ unit }}</small></span></a></li>
+{%- endmacro %}
+
+{% block content %}
+<div class="champ-page stage-page champ-detail">
+    <a class="champ-back" href="/stages"><i data-lucide="arrow-left"></i>All stages</a>
+
+    <header class="stage-hero{% if not s.image %} no-stage{% endif %}"{% if s.image %} style="--stage: url('{{ asset_variant('stages', s.image, 'md') }}')"{% endif %}>
+        <div class="stage-hero-copy">
+            <span class="lb-kicker">{% if s.series %}{{ s.series }} · {% endif %}{% if s.origin %}{{ s.origin }} stage{% else %}Stage{% endif %}{% if s.first %} · since Season {{ s.first }}{% endif %}</span>
+            <h1 class="champ-hero-title">{{ s.name }}</h1>
+            <div class="season-fact-row stage-hero-facts">
+                <div class="season-fact"><span class="season-fact-value">{{ s.fights }}</span><span class="season-fact-label">Fights</span></div>
+                <div class="season-fact"><span class="season-fact-value">{{ s.title_fights }}</span><span class="season-fact-label">Title fights</span></div>
+                <div class="season-fact"><span class="season-fact-value">{{ s.title_changes }}</span><span class="season-fact-label">Title changes</span></div>
+                <div class="season-fact"><span class="season-fact-value">{{ hub.ppv_nights }}</span><span class="season-fact-label">PPV nights</span></div>
+                <div class="season-fact"><span class="season-fact-value">{{ s.fighters }}</span><span class="season-fact-label">Fighters</span></div>
+            </div>
+        </div>
+    </header>
+
+    {% if not s.fights %}
+    <section class="h2h-section">
+        <p class="h2h-section-note">No fights on {{ s.name }} yet.</p>
+    </section>
+    {% else %}
+    <nav class="fighter-page-nav h2h-page-nav season-page-nav" id="eventsPageNav" aria-label="Jump to section">
+        <a class="page-nav-pill" data-section="recordsSection" href="#recordsSection"><i data-lucide="trophy"></i>Records</a>
+        {% if hub.titles %}<a class="page-nav-pill" data-section="titlesSection" href="#titlesSection"><i data-lucide="crown"></i>Titles won here</a>{% endif %}
+        {% if hub.rivalries %}<a class="page-nav-pill" data-section="rivalriesSection" href="#rivalriesSection"><i data-lucide="swords"></i>Rivalries</a>{% endif %}
+        <a class="page-nav-pill" data-section="fightsSection" href="#fightsSection"><i data-lucide="list"></i>Fights</a>
+    </nav>
+
+    <section class="h2h-section" id="recordsSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="trophy"></i>Records</h2>
+            <p class="h2h-section-note">On {{ s.name }} across every season (best and worst need 5+ fights here)</p>
+        </div>
+        <div class="champ-records">
+            <article class="champ-record-card">
+                <h3>Most wins</h3>
+                <ol class="champ-leaders">
+                    {% for r in hub.most_wins %}{{ leader('/fighter/' ~ (r.name | urlencode), loop.index, r.filename, r.name, r.wins ~ '–' ~ r.losses, r.wins, ' wins') }}{% endfor %}
+                </ol>
+            </article>
+            <article class="champ-record-card">
+                <h3>Best records</h3>
+                {% if not hub.best %}<p class="h2h-section-note">Nobody has 5+ fights here yet.</p>{% endif %}
+                <ol class="champ-leaders">
+                    {% for r in hub.best %}{{ leader('/fighter/' ~ (r.name | urlencode), loop.index, r.filename, r.name, r.wins ~ '–' ~ r.losses, '%.0f' | format(r.win_pct), '%') }}{% endfor %}
+                </ol>
+            </article>
+            <article class="champ-record-card">
+                <h3>Worst records</h3>
+                {% if not hub.worst %}<p class="h2h-section-note">Nobody has 5+ fights here yet.</p>{% endif %}
+                <ol class="champ-leaders">
+                    {% for r in hub.worst %}{{ leader('/fighter/' ~ (r.name | urlencode), loop.index, r.filename, r.name, r.wins ~ '–' ~ r.losses, '%.0f' | format(r.win_pct), '%', true) }}{% endfor %}
+                </ol>
+            </article>
+            {% if hub.upsets %}
+            <article class="champ-record-card">
+                <h3>Biggest upsets</h3>
+                <ol class="champ-leaders">
+                    {% for u in hub.upsets %}{{ leader('/fight/' ~ u.fight_id, loop.index, u.winner.filename, u.winner.name, 'over ' ~ u.loser.name ~ ' · S' ~ u.season ~ ((' · ' ~ u.title) if u.title else ''), '+' ~ u.gap, ' Elo') }}{% endfor %}
+                </ol>
+            </article>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if hub.titles %}
+    <section class="h2h-section" id="titlesSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="crown"></i>Titles won here</h2>
+            <p class="h2h-section-note">Every title that changed hands on {{ s.name }}, newest first</p>
+        </div>
+        <div class="stage-titles">
+            {% for t in hub.titles %}
+            <a class="stage-title-row" href="{{ '/fight/' ~ t.fight_id if t.fight_id else '/championships/' ~ t.slug }}">
+                <img class="stage-title-belt" src="{{ asset_variant('belts', t.belt, 'sm') }}" alt="" loading="lazy" onerror="this.remove()">
+                <span class="stage-title-faces">{% for p in t.champions %}<img src="{{ asset_variant('fighters', p.filename, 'sm') }}" alt="" loading="lazy">{% endfor %}</span>
+                <span class="stage-title-text">
+                    <strong>{{ t.label }}</strong>
+                    <small>{{ t.title }} {{ 'trophy' if t.trophy else 'title' }}{% if t.fight_type %} · {{ t.fight_type }}{% endif %}</small>
+                </span>
+                <span class="stage-title-when">S{{ t.season }} · M{{ t.month }}{% if t.ppv %}<small>{{ t.ppv }}</small>{% endif %}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if hub.rivalries %}
+    <section class="h2h-section" id="rivalriesSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="swords"></i>Rivalries</h2>
+            <p class="h2h-section-note">The one-on-one matchups fought here most</p>
+        </div>
+        <div class="stage-rivals">
+            {% for r in hub.rivalries %}
+            <a class="stage-rival" href="/head2head?f1={{ r.a.name | urlencode }}&amp;f2={{ r.b.name | urlencode }}">
+                <span class="stage-rival-side{% if r.a_wins > r.b_wins %} is-ahead{% endif %}"><img src="{{ asset_variant('fighters', r.a.filename, 'sm') }}" alt="" loading="lazy"><span>{{ r.a.name }}</span></span>
+                <span class="stage-rival-score"><strong>{{ r.a_wins }}–{{ r.b_wins }}</strong><small>{{ r.fights }} fights</small></span>
+                <span class="stage-rival-side is-right{% if r.b_wins > r.a_wins %} is-ahead{% endif %}"><span>{{ r.b.name }}</span><img src="{{ asset_variant('fighters', r.b.filename, 'sm') }}" alt="" loading="lazy"></span>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="h2h-section" id="fightsSection">
+        <div class="h2h-section-head">
+            <h2 class="h2h-section-title"><i data-lucide="list"></i>Fights</h2>
+            <p class="h2h-section-note">{{ s.fights }} fights, newest first</p>
+        </div>
+        <div id="eventFights" class="fight-list"></div>
+        <button type="button" class="season-show-all" id="moreFightsBtn" hidden>Show more</button>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.SSBStats = window.SSBStats || {};
+window.SSBStats.eventFights = {{ hub.fights | tojson }};
+window.SSBStats.fightOpts = {};
+</script>
+<script src="{{ url_for('static', filename='js/pages/events.js') }}?v={{ static_v }}"></script>
+{% endblock %}

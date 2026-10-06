@@ -6,6 +6,7 @@ from ssbstats_app.security import DailyQuota, RateLimiter, admin_ips, get_client
 from ssbstats_app.services.chat import answer_question
 
 from ssbstats_app.services.content import get_autocomplete_data
+from ssbstats_app.services.search import get_search_index
 from ssbstats_app.services.stats import (
     get_championships_payload,
     get_compare_payload,
@@ -37,6 +38,14 @@ def autocomplete(category):
     if query:
         data = [item for item in data if query in item.lower()]
     return jsonify(data)
+
+
+@api_bp.route("/search-index")
+def search_index():
+    """Everything the site-wide search can find; the browser filters it locally."""
+    response = jsonify(get_search_index())
+    response.headers["Cache-Control"] = "public, max-age=600"
+    return response
 
 
 @api_bp.route("/head2head", methods=["POST"])
