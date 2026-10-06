@@ -592,6 +592,30 @@
             .catch(() => { latest.innerHTML = '<div class="fight-empty">Couldn\'t load results.</div>'; });
     }
 
+    // ---- Logo: tilts toward the cursor ---------------------------------------------
+    const logo = document.getElementById('homeLogo');
+    if (logo && !reduceMotion && window.matchMedia('(hover: hover)').matches) {
+        let frame = 0;
+        logo.addEventListener('pointermove', e => {
+            const r = logo.getBoundingClientRect();
+            const x = (e.clientX - r.left) / r.width - 0.5;
+            const y = (e.clientY - r.top) / r.height - 0.5;
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+                logo.style.setProperty('--tilt-x', `${(-y * 12).toFixed(2)}deg`);
+                logo.style.setProperty('--tilt-y', `${(x * 16).toFixed(2)}deg`);
+                logo.style.setProperty('--glare-x', `${((x + 0.5) * 100).toFixed(1)}%`);
+                logo.style.setProperty('--glare-y', `${((y + 0.5) * 100).toFixed(1)}%`);
+            });
+            logo.classList.add('is-tilting');
+        });
+        logo.addEventListener('pointerleave', () => {
+            cancelAnimationFrame(frame);
+            logo.classList.remove('is-tilting');
+            ['--tilt-x', '--tilt-y', '--glare-x', '--glare-y'].forEach(v => logo.style.removeProperty(v));
+        });
+    }
+
     // ---- Start ------------------------------------------------------------------
     gridCards.forEach((cardEl, i) => {
         cardEl.style.animationDelay = `${(i % 12) * 0.03}s`;

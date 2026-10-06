@@ -18,7 +18,12 @@
     <div class="roster-globe">
         <div class="globe-side">
             <header class="home-hero">
-                <img src="{{ url_for('static', filename='assets/other/supersmashbroslogo.png') }}" alt="Super Smash Bros" class="home-logo">
+                <div class="home-logo-wrap" id="homeLogo" style="--logo: url('{{ url_for('static', filename='assets/other/supersmashbroslogo.webp') }}')">
+                    <span class="home-logo-flare" aria-hidden="true"></span>
+                    <img src="{{ url_for('static', filename='assets/other/supersmashbroslogo.webp') }}" alt="Super Smash Bros" class="home-logo" width="1280" height="720">
+                    <span class="home-logo-shine" aria-hidden="true"></span>
+                    <span class="home-logo-spark" aria-hidden="true"></span>
+                </div>
                 <p class="home-tagline">A WWE-style Super Smash Bros league. Every fight, title and rivalry, tracked.</p>
             </header>
             <div class="roster-controls">
